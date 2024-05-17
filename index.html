@@ -14,18 +14,30 @@
             align-items: center;
             justify-content: center;
         }
-    </style><script>
-        var red_to_gutian = function () {
-            window.location.href = "https://gugugugugutian.github.io/";
-        }
+    </style>
+    <script>
         window.onload = function () {
             let a = document.getElementById("gutian");
-            let rd_time = 30;
-            setInterval(function () { 
+            let rd_time = 3;
+            var url = "https://gugugugugutian.github.io/";
+
+            myInterval = setInterval(function () {
                 a.innerHTML = "在" + rd_time + "秒后跳转到gugugugugutian";
-                rd_time--;
-                if(rd_time<0) red_to_gutian();
+                if (rd_time <= 0) {
+                    window.open(url, "_blank");
+                    clearInterval(myInterval);
+                }
+                else { rd_time--; }
             }, 1000);
+
+            /*setInterval(function () {
+                a.innerHTML = "在" + rd_time + "秒后跳转到gugugugugutian";
+                if (rd_time === 0) {
+                    window.open(url, "_blank");
+                    clearInterval(myInterval);
+                }
+                else { rd_time--; }
+            }, 1000);*/
         }
     </script>
 </head>
@@ -35,7 +47,8 @@
     <br><img src="images/head.jpg" width="121" height="121" /><br>
     <p>I am Starki, a baga student from WHU.</p>
     <p>It took me three hours to build this thing.</p>
-    <h2><a href="https://gugugugugutian.github.io/" id="gutian">这边建议用这个网页</a></h2><br>
+    <h2><a href="https://gugugugugutian.github.io/" id="gutian"></a></h2>
+    <h3>(这边建议用这个网页，你也可以直接点击跳转)</h3>
     <h2>来玩点小游戏</h2>
     <h3><a href="./Missile Game_files/MissileGame.html">1.开导弹</a></h3>
     <h3><a href="./t-rex-runner-gh-pages/index.html">2.小恐龙</a></h3>

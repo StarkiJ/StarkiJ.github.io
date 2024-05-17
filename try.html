@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动打开新网站示例</title>
+    <script>
+        // 定义目标URL
+        var url = "https://starkij.github.io/"; // 替换为你要打开的网址
+        var countdownTime = 5; // 倒计时的秒数
+
+        // 更新倒计时显示的函数
+        function updateCountdown() {
+            // 获取倒计时显示的元素
+            var countdownElement = document.getElementById("countdown");
+            // 更新倒计时显示
+            countdownElement.innerText = countdownTime;
+            // 减少倒计时秒数
+            countdownTime--;
+
+            // 如果倒计时结束，打开新网站
+            if (countdownTime < 0) {
+                openNewWebsite();
+            } else {
+                // 否则，继续倒计时
+                setTimeout(updateCountdown, 1000);
+            }
+        }
+
+        // 打开新网站的函数
+        function openNewWebsite() {
+            // 在新标签页或新窗口中打开指定网址
+            window.open(url, '_blank');
+        }
+
+        // 在页面加载完成后开始倒计时
+        window.onload = function() {
+            updateCountdown();
+        }
+    </script>
+</head>
+<body>
+    <h1>将在 <span id="countdown"></span> 秒后自动在新标签页中打开指定网站</h1>
+</body>
+</html>
