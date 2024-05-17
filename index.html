@@ -17,27 +17,22 @@
     </style>
     <script>
         window.onload = function () {
-            let a = document.getElementById("gutian");
+            let tip = document.getElementById("tip");
             let rd_time = 3;
             var url = "https://gugugugugutian.github.io/";
 
             myInterval = setInterval(function () {
-                a.innerHTML = "在" + rd_time + "秒后跳转到gugugugugutian";
-                if (rd_time <= 0) {
-                    window.open(url, "_blank");
-                    clearInterval(myInterval);
-                }
-                else { rd_time--; }
-            }, 1000);
 
-            /*setInterval(function () {
-                a.innerHTML = "在" + rd_time + "秒后跳转到gugugugugutian";
-                if (rd_time === 0) {
+                if (rd_time <= 0) {
+                    tip.innerHTML = "已打开上面的网页，如果被阻止，你可以尝试点击链接打开网页";
                     window.open(url, "_blank");
                     clearInterval(myInterval);
                 }
-                else { rd_time--; }
-            }, 1000);*/
+                else {
+                    tip.innerHTML = rd_time + " 秒后将在新标签页打开上面的网页，你也可以直接点击链接打开网页";
+                    rd_time--;
+                }
+            }, 1000);
         }
     </script>
 </head>
@@ -47,8 +42,10 @@
     <br><img src="images/head.jpg" width="121" height="121" /><br>
     <p>I am Starki, a baga student from WHU.</p>
     <p>It took me three hours to build this thing.</p>
-    <h2><a href="https://gugugugugutian.github.io/" id="gutian"></a></h2>
-    <h3>(这边建议用这个网页，你也可以直接点击跳转)</h3>
+    
+    <h2>这边建议用这个网页: <a href="https://gugugugugutian.github.io/">gugugugugutian</a></h2>
+    <h3><span id="tip"></h3>
+
     <h2>来玩点小游戏</h2>
     <h3><a href="./Missile Game_files/MissileGame.html">1.开导弹</a></h3>
     <h3><a href="./t-rex-runner-gh-pages/index.html">2.小恐龙</a></h3>
