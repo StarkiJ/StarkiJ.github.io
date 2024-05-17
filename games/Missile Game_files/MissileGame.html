@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <!-- saved from url=(0035)https://missile-game.bwhmather.com/ -->
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
   <title>Missile Game</title>
   <meta name="author" content="Ben Mather &lt;bwhmather@bwhmather.com&gt;">
   <meta name="description" content="A 3D game using SVG and javascript">
 
-  <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-   
+  <meta name="viewport"
+    content="width=device-width, height=device-height, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
   <!--== CSS ==============================================================-->
   <style type="text/css">
     /* <![CDATA[ */
     body {
-        margin: 0;
+      margin: 0;
     }
 
     .barrier path {
@@ -23,7 +27,7 @@
     .hud-background {
       stroke: none;
       fill: white;
-      fill-opacity: 0.8;      
+      fill-opacity: 0.8;
     }
 
     .hud-foreground {
@@ -38,7 +42,9 @@
       font-weight: bold;
     }
 
-    * {cursor:crosshair}
+    * {
+      cursor: crosshair
+    }
 
     #fullscreen {
       border: 3px solid black;
@@ -55,7 +61,7 @@
       transition-duration: 1s;
     }
 
-    :fullscreen > #fullscreen {
+    :fullscreen>#fullscreen {
       top: -120%;
     }
 
@@ -67,7 +73,8 @@
       font-weight: bold;
       white-space: nowrap;
     }
-/*
+
+    /*
     #app-store {
       position: fixed;
       left: 50%;
@@ -85,24 +92,54 @@
 
     #app-store.hidden {
       opacity: 0;
-      */
-    }
+      
+    }*/
 
     /* ]]> */
   </style>
   <style title="style-hide-mouse" type="text/css">
     /* <![CDATA[ */
-    * {cursor:none}
+    * {
+      cursor: none
+    }
+
     /* ]]> */
   </style>
 </head>
+
 <body>
-  <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="position: fixed; width: 100%; height: 100%; margin: 0; background: white">
-   
- 
-  <!--== TUNNEL ===============================================================-->
-    <svg id="tunnel" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="-100 -100 200 200" visibility="visible">
-    <g transform="scale(1,-1)"><lineargradient id="tunnel-wall-segment-fade-gradient" gradientUnits="userSpaceOnUse"><stop offset="0.078125" stop-color="#fff"></stop><stop offset="0.13157894736842105" stop-color="#000"></stop></lineargradient><path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)" transform="rotate(266.7199999999832) scale(0.6349551377563294,0.6928203230275509) skewY(-9.099597831868174)"></path><path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)" transform="rotate(338.7199999999832) scale(0.569403253088198,0.6928203230275509) skewY(1.7148720349911997)"></path><path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)" transform="rotate(410.7199999999832) scale(0.6744095642843294,0.6928203230275509) skewY(10.130157712725417)"></path><path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)" transform="rotate(482.7199999999832) scale(0.8048589183049186,0.6928203230275509) skewY(4.601541789880535)"></path><path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)" transform="rotate(554.7199999999832) scale(0.7804747417039792,0.6928203230275509) skewY(-7.346484436631518)"></path></g><g transform="scale(1,-1)"><g class="barrier"><path id="barrier-path-4" d="M 100,0
+  <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    style="position: fixed; width: 100%; height: 100%; margin: 0; background: white">
+
+
+    <!--== TUNNEL ===============================================================-->
+    <svg id="tunnel" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="-100 -100 200 200"
+      visibility="visible">
+      <g transform="scale(1,-1)">
+        <lineargradient id="tunnel-wall-segment-fade-gradient" gradientUnits="userSpaceOnUse">
+          <stop offset="0.078125" stop-color="#fff"></stop>
+          <stop offset="0.13157894736842105" stop-color="#000"></stop>
+        </lineargradient>
+        <path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)"
+          transform="rotate(266.7199999999832) scale(0.6349551377563294,0.6928203230275509) skewY(-9.099597831868174)">
+        </path>
+        <path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)"
+          transform="rotate(338.7199999999832) scale(0.569403253088198,0.6928203230275509) skewY(1.7148720349911997)">
+        </path>
+        <path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)"
+          transform="rotate(410.7199999999832) scale(0.6744095642843294,0.6928203230275509) skewY(10.130157712725417)">
+        </path>
+        <path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)"
+          transform="rotate(482.7199999999832) scale(0.8048589183049186,0.6928203230275509) skewY(4.601541789880535)">
+        </path>
+        <path class="wall-segment-dark" d="M 0,0 l 1000,50 l 0,-50 z" fill="url(#tunnel-wall-segment-fade-gradient)"
+          transform="rotate(554.7199999999832) scale(0.7804747417039792,0.6928203230275509) skewY(-7.346484436631518)">
+        </path>
+      </g>
+      <g transform="scale(1,-1)">
+        <g class="barrier">
+          <path id="barrier-path-4" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -113,7 +150,11 @@
             A 90,90 0 0,0 90,0
             L 30,0
             A 30,30 0 0,1 -10.26,28.19
-            z" class="barrier-path-back" transform="scale(0.10924150215483563) translate(-15.51257618353439,9.25484126445111) rotate(2293.1971862112405)" fill="rgb(156.2345422267925%,156.2345422267925%,156.2345422267925%)" stroke="rgb(96.23454222679251%,96.23454222679251%,96.23454222679251%)"></path><path id="barrier-path-4" d="M 100,0
+            z" class="barrier-path-back"
+            transform="scale(0.10924150215483563) translate(-15.51257618353439,9.25484126445111) rotate(2293.1971862112405)"
+            fill="rgb(156.2345422267925%,156.2345422267925%,156.2345422267925%)"
+            stroke="rgb(96.23454222679251%,96.23454222679251%,96.23454222679251%)"></path>
+          <path id="barrier-path-4" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -124,7 +165,13 @@
             A 90,90 0 0,0 90,0
             L 30,0
             A 30,30 0 0,1 -10.26,28.19
-            z" class="barrier-path-front" transform="scale(0.10993486808128032) translate(-15.51257618353439,9.25484126445111) rotate(2293.1971862112405)" fill="rgb(196.2345422267925%,196.2345422267925%,196.2345422267925%)" stroke="rgb(96.23454222679251%,96.23454222679251%,96.23454222679251%)"></path></g><g class="barrier"><path id="barrier-path-3" d="M 100,0
+            z" class="barrier-path-front"
+            transform="scale(0.10993486808128032) translate(-15.51257618353439,9.25484126445111) rotate(2293.1971862112405)"
+            fill="rgb(196.2345422267925%,196.2345422267925%,196.2345422267925%)"
+            stroke="rgb(96.23454222679251%,96.23454222679251%,96.23454222679251%)"></path>
+        </g>
+        <g class="barrier">
+          <path id="barrier-path-3" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -137,7 +184,10 @@
             A 30,30 0 0,0  0, -30
             A 30,30 0 0,0 -30, 0
             A 30,30 0 0,0  0,  30
-            z" class="barrier-path-back" transform="scale(0.18514221297859032) translate(-15.51257618353439,9.25484126445111) rotate(3898.547901839344)" fill="rgb(60%,60%,60%)" stroke="rgb(0%,0%,0%)"></path><path id="barrier-path-3" d="M 100,0
+            z" class="barrier-path-back"
+            transform="scale(0.18514221297859032) translate(-15.51257618353439,9.25484126445111) rotate(3898.547901839344)"
+            fill="rgb(60%,60%,60%)" stroke="rgb(0%,0%,0%)"></path>
+          <path id="barrier-path-3" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -150,7 +200,12 @@
             A 30,30 0 0,0  0, -30
             A 30,30 0 0,0 -30, 0
             A 30,30 0 0,0  0,  30
-            z" class="barrier-path-front" transform="scale(0.1871426160806451) translate(-15.51257618353439,9.25484126445111) rotate(3898.547901839344)" fill="rgb(100%,100%,100%)" stroke="rgb(0%,0%,0%)"></path></g><g class="barrier"><path id="barrier-path-2" d="M 100,0
+            z" class="barrier-path-front"
+            transform="scale(0.1871426160806451) translate(-15.51257618353439,9.25484126445111) rotate(3898.547901839344)"
+            fill="rgb(100%,100%,100%)" stroke="rgb(0%,0%,0%)"></path>
+        </g>
+        <g class="barrier">
+          <path id="barrier-path-2" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -178,7 +233,10 @@
             A 30,30 0 0,0 -55, 43.3
             A 30,30 0 0,0 -25, 73.3
             A 30,30 0 0,0  5,  43.3
-            z" class="barrier-path-back" transform="scale(0.6066206784719402) translate(-15.51257618353439,9.25484126445111) rotate(5633.108278445487)" fill="rgb(60%,60%,60%)" stroke="rgb(0%,0%,0%)"></path><path id="barrier-path-2" d="M 100,0
+            z" class="barrier-path-back"
+            transform="scale(0.6066206784719402) translate(-15.51257618353439,9.25484126445111) rotate(5633.108278445487)"
+            fill="rgb(60%,60%,60%)" stroke="rgb(0%,0%,0%)"></path>
+          <path id="barrier-path-2" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
             A 100,100 0 0,1  0,  -100
@@ -206,11 +264,18 @@
             A 30,30 0 0,0 -55, 43.3
             A 30,30 0 0,0 -25, 73.3
             A 30,30 0 0,0  5,  43.3
-            z" class="barrier-path-front" transform="scale(0.6286376179668799) translate(-15.51257618353439,9.25484126445111) rotate(5633.108278445487)" fill="rgb(100%,100%,100%)" stroke="rgb(0%,0%,0%)"></path></g></g></svg>
-  
-  <!--== EXPLOSION!!!! ========================================================-->
-    <svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="-100 -100 200 200" visibility="visible">
-      <path id="explosion" visibility="hidden" transform="scale(3,3)" fill="#f5bd3c" stroke="#ff2626" stroke-width="0.5" d="m -0.63488,-4.3752
+            z" class="barrier-path-front"
+            transform="scale(0.6286376179668799) translate(-15.51257618353439,9.25484126445111) rotate(5633.108278445487)"
+            fill="rgb(100%,100%,100%)" stroke="rgb(0%,0%,0%)"></path>
+        </g>
+      </g>
+    </svg>
+
+    <!--== EXPLOSION!!!! ========================================================-->
+    <svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="-100 -100 200 200"
+      visibility="visible">
+      <path id="explosion" visibility="hidden" transform="scale(3,3)" fill="#f5bd3c" stroke="#ff2626" stroke-width="0.5"
+        d="m -0.63488,-4.3752
             c  0.24879,1.233, 1.1883,2.6366, 1.768,0.69037
                0.74264,0.71431, 1.2069,0.6277, 1.6362,-0.5115
               -0.034821,1.0871, 0.096633,1.6827, 0.74401,1.7541
@@ -243,7 +308,8 @@
               -0.9898,1.2593, -0.9672,-0.606, -1.131,-1.896
               -0.51549,1.084, -0.9993,2.4142, -1.8584,0.82793
               -0.92276,2.4614, -1.531,0.17894, -1.9087,-1.2819
-            z"><animate attributeName="d" dur="0.4s" fill="freeze" values="m -0.63488,-4.3752
+            z">
+        <animate attributeName="d" dur="0.4s" fill="freeze" values="m -0.63488,-4.3752
                    c  0.24879,1.233, 1.1883,2.6366, 1.768,0.69037
                       0.74264,0.71431, 1.2069,0.6277, 1.6362,-0.5115
                      -0.034821,1.0871, 0.096633,1.6827, 0.74401,1.7541
@@ -314,45 +380,48 @@
                    z"></animate>
       </path>
     </svg>
-  
-  <!--== HUD ==================================================================-->
+
+    <!--== HUD ==================================================================-->
     <g id="hud" visibility="visible">
       <svg preserveAspectRatio="xMinYMid meet" viewBox="0 0 0.1 1">
         <g transform="translate(0.02, 0.98), scale(0.15,-0.15)">
-        <!-- Radar Scope -->
+          <!-- Radar Scope -->
           <g>
             <circle class="hud-background" cx="0.5" cy="0.5" r="0.5"></circle>
-            <circle id="hud-radar-scope-missile-target" clip-path="url(#hud-radar-scope-clip-path)" fill="#777777" stroke="none" r="0.04" cx="-0.42625" cy="0.74225"></circle>
-            <circle id="hud-radar-scope-missile" clip-path="url(#hud-radar-scope-clip-path)" fill="#111111" stroke="none" r="0.04" cx="0.5736847368717883" cy="0.45603950399385723"></circle>
+            <circle id="hud-radar-scope-missile-target" clip-path="url(#hud-radar-scope-clip-path)" fill="#777777"
+              stroke="none" r="0.04" cx="-0.42625" cy="0.74225"></circle>
+            <circle id="hud-radar-scope-missile" clip-path="url(#hud-radar-scope-clip-path)" fill="#111111"
+              stroke="none" r="0.04" cx="0.5736847368717883" cy="0.45603950399385723"></circle>
             <circle class="hud-foreground" stroke-width="0.04" cx="0.5" cy="0.5" r="0.5"></circle>
             <clippath id="hud-radar-scope-clip-path">
               <circle cx="0.5" cy="0.5" r="0.5"></circle>
             </clippath>
           </g>
-        <!-- Speedometer-->
+          <!-- Speedometer-->
           <g>
             <g transform="translate(1.1,0.1), scale(1.8,1.8)">
               <rect class="hud-background" width="1.0" height="0.122"></rect>
-  
-              <rect id="hud-speedometer-bar" clip-path="url(#hud-speedometer-bar-clip-path)" fill="#333333" stroke="none" x="-1" width="1.0" height="0.122"></rect>
-  
+
+              <rect id="hud-speedometer-bar" clip-path="url(#hud-speedometer-bar-clip-path)" fill="#333333"
+                stroke="none" x="-1" width="1.0" height="0.122"></rect>
+
               <rect class="hud-foreground" stroke-width="0.02" width="1.0" height="0.122"></rect>
-  
+
               <clippath id="hud-speedometer-bar-clip-path">
                 <rect width="0.5" height="0.122"></rect>
               </clippath>
             </g>
-  
+
             <text id="hud-speedometer-label-text" transform="translate(1.2, 0.4), scale(0.012,-0.012)">SPEED</text>
-  
+
             <text id="hud-speedometer-speed-text" transform="translate(3, 0.1), scale(0.02,-0.02)">-0</text>
-  
+
             <clippath id="speedometer-clip-path">
               <rect x="1.1" y="0.1" width="1.8" height="0.22"></rect>
             </clippath>
           </g>
-  
-        <!-- Lives Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+          <!-- Lives Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
           <g>
             <defs>
               <g id="hud-lives-indicator-missile" transform="rotate(-65), translate(0,-0.5), scale(0.6,0.6)">
@@ -367,12 +436,17 @@
                       z"></path>
               </g>
             </defs>
-            <use id="hud-lives-indicator-missile-1" transform="translate(0.6,1.4)" visibility="hidden" xlink:href="#hud-lives-indicator-missile"></use>
-            <use id="hud-lives-indicator-missile-2" transform="translate(0.6,1.7)" visibility="hidden" xlink:href="#hud-lives-indicator-missile"></use>
-            <use id="hud-lives-indicator-missile-3" transform="translate(0.6,2.0)" visibility="hidden" xlink:href="#hud-lives-indicator-missile"></use>
-            <use id="hud-lives-indicator-missile-4" transform="translate(0.6,2.3)" visibility="hidden" xlink:href="#hud-lives-indicator-missile"></use>
-            <use id="hud-lives-indicator-missile-5" transform="translate(0.6,2.6)" visibility="hidden" xlink:href="#hud-lives-indicator-missile"></use>
-  
+            <use id="hud-lives-indicator-missile-1" transform="translate(0.6,1.4)" visibility="hidden"
+              xlink:href="#hud-lives-indicator-missile"></use>
+            <use id="hud-lives-indicator-missile-2" transform="translate(0.6,1.7)" visibility="hidden"
+              xlink:href="#hud-lives-indicator-missile"></use>
+            <use id="hud-lives-indicator-missile-3" transform="translate(0.6,2.0)" visibility="hidden"
+              xlink:href="#hud-lives-indicator-missile"></use>
+            <use id="hud-lives-indicator-missile-4" transform="translate(0.6,2.3)" visibility="hidden"
+              xlink:href="#hud-lives-indicator-missile"></use>
+            <use id="hud-lives-indicator-missile-5" transform="translate(0.6,2.6)" visibility="hidden"
+              xlink:href="#hud-lives-indicator-missile"></use>
+
             <g id="hud-lives-indicator-infinite" visibility="visible" transform="translate(0.5,1.5)">
               <use transform="translate(0.3,0.15), scale(1.4,1.4)" xlink:href="#hud-lives-indicator-missile"></use>
               <path stroke="white" stroke-width="0.02" stroke-opacity="0.2" d="m  0.0, 0.04
@@ -383,7 +457,7 @@
                     M  -0.035, 0.0
                     C  -0.43, 0.4 -0.43,-0.4 -0.035, 0.0"></path>
             </g>
-  
+
             <g id="hud-lives-indicator-none" visibility="hidden" transform="translate(0.5,1.5)">
               <use transform="translate(0.3,0.15), scale(1.4,1.4)" xlink:href="#hud-lives-indicator-missile"></use>
               <path transform="scale(0.8,0.8)" stroke="white" stroke-width="0.02" stroke-opacity="0.2" d="M  0.0, 0.4
@@ -399,24 +473,25 @@
                     A  0.328,0.328, 0 0,1 0.20,-0.26
                     z"></path>
             </g>
-  
-  
+
+
           </g>
         </g>
-  
-      <!-- Level Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+        <!-- Level Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
         <text id="hud-level-indicator" transform="translate(0.035, 0.035), scale(0.0025,0.0025)">QUALIFYING LEVEL</text>
 
-      <!-- Frame Rate Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-        <text id="hud-frame-rate-indicator" transform="translate(0.035, 0.08), scale(0.0025,0.0025)" fill="#333333">142FPS</text>
-  
+        <!-- Frame Rate Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+        <text id="hud-frame-rate-indicator" transform="translate(0.035, 0.08), scale(0.0025,0.0025)"
+          fill="#333333">142FPS</text>
+
       </svg>
 
 
       <svg preserveAspectRatio="xMaxYMid meet" viewBox="0 0 0.06 1">
-      <!-- Progress Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+        <!-- Progress Indicator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
         <g transform="translate(0,0.965), scale(0.95,-0.95)">
-  
+
           <path stroke="#333333" stroke-width="0.0005" fill="white" opacity="0.8" d="M  0.03   0.0
                 l -0.04   0.0
                   -0.005  0.005
@@ -425,18 +500,18 @@
                    0.0    0.72
                    0.025  0
                 z"></path>
-  
+
           <text opacity="0.8" transform="translate(0.024,0.01), rotate(90), scale(0.0026,-0.0026)">PROGRESS</text>
-  
+
           <g id="hud-progress-indicator-best-progress" transform="translate(0,0.04612593062695658)">
             <rect x="-0.01" width="0.04" height="0.008" fill="#777777"></rect>
             <text fill="#777777" transform="translate(-0.04,-0.002), scale(0.001,-0.001)">PB</text>
           </g>
-  
+
           <g id="hud-progress-indicator-progress" transform="translate(0,0.04612593062695658)">
             <rect x="-0.01" width="0.04" height="0.008" fill="#333333"></rect>
           </g>
-  
+
           <path class="hud-foreground" stroke-width="0.006" d="m 0, 1.005
                 L 0.03, 1.005
                   0.03, 0
@@ -444,14 +519,16 @@
         </g>
       </svg>
     </g>
-  
-  <!--== FOG ==================================================================-->
+
+    <!--== FOG ==================================================================-->
     <rect id="fog" width="100%" height="100%" fill="white" opacity="0" visibility="visible"></rect>
-  
-  <!--== BANNER ===============================================================-->
-    <svg id="banner" width="30%" height="100%" preserveAspectRatio="xMaxYMid meet" viewBox="0 0 0.01 1" overflow="visible" visibility="visible">
-      <rect x="-0.1" y="0.45" width="6" height="0.2" fill="#000" opacity="0.95" stroke-linejoin="round" stroke-linecap="round" stroke-width="0.005"></rect>
-  
+
+    <!--== BANNER ===============================================================-->
+    <svg id="banner" width="30%" height="100%" preserveAspectRatio="xMaxYMid meet" viewBox="0 0 0.01 1"
+      overflow="visible" visibility="visible">
+      <rect x="-0.1" y="0.45" width="6" height="0.2" fill="#000" opacity="0.95" stroke-linejoin="round"
+        stroke-linecap="round" stroke-width="0.005"></rect>
+
       <g transform="translate(-0.05,0.54) scale(0.004,0.004)">
         <text id="banner-title" fill="#fff">CRASHED</text>
       </g>
@@ -459,11 +536,11 @@
         <text id="banner-text" fill="#ccc">CLICK TO RETRY</text>
       </g>
     </svg>
-  
-  
+
+
     <defs>
-  
-  <!--== BARRIER PATHS ========================================================-->
+
+      <!--== BARRIER PATHS ========================================================-->
       <path id="barrier-path-1" d="M 100,0
             A 100,100 0 0,1 0,100
             A 100,100 0 0,1 -100,0
@@ -482,7 +559,7 @@
             L -30,0
             A 30,30 0 0,1 0,-30
             z"></path>
-  
+
       <path id="barrier-path-2" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -512,7 +589,7 @@
             A 30,30 0 0,0 -25, 73.3
             A 30,30 0 0,0  5,  43.3
             z"></path>
-  
+
       <path id="barrier-path-3" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -527,7 +604,7 @@
             A 30,30 0 0,0 -30, 0
             A 30,30 0 0,0  0,  30
             z"></path>
-  
+
       <path id="barrier-path-4" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -540,7 +617,7 @@
             L 30,0
             A 30,30 0 0,1 -10.26,28.19
             z"></path>
-  
+
       <path id="barrier-path-5" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -559,7 +636,7 @@
             L -45,45
             A 58,58 0 0,0 -45,-45
             z"></path>
-  
+
       <path id="barrier-path-6" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -572,7 +649,7 @@
             L -80,-25
             L -80, 25
             z"></path>
-  
+
       <path id="barrier-path-blank" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -586,7 +663,7 @@
             A 90,90 0 0,0  0,  90
             A 90,90 0 0,0  90, 0
             z"></path>
-  
+
       <path id="barrier-path-finish" d="M 100,0
             A 100,100 0 0,1  0,   100
             A 100,100 0 0,1 -100, 0
@@ -603,9 +680,9 @@
             L 53.03,53.03
             A 75,75 0 0,0  75,0
             z"></path>
-  
-  
-  <!-- Collision Detection -->
+
+
+      <!-- Collision Detection -->
       <line id="collision-line" x1="-300" y1="100" x2="13.68828336666377" y2="-11.78656036144818"></line>
     </defs>
   </svg>
@@ -618,7 +695,7 @@
     ">ENTER FULLSCREEN</button>
   </div>
 
-  <!--
+  
   <div id="app-store" class="">
     <a href="https://apps.apple.com/app/id1531536668">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
@@ -669,27 +746,29 @@
       </svg>
     </a>
   </div>
-  -->
-
-  <!--== SCRIPTS ==============================================================-->
-  
-  <!-- Kevin Lindsey's 2d geometry SVG library -->
-  <script type="application/javascript" src="./Missile Game_files/2D.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/Path.js"></script>
-  
-  <!-- Game files -->
-  <script type="application/javascript" src="./Missile Game_files/base.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/util.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/missile.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/wall.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/barrier.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/barrierQueue.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/game.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/hud.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/banner.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/fog.js"></script>
-  <script type="application/javascript" src="./Missile Game_files/main.js"></script>
  
 
+  <!--== SCRIPTS ==============================================================-->
 
-</body></html>
+  <!-- Kevin Lindsey's 2d geometry SVG library -->
+  <script type="application/javascript" src="./2D.js"></script>
+  <script type="application/javascript" src="./Path.js"></script>
+
+  <!-- Game files -->
+  <script type="application/javascript" src="./base.js"></script>
+  <script type="application/javascript" src="./util.js"></script>
+  <script type="application/javascript" src="./missile.js"></script>
+  <script type="application/javascript" src="./wall.js"></script>
+  <script type="application/javascript" src="./barrier.js"></script>
+  <script type="application/javascript" src="./barrierQueue.js"></script>
+  <script type="application/javascript" src="./game.js"></script>
+  <script type="application/javascript" src="./hud.js"></script>
+  <script type="application/javascript" src="./banner.js"></script>
+  <script type="application/javascript" src="./fog.js"></script>
+  <script type="application/javascript" src="./main.js"></script>
+
+
+
+</body>
+
+</html>

@@ -25,7 +25,7 @@ MG.game = (function () {
     var mProgress = 0.0;
     var mBestProgress = 0.0;
 
-    // var mAppStore;
+     var mAppStore;
 
     /* Strings for UI ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     var getLevelString = function () {
@@ -180,7 +180,7 @@ MG.game = (function () {
 
             rootNode.setAttribute('visibility', 'visible');
 
-            // mAppStore = document.getElementById('app-store');
+             mAppStore = document.getElementById('app-store');
         },
 
 
@@ -271,12 +271,12 @@ MG.game = (function () {
                     break;
             }
 
-            /*
+            
             mAppStore.setAttribute(
                 'class',
                 mState === GameState.RUNNING || mState === GameState.STARTING ? 'hidden' : ''
             );
-            */
+            
         },
 
         updateDOM: function () {
