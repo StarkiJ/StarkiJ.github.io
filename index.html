@@ -14,7 +14,20 @@
             align-items: center;
             justify-content: center;
         }
-    </style>
+    </style><script>
+        var red_to_gutian = function () {
+            window.location.href = "https://gugugugugutian.github.io/";
+        }
+        window.onload = function () {
+            let a = document.getElementById("gutian");
+            let rd_time = 30;
+            setInterval(function () { 
+                a.innerHTML = "在" + rd_time + "秒后跳转到gugugugugutian";
+                rd_time--;
+                if(rd_time<0) red_to_gutian();
+            }, 1000);
+        }
+    </script>
 </head>
 
 <body>
