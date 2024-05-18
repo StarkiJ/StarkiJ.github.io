@@ -18,8 +18,8 @@ MG.hud = (function () {
                 var mMissilePositionDot = document.getElementById('hud-radar-scope-missile');
                 var mMissileTargetDot = document.getElementById('hud-radar-scope-missile-target');
 
-                var mMissileTarget = {x: 0.0, y: 0.0};
-                var mMissilePosition = {x: 0.0, y: 0.0};
+                var mMissileTarget = { x: 0.0, y: 0.0 };
+                var mMissilePosition = { x: 0.0, y: 0.0 };
 
                 return {
                     update: function (dt) {
@@ -28,23 +28,23 @@ MG.hud = (function () {
                         // PASS
                     },
                     updateDOM: function () {
-                        var x,y;
+                        var x, y;
                         var scopeRadius = 0.5;
 
                         /* Set the position of the dot indicating the intended target of the missile */
                         x = scopeRadius + 0.95 * scopeRadius * mMissileTarget.x
-                                               / MG.TUNNEL_RADIUS;
+                            / MG.TUNNEL_RADIUS;
                         y = scopeRadius + 0.95 * scopeRadius * mMissileTarget.y
-                                               / MG.TUNNEL_RADIUS;
+                            / MG.TUNNEL_RADIUS;
 
                         mMissileTargetDot.setAttribute('cx', String(x));
                         mMissileTargetDot.setAttribute('cy', String(y));
 
                         /* Set the position of the dot indicating the actual position of the missile */
                         x = scopeRadius + 0.95 * scopeRadius * mMissilePosition.x
-                                               / MG.TUNNEL_RADIUS;
+                            / MG.TUNNEL_RADIUS;
                         y = scopeRadius + 0.95 * scopeRadius * mMissilePosition.y
-                                               / MG.TUNNEL_RADIUS;
+                            / MG.TUNNEL_RADIUS;
 
                         mMissilePositionDot.setAttribute('cx', String(x));
                         mMissilePositionDot.setAttribute('cy', String(y));
@@ -61,7 +61,7 @@ MG.hud = (function () {
 
                 var mTextNode = document.createTextNode('');
                 document.getElementById('hud-speedometer-speed-text').appendChild(mTextNode);
-            
+
                 var mSpeed = 0.0;
 
                 return {
@@ -70,12 +70,12 @@ MG.hud = (function () {
                     },
                     updateDOM: function () {
                         mTextNode.data = mSpeed.toFixed(0);
-                        
+
                         // TODO (possibly) work out the maximum speed properly and put a cap on the level with a nice victory screen
-                        mBarNode.setAttribute('x', mSpeed/2000 - 1);
+                        mBarNode.setAttribute('x', mSpeed / 2000 - 1);
                     }
                 };
-            } ());
+            }());
 
             // ------------------------------------------------- Level Indicator
             mLevelIndicator = (function () {
@@ -84,14 +84,14 @@ MG.hud = (function () {
 
                 return {
                     update: function (dt) {
-                    // PASS
+                        // PASS
                     },
 
                     updateDOM: function () {
                         mTextNode.data = MG.game.getLevelString();
                     }
                 };
-            } ());
+            }());
 
             // ---------------------------------------------- Progress Indicator
             mProgressIndicator = (function () {
@@ -108,11 +108,11 @@ MG.hud = (function () {
                     },
 
                     updateDOM: function () {
-                        mProgressMarkNode.setAttribute('transform', 'translate(0,'+mProgress+')');
-                        mBestProgressMarkNode.setAttribute('transform', 'translate(0,'+mBestProgress+')');
+                        mProgressMarkNode.setAttribute('transform', 'translate(0,' + mProgress + ')');
+                        mBestProgressMarkNode.setAttribute('transform', 'translate(0,' + mBestProgress + ')');
                     }
                 };
-            } ());
+            }());
             // ---------------------------------------------------- Life Counter
 
             mLifeCounter = (function () {
@@ -122,8 +122,8 @@ MG.hud = (function () {
                 var mZeroLivesNode = document.getElementById('hud-lives-indicator-none');
 
                 var mLivesNodes = [];
-                for (i=0; i<5; i++) {
-                    mLivesNodes[i] = document.getElementById('hud-lives-indicator-missile-' + (i+1));
+                for (i = 0; i < 5; i++) {
+                    mLivesNodes[i] = document.getElementById('hud-lives-indicator-missile-' + (i + 1));
                 }
 
                 var mLives = -1;
@@ -137,34 +137,34 @@ MG.hud = (function () {
                         var i;
 
                         switch (mLives) {
-                          case Infinity:
-                            mInfiniteLivesNode.setAttribute('visibility', 'visible');
-                            mZeroLivesNode.setAttribute('visibility', 'hidden');
+                            case Infinity:
+                                mInfiniteLivesNode.setAttribute('visibility', 'visible');
+                                mZeroLivesNode.setAttribute('visibility', 'hidden');
 
-                            for (i=0; i<5; i++) {
-                                mLivesNodes[i].setAttribute('visibility', 'hidden');
-                            }
-                            break;
-                          case 0:
-                            mInfiniteLivesNode.setAttribute('visibility', 'hidden');
-                            mZeroLivesNode.setAttribute('visibility', 'visible');
+                                for (i = 0; i < 5; i++) {
+                                    mLivesNodes[i].setAttribute('visibility', 'hidden');
+                                }
+                                break;
+                            case 0:
+                                mInfiniteLivesNode.setAttribute('visibility', 'hidden');
+                                mZeroLivesNode.setAttribute('visibility', 'visible');
 
-                            for (i=0; i<5; i++) {
-                                mLivesNodes[i].setAttribute('visibility', 'hidden');
-                            }
-                            break;
-                          default:
-                            mInfiniteLivesNode.setAttribute('visibility', 'hidden');
-                            mZeroLivesNode.setAttribute('visibility', 'hidden');
+                                for (i = 0; i < 5; i++) {
+                                    mLivesNodes[i].setAttribute('visibility', 'hidden');
+                                }
+                                break;
+                            default:
+                                mInfiniteLivesNode.setAttribute('visibility', 'hidden');
+                                mZeroLivesNode.setAttribute('visibility', 'hidden');
 
-                            for (i=0; i<5; i++) {
-                                mLivesNodes[i].setAttribute('visibility', i<mLives ? 'visible' : 'hidden');
-                            }
-                            break;
+                                for (i = 0; i < 5; i++) {
+                                    mLivesNodes[i].setAttribute('visibility', i < mLives ? 'visible' : 'hidden');
+                                }
+                                break;
                         }
                     }
                 };
-            } ());
+            }());
 
             // --------------------------------------------- Framerate Indicator
             mFrameRateIndicator = (function () {
@@ -182,18 +182,18 @@ MG.hud = (function () {
                         if (mFrameRate <= 0) {
                             /* Assume game has just started and use first time
                             step as an initial guess for the frame rate */
-                            mFrameRate = 1/dt ;
+                            mFrameRate = 1 / dt;
                         } else {
                             /* Smooth out the frame rate readings over a number of frames */
-                            mFrameRate = 0.99*mFrameRate + 0.01/dt;
+                            mFrameRate = 0.99 * mFrameRate + 0.01 / dt;
                         }
                     },
 
                     updateDOM: function () {
-                        mTextNode.data = mFrameRate.toPrecision(3) + 'FPS' ;
+                        mTextNode.data = mFrameRate.toPrecision(3) + 'FPS';
                     }
                 };
-            } ());
+            }());
 
 
 

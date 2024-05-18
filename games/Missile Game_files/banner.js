@@ -43,29 +43,29 @@ MG.banner = (function () {
 
         update: function (dt) {
             switch (mState) {
-              case BannerState.VISIBLE:
-                mVisibility += dt/SHOW_TIME;
-                break;
-              case BannerState.MESSAGE_QUEUED:
-                if (mVisibility === 0) {
-                    mState = BannerState.VISIBLE;
+                case BannerState.VISIBLE:
+                    mVisibility += dt / SHOW_TIME;
+                    break;
+                case BannerState.MESSAGE_QUEUED:
+                    if (mVisibility === 0) {
+                        mState = BannerState.VISIBLE;
 
-                    mTitleNode.data = mTitle;
-                    mTextNode.data  = mText;
-                }
+                        mTitleNode.data = mTitle;
+                        mTextNode.data = mText;
+                    }
                 // FALLTHROUGH
-              case BannerState.HIDDEN:
-                mVisibility -= dt/HIDE_TIME;
-                break;
+                case BannerState.HIDDEN:
+                    mVisibility -= dt / HIDE_TIME;
+                    break;
             }
-            mVisibility = Math.max(0,Math.min(1, mVisibility));
+            mVisibility = Math.max(0, Math.min(1, mVisibility));
         },
 
         updateDOM: function () {
             if (mVisibility === 0) {
                 mRootNode.setAttribute('visibility', 'hidden');
             } else {
-                mRootNode.setAttribute('width', (30 + 80*(0.5 + 0.5*Math.cos(Math.PI*mVisibility))) + '%');
+                mRootNode.setAttribute('width', (30 + 80 * (0.5 + 0.5 * Math.cos(Math.PI * mVisibility))) + '%');
                 mRootNode.setAttribute('visibility', 'visible');
             }
         },
@@ -87,7 +87,7 @@ MG.banner = (function () {
         isFullyVisible: function () {
             return mVisibility === 1;
         }
-        
+
     };
 }());
 

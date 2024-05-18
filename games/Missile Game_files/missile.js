@@ -3,12 +3,12 @@ MG.missile = (function () {
     var ACCELERATION_TIME_CONSTANT = 1.0;
     var DRIFT_DAMPING = 0.25;
 
-    var MAX_RADIUS = 0.8*MG.TUNNEL_RADIUS;
+    var MAX_RADIUS = 0.8 * MG.TUNNEL_RADIUS;
 
     var MissileState = {
-        CRASHED:   'crashed',
+        CRASHED: 'crashed',
         AUTOPILOT: 'autopilot',
-        MANUAL:    'manual'
+        MANUAL: 'manual'
     }
 
     var mState;
@@ -34,7 +34,7 @@ MG.missile = (function () {
         },
 
 
-        reset: function (){
+        reset: function () {
             mState = MissileState.AUTOPILOT;
 
             mOffset = 200.0;
@@ -64,15 +64,15 @@ MG.missile = (function () {
                     /* The drift counter contains the time until the next direction change. */
                     mDriftCounter -= dt;
                     if (mDriftCounter < 0) {
-                        mDriftCounter = 1.1 + 0.9*Math.random();
+                        mDriftCounter = 1.1 + 0.9 * Math.random();
 
-                        mDriftVelX = (MG.TUNNEL_RADIUS*(Math.random()-0.5) - mTargetX)/1.5;
-                        mDriftVelY = (MG.TUNNEL_RADIUS*(Math.random()-0.5) - mTargetY)/1.5;
+                        mDriftVelX = (MG.TUNNEL_RADIUS * (Math.random() - 0.5) - mTargetX) / 1.5;
+                        mDriftVelY = (MG.TUNNEL_RADIUS * (Math.random() - 0.5) - mTargetY) / 1.5;
                     }
 
                     /* TODO Smooth */
-                    mX += mDriftVelX * dt ;
-                    mY += mDriftVelY * dt ;
+                    mX += mDriftVelX * dt;
+                    mY += mDriftVelY * dt;
 
                     break;
 
@@ -82,35 +82,35 @@ MG.missile = (function () {
                     break;
 
                 default:
-                    /* leave the missile pointing in the same direction */
+                /* leave the missile pointing in the same direction */
             }
 
             /* Clamp the missile's position to inside the tunnel wall */
-            var radius = Math.sqrt(mX*mX + mY*mY);
+            var radius = Math.sqrt(mX * mX + mY * mY);
             var newRadius = Math.min(MAX_RADIUS, radius);
 
-            mX = (radius === 0) ? 0 : mX*newRadius/radius;
-            mY = (radius === 0) ? 0 : mY*newRadius/radius;
+            mX = (radius === 0) ? 0 : mX * newRadius / radius;
+            mY = (radius === 0) ? 0 : mY * newRadius / radius;
 
 
 
             if (mState === MissileState.CRASHED) {
                 /* If the missile has crashed, it will bounce backwards coming
                 to rest near the location of the previous barrier. */
-                mVelocity += dt*MG.BARRIER_SPACING*mVelocity/(mOffset - MG.BARRIER_SPACING);
+                mVelocity += dt * MG.BARRIER_SPACING * mVelocity / (mOffset - MG.BARRIER_SPACING);
             } else {
-                mVelocity += dt*(mTargetVelocity - mVelocity)/ACCELERATION_TIME_CONSTANT;
+                mVelocity += dt * (mTargetVelocity - mVelocity) / ACCELERATION_TIME_CONSTANT;
             }
 
             mOffset -= mVelocity * dt;
         },
 
         getPosition: function () {
-            return {x: mX, y:mY};
+            return { x: mX, y: mY };
         },
 
         getTarget: function () {
-            return {x: mTargetX, y:mTargetY};
+            return { x: mTargetX, y: mTargetY };
         },
 
         getOffset: function () {

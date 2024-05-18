@@ -25,7 +25,7 @@ MG.barrierQueue = (function () {
             while (mFirstBarrierIndex > 0) {
                 mBarrierQueue[0].destroy();
                 mBarrierQueue.shift();
-                mFirstBarrierIndex --;
+                mFirstBarrierIndex--;
             }
 
             /* Initialise any uninitialised barriers and add them behind the ones already there. */
@@ -36,7 +36,7 @@ MG.barrierQueue = (function () {
                     barrier.init();
 
                     if (i > 0) {
-                        mRootNode.insertBefore(barrier.getRootNode(), mBarrierQueue[i-1].getRootNode());
+                        mRootNode.insertBefore(barrier.getRootNode(), mBarrierQueue[i - 1].getRootNode());
                     } else {
                         mRootNode.appendChild(barrier.getRootNode());
                     }

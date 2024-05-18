@@ -44,16 +44,16 @@ function muyvAudioFunction() {
   document.body.appendChild(text);
   const animation = text.animate(
     [{
-        opacity: 1,
-        top: text.offsetTop + "px",
-      },
-      {
-        opacity: 0,
-        top: text.offsetTop - 160 + "px",
-      },
+      opacity: 1,
+      top: text.offsetTop + "px",
+    },
+    {
+      opacity: 0,
+      top: text.offsetTop - 160 + "px",
+    },
     ], {
-      duration: 800,
-    }
+    duration: 800,
+  }
   );
   animation.onfinish = () => {
     text.remove();
