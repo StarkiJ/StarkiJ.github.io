@@ -35,18 +35,18 @@
     <script>
         window.onload = function () {
             let tip = document.getElementById("tip");
-            let rd_time = 30;
+            let rd_time = 60;
             var url = "https://gugugugugutian.github.io/";
 
             let myInterval = setInterval(function () {
 
                 if (rd_time <= 0) {
-                    tip.innerHTML = "(已打开上面的网页，如果被阻止，你可以尝试通过点击链接打开网页)";
+                    tip.innerHTML = "(已打开上面的网页，如果被阻止，你可以点击链接打开网页)";
                     window.open(url, "_blank");
                     clearInterval(myInterval);
                 }
                 else {
-                    tip.innerHTML = "(将在 " + rd_time + " 秒后自动打开上面的网页，你也可以直接点击链接打开网页)";
+                    tip.innerHTML = "(将在 " + rd_time + " 秒后自动打开上面的网页)";
                     rd_time--;
                 }
             }, 1000);
