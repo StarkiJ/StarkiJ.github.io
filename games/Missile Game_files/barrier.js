@@ -34,15 +34,15 @@ MG.BARRIER_PATH_IDS[MG.BarrierType.FINISH] = 'barrier-path-finish';
 
 
 MG.Barrier = function (type) {
-    if (type === undefined) { type = MG.BarrierType.RANDOM; }
+    if (type === undefined) {type = MG.BarrierType.RANDOM;}
 
     var mIsInitialised = false;
 
     var mTheta = 0.0;
-    var mDTheta = 300.0 * (0.5 - Math.random());
+    var mDTheta = 300.0*(0.5 - Math.random());
 
     var mIsRandom = (type === MG.BarrierType.RANDOM);
-    var mType = (type === MG.BarrierType.RANDOM) ? Math.ceil(MG.NUM_RANDOM_BARRIERS * Math.random()) : type;
+    var mType = (type === MG.BarrierType.RANDOM) ? Math.ceil(MG.NUM_RANDOM_BARRIERS*Math.random()) : type;
 
     var mRootNode;
     var mFrontPath;
@@ -80,8 +80,8 @@ MG.Barrier = function (type) {
      */
     this.collides = function (x, y) {
         /* transform the provided coordinates to the coordinate system of the barrier */
-        var x_ = x * Math.cos(mTheta * Math.PI / 180) + y * Math.sin(mTheta * Math.PI / 180);
-        var y_ = -x * Math.sin(mTheta * Math.PI / 180) + y * Math.cos(mTheta * Math.PI / 180);
+        var x_ =    x * Math.cos(mTheta*Math.PI/180) + y * Math.sin(mTheta*Math.PI/180);
+        var y_ = -x * Math.sin(mTheta*Math.PI/180) + y * Math.cos(mTheta*Math.PI/180);
 
         /* the line to be used for finding the intersections should already exist
         but needs to be made to the point to the point that is to be tested */
@@ -116,32 +116,32 @@ MG.Barrier = function (type) {
      * `offset` is the distance of the barrier from the viewpoint.
      */
     this.updateDOM = function (x, y, offset) {
-        var frontScale = MG.PROJECTION_PLANE_DISTANCE /
-            (Math.tan(Math.PI * MG.FIELD_OF_VIEW / 360.0) * (offset));
+        var frontScale = MG.PROJECTION_PLANE_DISTANCE / 
+                (Math.tan(Math.PI * MG.FIELD_OF_VIEW/360.0)*(offset));
 
-        var backScale = MG.PROJECTION_PLANE_DISTANCE /
-            (Math.tan(Math.PI * MG.FIELD_OF_VIEW / 360.0) * (offset + 10));
+        var backScale    = MG.PROJECTION_PLANE_DISTANCE /
+                (Math.tan(Math.PI * MG.FIELD_OF_VIEW/360.0)*(offset + 10));
 
         mFrontPath.setAttribute('transform',
-            'scale(' + frontScale + ') translate(' + x + ',' + y + ') rotate(' + mTheta + ')');
+                'scale(' + frontScale + ') translate(' + x    + ',' + y + ') rotate(' + mTheta + ')');
         mBackPath.setAttribute('transform',
-            'scale(' + backScale + ') translate(' + x + ',' + y + ') rotate(' + mTheta + ')');
+                'scale(' + backScale + ') translate(' + x    + ',' + y + ') rotate(' + mTheta + ')');
 
-        offset = Math.max(MG.LINE_OF_SIGHT - MG.BARRIER_SPACING, Math.min(MG.LINE_OF_SIGHT, offset));
-        var fog = 100 - 100 * (MG.LINE_OF_SIGHT - offset) / MG.BARRIER_SPACING;
+        offset = Math.max(MG.LINE_OF_SIGHT - MG.BARRIER_SPACING ,Math.min(MG.LINE_OF_SIGHT,offset));
+        var fog = 100 -100*(MG.LINE_OF_SIGHT - offset)/MG.BARRIER_SPACING;
 
-        mFrontPath.setAttribute('fill', 'rgb(' + (100 + fog) + '%,'
-            + (100 + fog) + '%,'
-            + (100 + fog) + '%)');
-        mBackPath.setAttribute('fill', 'rgb(' + (60 + fog) + '%,'
-            + (60 + fog) + '%,'
-            + (60 + fog) + '%)');
-        mFrontPath.setAttribute('stroke', 'rgb(' + (0 + fog) + '%,'
-            + (0 + fog) + '%,'
-            + (0 + fog) + '%)');
-        mBackPath.setAttribute('stroke', 'rgb(' + (0 + fog) + '%,'
-            + (0 + fog) + '%,'
-            + (0 + fog) + '%)');
+        mFrontPath.setAttribute('fill',   'rgb('+(100+fog)+'%,'
+                                                +(100+fog)+'%,'
+                                                +(100+fog)+'%)');
+        mBackPath.setAttribute('fill',    'rgb(' +(60+fog)+'%,'
+                                                 +(60+fog)+'%,'
+                                                 +(60+fog)+'%)');
+        mFrontPath.setAttribute('stroke', 'rgb('  +(0+fog)+'%,'
+                                                  +(0+fog)+'%,'
+                                                  +(0+fog)+'%)');
+        mBackPath.setAttribute('stroke',  'rgb('  +(0+fog)+'%,'
+                                                  +(0+fog)+'%,'
+                                                  +(0+fog)+'%)');
     };
 
     this.getType = function () {

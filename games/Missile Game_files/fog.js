@@ -1,12 +1,12 @@
 
 
 
-MG.fog = (function () {
+MG.fog = (function (){
     var SHOW_TIME = 2.0;
     var HIDE_TIME = 4.0;
 
     var FogState = {
-        FADING_IN: 'fading-in',
+        FADING_IN:  'fading-in',
         FADING_OUT: 'fading-out'
     };
 
@@ -35,7 +35,7 @@ MG.fog = (function () {
 
         update: function (dt) {
             if (mState === FogState.FADING_OUT) {
-                mVisibility -= dt / HIDE_TIME;
+                mVisibility -= dt/HIDE_TIME;
 
                 if (mVisibility < 0) {
                     mVisibility = 0;
@@ -45,7 +45,7 @@ MG.fog = (function () {
                     }
                 }
             } else {
-                mVisibility += dt / SHOW_TIME;
+                mVisibility += dt/SHOW_TIME;
 
                 if (mVisibility > 1) {
                     mVisibility = 1;
@@ -62,7 +62,7 @@ MG.fog = (function () {
                 mRootNode.setAttribute('visibility', 'hidden');
             } else {
                 mRootNode.setAttribute('visibility', 'visible');
-                mRootNode.setAttribute('opacity', String((0.5 - 0.5 * Math.cos(Math.PI * mVisibility))));
+                mRootNode.setAttribute('opacity', String((0.5 - 0.5*Math.cos(Math.PI*mVisibility))));
             }
         }
     };

@@ -4,12 +4,12 @@ MG.init = function () {
     MG.game.init();
     MG.hud.init();
 
-    document.addEventListener('mousemove', function (evt) {
-        MG.game.onMouseMove(evt.clientX, evt.clientY);
-    }, false);
-    document.addEventListener('touchmove', function (evt) {
-        MG.game.onMouseMove(evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY);
-    }, false);
+    document.addEventListener('mousemove', function(evt){
+            MG.game.onMouseMove(evt.clientX, evt.clientY);
+        }, false);
+    document.addEventListener('touchmove', function(evt){
+            MG.game.onMouseMove(evt.clientX || evt.touches[0].clientX, evt.clientY || evt.touches[0].clientY);
+        }, false);
 
     window.addEventListener('click', MG.game.onMouseClick, false);
 
@@ -34,7 +34,7 @@ MG.init = function () {
         useFallback = true;
     }
 
-    var mainLoop = function (thisTick) {
+    var mainLoop = function(thisTick) {
         var dt;
 
         // Some browsers don't pass in a time.  If `thisTick` isn't set for
@@ -50,14 +50,14 @@ MG.init = function () {
 
         thisTick = thisTick || 0;
         if (useFallback) {
-            dt = 1 / 30;
+            dt = 1/30;
         } else {
-            var dt = (thisTick - lastTick) / 1000;
+            var dt = (thisTick - lastTick)/1000;
         }
         // pretend that the frame rate is actually higher if it drops below
         // 10fps in order to avoid wierdness
-        if (dt > 1 / 10) {
-            dt = 1 / 10;
+        if (dt > 1/10) {
+            dt = 1/10;
         }
 
         lastTick = thisTick;
