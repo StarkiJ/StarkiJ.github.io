@@ -38,18 +38,18 @@
             let rd_time = 60;
             var url = "https://gugugugugutian.github.io/";
 
-            let myInterval = setInterval(function () {
+            // let myInterval = setInterval(function () {
 
-                if (rd_time <= 0) {
-                    tip.innerHTML = "(已打开上面的网页，如果被阻止，你可以点击链接打开网页)";
-                    window.open(url, "_blank");
-                    clearInterval(myInterval);
-                }
-                else {
-                    tip.innerHTML = "(将在 " + rd_time + " 秒后自动打开上面的网页)";
-                    rd_time--;
-                }
-            }, 1000);
+            //     if (rd_time <= 0) {
+            //         tip.innerHTML = "(已打开上面的网页，如果被阻止，你可以点击链接打开网页)";
+            //         window.open(url, "_blank");
+            //         clearInterval(myInterval);
+            //     }
+            //     else {
+            //         tip.innerHTML = "(将在 " + rd_time + " 秒后自动打开上面的网页)";
+            //         rd_time--;
+            //     }
+            // }, 1000);
         }
     </script>
 </head>
@@ -58,10 +58,14 @@
     <h1>Starki</h1>
     <img src="images/head.jpg" width="121" height="121" />
     <p>I am Starki, a baga student from WHU.</p>
-    <p>It took me three hours to build this thing.</p>
+    <p>It took me many hours to build this thing.</p>
 
-    <h2>建议用这个网页: <a href="https://gugugugugutian.github.io/" target="_blank">gugugugugutian</a></h2>
+    <h2>推荐: <a href="https://gugugugugutian.github.io/" target="_blank">gugugugugutian</a></h2>
     <h3><span id="tip"></span></h3>
+
+    <h2>小工具</h2>
+    <h3><a href="./tools/random_groups.html">1. 随机分组工具</a></h3>
+    <h3></h3>
 
     <h2>来玩点小游戏</h2>
     <h3><a href="./games/missile-game-master/index.html">1. 开导弹</a></h3>
