@@ -96,10 +96,7 @@
             border-radius: 5px;
             display: inline-block;
             white-space: nowrap;
-            min-width: 50px;
-            /* 设置最小宽度 */
             text-align: center;
-            /* 居中对齐 */
         }
     </style>
 </head>
@@ -165,6 +162,23 @@
             const resultContainer = document.getElementById('result');
             resultContainer.innerHTML = resultHTML;
             resultContainer.style.display = 'inline-block'; // 显示结果区域
+
+            // 获取每个列表项的宽度
+            const listItems = document.querySelectorAll('.group-list li');
+            let maxWidth = 0;
+
+            // 遍历每个列表项，获取最长项的宽度
+            listItems.forEach(item => {
+                const itemWidth = item.offsetWidth;
+                if (itemWidth > maxWidth) {
+                    maxWidth = itemWidth;
+                }
+            });
+
+            // 设置所有列表项的宽度一致
+            listItems.forEach(item => {
+                item.style.width = `${maxWidth}px`; // 使用最大宽度
+            });
         }
     </script>
 </body>
