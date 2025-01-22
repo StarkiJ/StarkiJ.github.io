@@ -69,35 +69,26 @@
             background-color: #4a7bb3;
         }
 
-        /*.result {
-            margin-top: 20px;
-            text-align: center;
-            display: none;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 90%;
-            font-size: 18px;
-            line-height: 1.5;
-            color: #333;
-        }*/
         .result {
             margin-top: 20px;
-            text-align: left;
             display: none;
-            /* 初始隐藏分组结果 */
             background-color: #fff;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: auto;
             max-width: 80%;
-            /* 结果最多宽度占页面的80% */
-            font-size: 16px;
-            line-height: 1.5;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .result p {
+            margin: 0;
+            text-align: center;
             word-wrap: break-word;
-            word-break: break-word;
-            /* 适应长单词的换行 */
         }
     </style>
 </head>
@@ -113,7 +104,7 @@
     <div class="input-container">
         <label for="maxValue">最大值:</label>
         <input type="number" id="maxValue" value="100" placeholder="输入最大值">
-        <label for="allowDuplicates">是否重复:</label>
+        <label for="allowDuplicates">允许重复:</label>
         <select id="allowDuplicates">
             <option value="true">允许</option>
             <option value="false">不允许</option>
@@ -171,7 +162,9 @@
             }
 
             // 显示结果
-            document.getElementById('result').textContent = `生成的随机数是: ${numbers.join(', ')}`;
+            // document.getElementById('result').textContent = `生成的随机数是: ${numbers.join(', ')}`;
+            // document.getElementById('result').style.display = 'block';
+            document.getElementById('result').innerHTML = `生成的随机数是:<br>${numbers.join(', ')}`;
             document.getElementById('result').style.display = 'block';
         }
     </script>
