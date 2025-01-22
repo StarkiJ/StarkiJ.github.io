@@ -14,7 +14,8 @@
         }
 
         h1 {
-            color: #9fbfed;
+            color: #5a8fd7;
+            /*color: #9fbfed;*/
             /* 更浅的蓝色 */
         }
 
@@ -36,6 +37,7 @@
             background-color: #5a8fd7;
             /* 更浅的蓝色 */
             color: white;
+            margin-top: 10px;
         }
 
         button:hover {
@@ -105,11 +107,10 @@
     <h1>随机分组工具</h1>
     <div class="input-container">
         <label for="numPeople">请输入人数: </label>
-        <input type="number" id="numPeople" placeholder="人数" min="1">
-    </div>
+        <input type="number" id="numPeople" value="8" placeholder="人数" min="1">
     <div class="input-container">
         <label for="numGroups">请输入组数: </label>
-        <input type="number" id="numGroups" placeholder="组数" min="1">
+        <input type="number" id="numGroups" value="4" placeholder="组数" min="1">
     </div>
     <div>
         <button onclick="generateGroups()">生成分组</button>
