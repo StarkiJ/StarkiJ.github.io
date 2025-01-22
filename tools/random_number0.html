@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>随机数生成器</title>
     <style>
+        /*body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }*/
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -15,7 +26,17 @@
 
         h1 {
             color: #5a8fd7;
+            /*font-size: 36px;
+            margin-bottom: 20px;*/
         }
+
+        /* .input-container {
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        } */
 
         label {
             margin-right: 10px;
@@ -48,7 +69,6 @@
             background-color: #4a7bb3;
         }
 
-        /* 结果容器 */
         .result {
             margin-top: 20px;
             display: none;
@@ -61,50 +81,14 @@
             margin-left: auto;
             margin-right: auto;
             font-size: 18px;
-            color: #333;
-        }
-
-        /* 生成的随机数文本 */
-        .random-number-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: baseline;
-            margin-left: 20px;
-            /* list-style-type: none;
-            padding: 0;
-            display: inline-block;
-            word-wrap: break-word; */
-        }
-
-        /* .random-number {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 10px;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: normal;
-            color: #333;
-            box-sizing: border-box;
-        } */
-
-        .random-number {
-            background-color: #f9f9f9;
-            margin: 5px 10px 5px 0;
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: inline-block;
-            white-space: nowrap;
-            text-align: center;
-            font-weight: normal;
-        }
-
-        .label-text {
-            margin-bottom: 15px;
-            font-size: 20px;
             font-weight: bold;
-            text-align: start;
+            color: #333;
+        }
+
+        .result p {
+            margin: 0;
+            text-align: center;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -130,10 +114,7 @@
         <button onclick="generateRandomNumbers()">生成随机数</button>
     </div>
 
-    <div id="result" class="result">
-        <div class="label-text">随机数:</div>
-        <div class="random-number-container" id="randomNumberContainer"></div>
-    </div>
+    <div id="result" class="result"></div>
 
     <script>
         function generateRandomNumbers() {
@@ -144,17 +125,20 @@
 
             // 验证输入是否有效
             if (isNaN(minValue) || isNaN(maxValue) || isNaN(count)) {
-                alert('请输入有效的数值范围和个数！');
+                document.getElementById('result').textContent = '请输入有效的数值范围和个数！';
+                document.getElementById('result').style.display = 'block';
                 return;
             }
 
             if (minValue > maxValue) {
-                alert('最小值不能大于最大值！');
+                document.getElementById('result').textContent = '最小值不能大于最大值！';
+                document.getElementById('result').style.display = 'block';
                 return;
             }
 
             if (!allowDuplicates && count > (maxValue - minValue + 1)) {
-                alert('生成的个数超过范围且不允许重复！');
+                document.getElementById('result').textContent = '生成的个数超过范围且不允许重复！';
+                document.getElementById('result').style.display = 'block';
                 return;
             }
 
@@ -178,35 +162,10 @@
             }
 
             // 显示结果
-            const resultContainer = document.getElementById('randomNumberContainer');
-            resultContainer.innerHTML = ''; // 清空之前的结果
-            numbers.forEach(number => {
-                const numberElement = document.createElement('div');
-                numberElement.classList.add('random-number');
-                numberElement.textContent = number;
-                resultContainer.appendChild(numberElement);
-            });
-
-            // 显示 result 块
-            const resultElement = document.getElementById('result');
-            resultElement.style.display = 'inline-block' // 显示 result
-
-            // 获取每个列表项的宽度
-            const listItems = document.querySelectorAll('.random-number');
-            let maxWidth = 0;
-
-            // 遍历每个列表项，获取最长项的宽度
-            listItems.forEach(item => {
-                const itemWidth = item.offsetWidth;
-                if (itemWidth > maxWidth) {
-                    maxWidth = itemWidth;
-                }
-            });
-
-            // 设置所有列表项的宽度一致
-            listItems.forEach(item => {
-                item.style.width = `${maxWidth}px`; // 使用最大宽度
-            });
+            // document.getElementById('result').textContent = `生成的随机数是: ${numbers.join(', ')}`;
+            // document.getElementById('result').style.display = 'block';
+            document.getElementById('result').innerHTML = `生成的随机数是:<br>${numbers.join(', ')}`;
+            document.getElementById('result').style.display = 'block';
         }
     </script>
 </body>
