@@ -4,175 +4,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机分组</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            text-align: center;
-            background-color: #f4f7fc;
-        }
-
-        h1 {
-            color: #5a8fd7;
-            /*color: #9fbfed;*/
-            /* 更浅的蓝色 */
-        }
-
-        input {
-            padding: 8px;
-            margin: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            width: 150px;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            border: none;
-            background-color: #5a8fd7;
-            /* 更浅的蓝色 */
-            color: white;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: #4a7bb3;
-            /* 更深的蓝色 */
-        }
-
-        .result {
-            margin-top: 20px;
-            text-align: left;
-            display: none;
-            /* 初始隐藏分组结果 */
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 80%;
-            /* 结果最多宽度占页面的80% */
-            font-size: 16px;
-            line-height: 1.5;
-            word-wrap: break-word;
-            word-break: break-word;
-            /* 适应长单词的换行 */
-        }
-
-        .result p {
-            margin: 0 0 10px;
-            padding: 0;
-        }
-
-        .group-title {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-            font-size: 18px;
-        }
-
-        .group-list {
-            margin-left: 20px;
-            list-style-type: none;
-            padding: 0;
-            display: inline-block;
-            word-wrap: break-word;
-        }
-
-        .group-list li {
-            background-color: #f9f9f9;
-            margin: 5px 10px 5px 0;
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: inline-block;
-            white-space: nowrap;
-            text-align: center;
-        }
-    </style>
+    <meta name="description" content="把成员随机打乱并平均分组。">
+    <title>随机分组 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
 </head>
 
 <body>
-    <h1>随机分组工具</h1>
-    <div class="input-container">
-        <label for="numPeople">请输入人数: </label>
-        <input type="number" id="numPeople" value="8" placeholder="人数" min="1">
-    <div class="input-container">
-        <label for="numGroups">请输入组数: </label>
-        <input type="number" id="numGroups" value="4" placeholder="组数" min="1">
-    </div>
-    <div>
-        <button onclick="generateGroups()">生成分组</button>
-    </div>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="返回 Starki 主页">
+            <img src="../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="工具导航">
+            <a href="../index.html#tools">小工具</a>
+            <a href="../index.html#games">小游戏</a>
+        </nav>
+    </header>
 
-    <div id="result" class="result"></div>
+    <main class="tool-shell">
+        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">随机分组</h1>
+            <p>输入人数和组数，也可以粘贴姓名名单；名单按一行一个名字填写时，会优先使用名单。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="随机分组表单">
+            <form id="groupForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="numPeople">人数</label>
+                        <input type="number" id="numPeople" value="8" min="1" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="numGroups">组数</label>
+                        <input type="number" id="numGroups" value="4" min="1" inputmode="numeric">
+                    </div>
+                    <div class="field full">
+                        <label for="names">成员名单（可选）</label>
+                        <textarea id="names" placeholder="例如：&#10;张三&#10;李四&#10;王五"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">生成分组</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden aria-live="polite">
+                <h2 id="resultTitle">分组结果</h2>
+                <p class="result-copy" id="resultCopy"></p>
+                <div class="group-grid" id="groupContainer"></div>
+            </section>
+        </section>
+    </main>
 
     <script>
-        function generateGroups() {
-            const numPeople = parseInt(document.getElementById('numPeople').value);
-            const numGroups = parseInt(document.getElementById('numGroups').value);
+        const form = document.getElementById("groupForm");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultCopy = document.getElementById("resultCopy");
+        const groupContainer = document.getElementById("groupContainer");
 
-            if (isNaN(numPeople) || isNaN(numGroups) || numPeople <= 0 || numGroups <= 0) {
-                document.getElementById('result').innerHTML = '<p style="color: red;">请输入有效的数字!</p>';
-                document.getElementById('result').style.display = 'inline-block'; // 显示错误消息
+        function showError(message) {
+            resultPanel.hidden = false;
+            resultPanel.classList.add("is-error");
+            resultTitle.textContent = "需要再检查一下";
+            resultCopy.textContent = message;
+            groupContainer.replaceChildren();
+        }
+
+        function getPeople(numPeople) {
+            const names = document.getElementById("names").value
+                .split(/\r?\n/)
+                .map((name) => name.trim())
+                .filter(Boolean);
+
+            if (names.length > 0) {
+                return names;
+            }
+
+            return Array.from({ length: numPeople }, (_, index) => `成员 ${index + 1}`);
+        }
+
+        function shuffle(items) {
+            const shuffled = [...items];
+
+            for (let index = shuffled.length - 1; index > 0; index -= 1) {
+                const randomIndex = Math.floor(Math.random() * (index + 1));
+                [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+            }
+
+            return shuffled;
+        }
+
+        function renderGroups(groups, peopleCount) {
+            const groupBoxes = groups.map((group, index) => {
+                const box = document.createElement("article");
+                const title = document.createElement("h3");
+                const list = document.createElement("ul");
+
+                box.className = "group-box";
+                title.textContent = `第 ${index + 1} 组`;
+                list.className = "group-list";
+
+                group.forEach((person) => {
+                    const item = document.createElement("li");
+                    item.textContent = person;
+                    list.appendChild(item);
+                });
+
+                box.append(title, list);
+                return box;
+            });
+
+            resultPanel.hidden = false;
+            resultPanel.classList.remove("is-error");
+            resultTitle.textContent = "分组结果";
+            resultCopy.textContent = `共 ${peopleCount} 人，分成 ${groups.length} 组。`;
+            groupContainer.replaceChildren(...groupBoxes);
+        }
+
+        function generateGroups(event) {
+            event.preventDefault();
+
+            const numPeople = Number.parseInt(document.getElementById("numPeople").value, 10);
+            const numGroups = Number.parseInt(document.getElementById("numGroups").value, 10);
+
+            if (!Number.isInteger(numPeople) || !Number.isInteger(numGroups) || numPeople <= 0 || numGroups <= 0) {
+                showError("请输入有效的人数和组数。");
                 return;
             }
 
-            if (numGroups > numPeople) {
-                document.getElementById('result').innerHTML = '<p style="color: red;">组数不能大于人数!</p>';
-                document.getElementById('result').style.display = 'inline-block'; // 显示错误消息
+            const people = shuffle(getPeople(numPeople));
+
+            if (numGroups > people.length) {
+                showError("组数不能大于成员人数。");
                 return;
             }
 
-            const people = Array.from({ length: numPeople }, (_, i) => `成员 ${i + 1}`);
             const groups = Array.from({ length: numGroups }, () => []);
 
-            // 随机打乱成员顺序
-            for (let i = people.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [people[i], people[j]] = [people[j], people[i]];
-            }
-
-            // 分配成员到各组
-            for (let i = 0; i < people.length; i++) {
-                groups[i % numGroups].push(people[i]);
-            }
-
-            let resultHTML = '';
-            groups.forEach((group, index) => {
-                resultHTML += `<div class="group-title">分组 ${index + 1}:</div>`;
-                resultHTML += `<ul class="group-list">`;
-                group.forEach(person => {
-                    resultHTML += `<li>${person}</li>`;
-                });
-                resultHTML += `</ul>`;
+            people.forEach((person, index) => {
+                groups[index % numGroups].push(person);
             });
 
-            // 显示分组结果
-            const resultContainer = document.getElementById('result');
-            resultContainer.innerHTML = resultHTML;
-            resultContainer.style.display = 'inline-block'; // 显示结果区域
-
-            // 获取每个列表项的宽度
-            const listItems = document.querySelectorAll('.group-list li');
-            let maxWidth = 0;
-
-            // 遍历每个列表项，获取最长项的宽度
-            listItems.forEach(item => {
-                const itemWidth = item.offsetWidth;
-                if (itemWidth > maxWidth) {
-                    maxWidth = itemWidth;
-                }
-            });
-
-            // 设置所有列表项的宽度一致
-            listItems.forEach(item => {
-                item.style.width = `${maxWidth}px`; // 使用最大宽度
-            });
+            renderGroups(groups, people.length);
         }
+
+        form.addEventListener("submit", generateGroups);
     </script>
 </body>
 

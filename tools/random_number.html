@@ -4,210 +4,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机数生成器</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            text-align: center;
-            background-color: #f4f7fc;
-        }
-
-        h1 {
-            color: #5a8fd7;
-        }
-
-        label {
-            margin-right: 10px;
-            font-size: 18px;
-            color: #333;
-        }
-
-        input,
-        select {
-            padding: 8px;
-            margin: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            width: 150px;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            border: none;
-            background-color: #5a8fd7;
-            color: white;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: #4a7bb3;
-        }
-
-        /* 结果容器 */
-        .result {
-            margin-top: 20px;
-            display: none;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            width: auto;
-            max-width: 80%;
-            margin-left: auto;
-            margin-right: auto;
-            font-size: 18px;
-            color: #333;
-        }
-
-        /* 生成的随机数文本 */
-        .random-number-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: baseline;
-            margin-left: 20px;
-            /* list-style-type: none;
-            padding: 0;
-            display: inline-block;
-            word-wrap: break-word; */
-        }
-
-        /* .random-number {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 10px;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: normal;
-            color: #333;
-            box-sizing: border-box;
-        } */
-
-        .random-number {
-            background-color: #f9f9f9;
-            margin: 5px 10px 5px 0;
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: inline-block;
-            white-space: nowrap;
-            text-align: center;
-            font-weight: normal;
-        }
-
-        .label-text {
-            margin-bottom: 15px;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: start;
-        }
-    </style>
+    <meta name="description" content="按范围、数量和重复规则生成随机数。">
+    <title>随机数生成器 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
 </head>
 
 <body>
-    <h1>随机数生成器</h1>
-    <div class="input-container">
-        <label for="minValue">最小值:</label>
-        <input type="number" id="minValue" value="1" placeholder="输入最小值">
-        <label for="count">生成个数:</label>
-        <input type="number" id="count" value="1" placeholder="生成个数" min="1">
-    </div>
-    <div class="input-container">
-        <label for="maxValue">最大值:</label>
-        <input type="number" id="maxValue" value="100" placeholder="输入最大值">
-        <label for="allowDuplicates">允许重复:</label>
-        <select id="allowDuplicates">
-            <option value="true">允许</option>
-            <option value="false">不允许</option>
-        </select>
-    </div>
-    <div class="input-container">
-        <button onclick="generateRandomNumbers()">生成随机数</button>
-    </div>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="返回 Starki 主页">
+            <img src="../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="工具导航">
+            <a href="../index.html#tools">小工具</a>
+            <a href="../index.html#games">小游戏</a>
+        </nav>
+    </header>
 
-    <div id="result" class="result">
-        <div class="label-text">随机数:</div>
-        <div class="random-number-container" id="randomNumberContainer"></div>
-    </div>
+    <main class="tool-shell">
+        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">随机数生成器</h1>
+            <p>输入最小值、最大值和生成个数，选择是否允许重复，结果会按小块排列出来。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="随机数表单">
+            <form id="randomNumberForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="minValue">最小值</label>
+                        <input type="number" id="minValue" value="1" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="maxValue">最大值</label>
+                        <input type="number" id="maxValue" value="100" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="count">生成个数</label>
+                        <input type="number" id="count" value="1" min="1" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="allowDuplicates">允许重复</label>
+                        <select id="allowDuplicates">
+                            <option value="true">允许</option>
+                            <option value="false">不允许</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">生成随机数</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden aria-live="polite">
+                <h2 id="resultTitle">随机数</h2>
+                <p class="result-copy" id="resultCopy"></p>
+                <div class="chip-list" id="randomNumberContainer"></div>
+            </section>
+        </section>
+    </main>
 
     <script>
-        function generateRandomNumbers() {
-            const minValue = parseInt(document.getElementById('minValue').value);
-            const maxValue = parseInt(document.getElementById('maxValue').value);
-            const count = parseInt(document.getElementById('count').value);
-            const allowDuplicates = document.getElementById('allowDuplicates').value === "true";
+        const form = document.getElementById("randomNumberForm");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultCopy = document.getElementById("resultCopy");
+        const randomNumberContainer = document.getElementById("randomNumberContainer");
 
-            // 验证输入是否有效
-            if (isNaN(minValue) || isNaN(maxValue) || isNaN(count)) {
-                alert('请输入有效的数值范围和个数！');
+        function showError(message) {
+            resultPanel.hidden = false;
+            resultPanel.classList.add("is-error");
+            resultTitle.textContent = "需要再检查一下";
+            resultCopy.textContent = message;
+            randomNumberContainer.replaceChildren();
+        }
+
+        function showNumbers(numbers, minValue, maxValue, allowDuplicates) {
+            const chips = numbers.map((number) => {
+                const chip = document.createElement("span");
+                chip.className = "chip";
+                chip.textContent = number;
+                return chip;
+            });
+
+            resultPanel.hidden = false;
+            resultPanel.classList.remove("is-error");
+            resultTitle.textContent = "随机数";
+            resultCopy.textContent = `范围 ${minValue} 到 ${maxValue}，共 ${numbers.length} 个，${allowDuplicates ? "允许重复" : "不允许重复"}。`;
+            randomNumberContainer.replaceChildren(...chips);
+        }
+
+        function generateRandomNumbers(event) {
+            event.preventDefault();
+
+            const minValue = Number.parseInt(document.getElementById("minValue").value, 10);
+            const maxValue = Number.parseInt(document.getElementById("maxValue").value, 10);
+            const count = Number.parseInt(document.getElementById("count").value, 10);
+            const allowDuplicates = document.getElementById("allowDuplicates").value === "true";
+
+            if (!Number.isInteger(minValue) || !Number.isInteger(maxValue) || !Number.isInteger(count) || count <= 0) {
+                showError("请输入有效的数值范围和生成个数。");
                 return;
             }
 
             if (minValue > maxValue) {
-                alert('最小值不能大于最大值！');
+                showError("最小值不能大于最大值。");
                 return;
             }
 
-            if (!allowDuplicates && count > (maxValue - minValue + 1)) {
-                alert('生成的个数超过范围且不允许重复！');
+            const range = maxValue - minValue + 1;
+
+            if (!allowDuplicates && count > range) {
+                showError("不允许重复时，生成个数不能超过可选数字总数。");
                 return;
             }
 
             const numbers = [];
-            const range = maxValue - minValue + 1;
 
             if (allowDuplicates) {
-                // 允许重复的随机数生成
-                for (let i = 0; i < count; i++) {
-                    const randomNumber = Math.floor(Math.random() * range) + minValue;
-                    numbers.push(randomNumber);
+                for (let index = 0; index < count; index += 1) {
+                    numbers.push(Math.floor(Math.random() * range) + minValue);
                 }
             } else {
-                // 不允许重复的随机数生成
-                const availableNumbers = Array.from({ length: range }, (_, i) => minValue + i);
-                for (let i = 0; i < count; i++) {
+                const availableNumbers = Array.from({ length: range }, (_, index) => minValue + index);
+
+                for (let index = 0; index < count; index += 1) {
                     const randomIndex = Math.floor(Math.random() * availableNumbers.length);
                     numbers.push(availableNumbers[randomIndex]);
-                    availableNumbers.splice(randomIndex, 1); // 移除已选数字
+                    availableNumbers.splice(randomIndex, 1);
                 }
             }
 
-            // 显示结果
-            const resultContainer = document.getElementById('randomNumberContainer');
-            resultContainer.innerHTML = ''; // 清空之前的结果
-            numbers.forEach(number => {
-                const numberElement = document.createElement('div');
-                numberElement.classList.add('random-number');
-                numberElement.textContent = number;
-                resultContainer.appendChild(numberElement);
-            });
-
-            // 显示 result 块
-            const resultElement = document.getElementById('result');
-            resultElement.style.display = 'inline-block' // 显示 result
-
-            // 获取每个列表项的宽度
-            const listItems = document.querySelectorAll('.random-number');
-            let maxWidth = 0;
-
-            // 遍历每个列表项，获取最长项的宽度
-            listItems.forEach(item => {
-                const itemWidth = item.offsetWidth;
-                if (itemWidth > maxWidth) {
-                    maxWidth = itemWidth;
-                }
-            });
-
-            // 设置所有列表项的宽度一致
-            listItems.forEach(item => {
-                item.style.width = `${maxWidth}px`; // 使用最大宽度
-            });
+            showNumbers(numbers, minValue, maxValue, allowDuplicates);
         }
+
+        form.addEventListener("submit", generateRandomNumbers);
     </script>
 </body>
 
