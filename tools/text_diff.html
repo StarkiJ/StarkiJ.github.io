@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="对比两段文本并显示行级差异。">
+    <title>文本对比 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="返回 Starki 主页">
+            <img src="../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="工具导航">
+            <a href="../index.html#tools">小工具</a>
+            <a href="../index.html#games">小游戏</a>
+        </nav>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">文本对比</h1>
+            <p>把旧文本和新文本分别粘贴进来，页面会实时更新类似 Git diff 的行级和行内差异。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="文本对比表单">
+            <form id="diffForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="oldText">旧文本</label>
+                        <div class="line-editor">
+                            <pre class="line-numbers" id="oldLineNumbers" aria-hidden="true">1</pre>
+                            <div class="editor-input-wrap">
+                                <div class="editor-highlight-layer" id="oldHighlightLayer" aria-hidden="true"></div>
+                                <textarea id="oldText" class="diff-textarea" placeholder="粘贴原始文本" spellcheck="false" wrap="off"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="newText">新文本</label>
+                        <div class="line-editor">
+                            <pre class="line-numbers" id="newLineNumbers" aria-hidden="true">1</pre>
+                            <div class="editor-input-wrap">
+                                <div class="editor-highlight-layer" id="newHighlightLayer" aria-hidden="true"></div>
+                                <textarea id="newText" class="diff-textarea" placeholder="粘贴修改后的文本" spellcheck="false" wrap="off"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">立即对比</button>
+                    <button class="button secondary" type="button" id="swapButton">交换两边</button>
+                    <button class="button secondary" type="button" id="clearButton">清空</button>
+                    <button class="button secondary" type="button" id="copyButton">复制 diff</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden aria-live="polite">
+                <h2 id="resultTitle">对比结果</h2>
+                <p class="result-copy" id="resultCopy"></p>
+                <div class="diff-stats" id="diffStats"></div>
+                <div class="diff-output" id="diffOutput" role="region" aria-label="文本差异结果"></div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const diffForm = document.getElementById("diffForm");
+        const oldTextInput = document.getElementById("oldText");
+        const newTextInput = document.getElementById("newText");
+        const oldLineNumbers = document.getElementById("oldLineNumbers");
+        const newLineNumbers = document.getElementById("newLineNumbers");
+        const oldHighlightLayer = document.getElementById("oldHighlightLayer");
+        const newHighlightLayer = document.getElementById("newHighlightLayer");
+        const swapButton = document.getElementById("swapButton");
+        const clearButton = document.getElementById("clearButton");
+        const copyButton = document.getElementById("copyButton");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultCopy = document.getElementById("resultCopy");
+        const diffStats = document.getElementById("diffStats");
+        const diffOutput = document.getElementById("diffOutput");
+        let latestDiffText = "";
+        let liveCompareTimer;
+
+        function splitLines(text) {
+            if (!text) {
+                return [];
+            }
+
+            return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        }
+
+        function updateLineNumbers(textarea, lineNumberElement) {
+            const lineCount = Math.max(1, splitLines(textarea.value).length);
+            lineNumberElement.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join("\n");
+            lineNumberElement.scrollTop = textarea.scrollTop;
+        }
+
+        function syncEditorScroll(textarea, lineNumberElement, highlightLayer) {
+            lineNumberElement.scrollTop = textarea.scrollTop;
+            highlightLayer.style.transform = `translateY(${-textarea.scrollTop}px)`;
+        }
+
+        function updateAllLineNumbers() {
+            updateLineNumbers(oldTextInput, oldLineNumbers);
+            updateLineNumbers(newTextInput, newLineNumbers);
+            syncEditorScroll(oldTextInput, oldLineNumbers, oldHighlightLayer);
+            syncEditorScroll(newTextInput, newLineNumbers, newHighlightLayer);
+        }
+
+        function appendInlineParts(container, parts, changeClassName) {
+            parts.forEach((part) => {
+                const span = document.createElement("span");
+
+                span.textContent = part.text || " ";
+
+                if (part.type === "change") {
+                    span.className = changeClassName;
+                }
+
+                container.appendChild(span);
+            });
+        }
+
+        function renderEditorHighlights(layer, lineCount, states) {
+            const rows = Array.from({ length: Math.max(1, lineCount) }, (_, index) => {
+                const row = document.createElement("div");
+                const state = states[index];
+
+                if (state && Array.isArray(state.parts)) {
+                    row.className = `editor-highlight-line editor-highlight-has-parts editor-highlight-${state.type}`;
+                    appendInlineParts(row, state.parts, "editor-highlight-change");
+                } else {
+                    row.className = state ? `editor-highlight-line editor-highlight-${state}` : "editor-highlight-line";
+                    row.textContent = " ";
+                }
+
+                return row;
+            });
+
+            layer.replaceChildren(...rows);
+        }
+
+        function clearEditorHighlights() {
+            renderEditorHighlights(oldHighlightLayer, splitLines(oldTextInput.value).length, []);
+            renderEditorHighlights(newHighlightLayer, splitLines(newTextInput.value).length, []);
+        }
+
+        function buildCharacterDiff(oldText, newText) {
+            const oldChars = Array.from(oldText);
+            const newChars = Array.from(newText);
+            const rowCount = oldChars.length + 1;
+            const columnCount = newChars.length + 1;
+            const cellCount = rowCount * columnCount;
+            const maxCells = 1000000;
+
+            if (cellCount > maxCells) {
+                return {
+                    oldParts: [{ text: oldText || " ", type: "change" }],
+                    newParts: [{ text: newText || " ", type: "change" }],
+                    score: 0
+                };
+            }
+
+            const table = new Uint32Array(cellCount);
+
+            for (let row = 1; row < rowCount; row += 1) {
+                for (let column = 1; column < columnCount; column += 1) {
+                    const currentIndex = row * columnCount + column;
+
+                    if (oldChars[row - 1] === newChars[column - 1]) {
+                        table[currentIndex] = table[(row - 1) * columnCount + column - 1] + 1;
+                    } else {
+                        table[currentIndex] = Math.max(
+                            table[(row - 1) * columnCount + column],
+                            table[row * columnCount + column - 1]
+                        );
+                    }
+                }
+            }
+
+            const oldParts = [];
+            const newParts = [];
+            let row = oldChars.length;
+            let column = newChars.length;
+
+            function pushPart(parts, text, type) {
+                if (!text) {
+                    return;
+                }
+
+                const previousPart = parts[parts.length - 1];
+
+                if (previousPart && previousPart.type === type) {
+                    previousPart.text = `${text}${previousPart.text}`;
+                } else {
+                    parts.push({ text, type });
+                }
+            }
+
+            while (row > 0 && column > 0) {
+                if (oldChars[row - 1] === newChars[column - 1]) {
+                    pushPart(oldParts, oldChars[row - 1], "same");
+                    pushPart(newParts, newChars[column - 1], "same");
+                    row -= 1;
+                    column -= 1;
+                } else if (table[(row - 1) * columnCount + column] > table[row * columnCount + column - 1]) {
+                    pushPart(oldParts, oldChars[row - 1], "change");
+                    row -= 1;
+                } else {
+                    pushPart(newParts, newChars[column - 1], "change");
+                    column -= 1;
+                }
+            }
+
+            while (row > 0) {
+                pushPart(oldParts, oldChars[row - 1], "change");
+                row -= 1;
+            }
+
+            while (column > 0) {
+                pushPart(newParts, newChars[column - 1], "change");
+                column -= 1;
+            }
+
+            oldParts.reverse();
+            newParts.reverse();
+
+            return {
+                oldParts: oldParts.length ? oldParts : [{ text: " ", type: "change" }],
+                newParts: newParts.length ? newParts : [{ text: " ", type: "change" }],
+                score: table[oldChars.length * columnCount + newChars.length]
+            };
+        }
+
+        function getLineSimilarity(oldText, newText) {
+            const maxLength = Math.max(Array.from(oldText).length, Array.from(newText).length);
+
+            if (maxLength === 0) {
+                return 1;
+            }
+
+            return buildCharacterDiff(oldText, newText).score / maxLength;
+        }
+
+        function pairChangedLines(changeBlock) {
+            const deletedLines = changeBlock.filter((line) => line.type === "delete");
+            const addedLines = changeBlock.filter((line) => line.type === "add");
+            const usedAddedLines = new Set();
+
+            if (deletedLines.length === addedLines.length) {
+                deletedLines.forEach((deletedLine, index) => {
+                    const addedLine = addedLines[index];
+                    const characterDiff = buildCharacterDiff(deletedLine.value, addedLine.value);
+
+                    deletedLine.parts = characterDiff.oldParts;
+                    addedLine.parts = characterDiff.newParts;
+                    usedAddedLines.add(addedLine);
+                });
+                return;
+            }
+
+            deletedLines.forEach((deletedLine) => {
+                let bestAddedLine = null;
+                let bestScore = 0;
+
+                addedLines.forEach((addedLine) => {
+                    if (usedAddedLines.has(addedLine)) {
+                        return;
+                    }
+
+                    const score = getLineSimilarity(deletedLine.value, addedLine.value);
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestAddedLine = addedLine;
+                    }
+                });
+
+                if (bestAddedLine && bestScore >= 0.35) {
+                    const characterDiff = buildCharacterDiff(deletedLine.value, bestAddedLine.value);
+
+                    deletedLine.parts = characterDiff.oldParts;
+                    bestAddedLine.parts = characterDiff.newParts;
+                    usedAddedLines.add(bestAddedLine);
+                }
+            });
+        }
+
+        function annotateInlineDifferences(diffLines) {
+            let changeBlock = [];
+
+            function flushChangeBlock() {
+                if (changeBlock.length > 0) {
+                    pairChangedLines(changeBlock);
+                    changeBlock = [];
+                }
+            }
+
+            diffLines.forEach((line) => {
+                if (line.type === "context") {
+                    flushChangeBlock();
+                } else {
+                    changeBlock.push(line);
+                }
+            });
+
+            flushChangeBlock();
+            return diffLines;
+        }
+
+        function renderInlineHighlights(diffLines, oldLineCount, newLineCount) {
+            const oldStates = [];
+            const newStates = [];
+
+            diffLines.forEach((line) => {
+                if (line.type === "delete") {
+                    oldStates.push(line.parts ? { type: "delete", parts: line.parts } : "delete");
+                } else if (line.type === "add") {
+                    newStates.push(line.parts ? { type: "add", parts: line.parts } : "add");
+                } else {
+                    oldStates.push("");
+                    newStates.push("");
+                }
+            });
+
+            renderEditorHighlights(oldHighlightLayer, oldLineCount, oldStates);
+            renderEditorHighlights(newHighlightLayer, newLineCount, newStates);
+        }
+
+        function scheduleLiveCompare() {
+            updateAllLineNumbers();
+            window.clearTimeout(liveCompareTimer);
+            liveCompareTimer = window.setTimeout(() => {
+                diffForm.dispatchEvent(new Event("submit"));
+            }, 160);
+        }
+
+        function showError(message) {
+            resultPanel.hidden = false;
+            resultPanel.classList.add("is-error");
+            resultTitle.textContent = "需要再检查一下";
+            resultCopy.textContent = message;
+            diffStats.replaceChildren();
+            diffOutput.replaceChildren();
+            latestDiffText = "";
+            clearEditorHighlights();
+        }
+
+        function buildLineDiff(oldLines, newLines) {
+            const rowCount = oldLines.length + 1;
+            const columnCount = newLines.length + 1;
+            const cellCount = rowCount * columnCount;
+            const maxCells = 4000000;
+
+            if (cellCount > maxCells) {
+                throw new Error("文本太长了，请分段对比。");
+            }
+
+            const table = new Uint32Array(cellCount);
+
+            for (let row = 1; row < rowCount; row += 1) {
+                for (let column = 1; column < columnCount; column += 1) {
+                    const currentIndex = row * columnCount + column;
+
+                    if (oldLines[row - 1] === newLines[column - 1]) {
+                        table[currentIndex] = table[(row - 1) * columnCount + column - 1] + 1;
+                    } else {
+                        table[currentIndex] = Math.max(
+                            table[(row - 1) * columnCount + column],
+                            table[row * columnCount + column - 1]
+                        );
+                    }
+                }
+            }
+
+            const diffLines = [];
+            let row = oldLines.length;
+            let column = newLines.length;
+
+            while (row > 0 && column > 0) {
+                if (oldLines[row - 1] === newLines[column - 1]) {
+                    diffLines.push({ type: "context", value: oldLines[row - 1] });
+                    row -= 1;
+                    column -= 1;
+                } else if (table[(row - 1) * columnCount + column] > table[row * columnCount + column - 1]) {
+                    diffLines.push({ type: "delete", value: oldLines[row - 1] });
+                    row -= 1;
+                } else {
+                    diffLines.push({ type: "add", value: newLines[column - 1] });
+                    column -= 1;
+                }
+            }
+
+            while (row > 0) {
+                diffLines.push({ type: "delete", value: oldLines[row - 1] });
+                row -= 1;
+            }
+
+            while (column > 0) {
+                diffLines.push({ type: "add", value: newLines[column - 1] });
+                column -= 1;
+            }
+
+            return diffLines.reverse();
+        }
+
+        function renderStats(addedCount, deletedCount, unchangedCount) {
+            const stats = [
+                ["新增", `+${addedCount}`],
+                ["删除", `-${deletedCount}`],
+                ["未变化", String(unchangedCount)]
+            ].map(([label, value]) => {
+                const item = document.createElement("div");
+                const name = document.createElement("span");
+                const content = document.createElement("strong");
+
+                item.className = "stat-item";
+                name.textContent = label;
+                content.textContent = value;
+                item.append(name, content);
+                return item;
+            });
+
+            diffStats.replaceChildren(...stats);
+        }
+
+        function renderDiff(diffLines) {
+            let oldLineNumber = 0;
+            let newLineNumber = 0;
+            const fragments = diffLines.map((line) => {
+                const row = document.createElement("div");
+                const oldNumber = document.createElement("span");
+                const newNumber = document.createElement("span");
+                const prefix = document.createElement("span");
+                const content = document.createElement("code");
+                let oldLabel = "";
+                let newLabel = "";
+
+                if (line.type !== "add") {
+                    oldLineNumber += 1;
+                    oldLabel = String(oldLineNumber);
+                }
+
+                if (line.type !== "delete") {
+                    newLineNumber += 1;
+                    newLabel = String(newLineNumber);
+                }
+
+                row.className = `diff-line diff-${line.type}`;
+                oldNumber.className = "diff-line-number";
+                newNumber.className = "diff-line-number";
+                prefix.className = "diff-prefix";
+                oldNumber.textContent = oldLabel;
+                newNumber.textContent = newLabel;
+                prefix.textContent = line.type === "add" ? "+" : line.type === "delete" ? "-" : " ";
+                if (line.parts) {
+                    appendInlineParts(content, line.parts, "diff-inline-change");
+                } else {
+                    content.textContent = line.value || " ";
+                }
+
+                row.append(oldNumber, newNumber, prefix, content);
+                return row;
+            });
+
+            diffOutput.replaceChildren(...fragments);
+        }
+
+        function compareTexts(event) {
+            event.preventDefault();
+
+            const oldLines = splitLines(oldTextInput.value);
+            const newLines = splitLines(newTextInput.value);
+
+            if (oldLines.length === 0 && newLines.length === 0) {
+                showError("请先输入需要对比的文本。");
+                return;
+            }
+
+            let diffLines;
+
+            try {
+                diffLines = annotateInlineDifferences(buildLineDiff(oldLines, newLines));
+            } catch (error) {
+                showError(error.message);
+                return;
+            }
+
+            const addedCount = diffLines.filter((line) => line.type === "add").length;
+            const deletedCount = diffLines.filter((line) => line.type === "delete").length;
+            const unchangedCount = diffLines.filter((line) => line.type === "context").length;
+            latestDiffText = diffLines
+                .map((line) => `${line.type === "add" ? "+" : line.type === "delete" ? "-" : " "}${line.value}`)
+                .join("\n");
+
+            resultPanel.hidden = false;
+            resultPanel.classList.remove("is-error");
+            resultTitle.textContent = "对比结果";
+            resultCopy.textContent = addedCount || deletedCount
+                ? `发现 ${addedCount} 行新增、${deletedCount} 行删除。`
+                : "两段文本没有行级差异。";
+            renderStats(addedCount, deletedCount, unchangedCount);
+            renderDiff(diffLines);
+            renderInlineHighlights(diffLines, oldLines.length, newLines.length);
+            copyButton.textContent = "复制 diff";
+        }
+
+        function swapTexts() {
+            [oldTextInput.value, newTextInput.value] = [newTextInput.value, oldTextInput.value];
+            updateAllLineNumbers();
+            diffForm.dispatchEvent(new Event("submit"));
+        }
+
+        function clearTexts() {
+            oldTextInput.value = "";
+            newTextInput.value = "";
+            resultPanel.hidden = true;
+            latestDiffText = "";
+            updateAllLineNumbers();
+            clearEditorHighlights();
+            oldTextInput.focus();
+        }
+
+        async function copyDiff() {
+            if (!latestDiffText) {
+                showError("请先生成 diff 结果。");
+                return;
+            }
+
+            if (!navigator.clipboard) {
+                showError("当前浏览器不支持自动复制，请手动选中 diff 结果复制。");
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(latestDiffText);
+                copyButton.textContent = "已复制";
+            } catch (error) {
+                showError("复制失败了，请手动选中 diff 结果复制。");
+            }
+        }
+
+        diffForm.addEventListener("submit", compareTexts);
+        oldTextInput.addEventListener("input", scheduleLiveCompare);
+        newTextInput.addEventListener("input", scheduleLiveCompare);
+        oldTextInput.addEventListener("scroll", () => syncEditorScroll(oldTextInput, oldLineNumbers, oldHighlightLayer));
+        newTextInput.addEventListener("scroll", () => syncEditorScroll(newTextInput, newLineNumbers, newHighlightLayer));
+        swapButton.addEventListener("click", swapTexts);
+        clearButton.addEventListener("click", clearTexts);
+        copyButton.addEventListener("click", copyDiff);
+        updateAllLineNumbers();
+        clearEditorHighlights();
+    </script>
+</body>
+
+</html>

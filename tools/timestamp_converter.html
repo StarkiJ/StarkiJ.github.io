@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="在 Unix 时间戳和本地日期时间之间转换。">
+    <title>时间戳转换 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="返回 Starki 主页">
+            <img src="../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="工具导航">
+            <a href="../index.html#tools">小工具</a>
+            <a href="../index.html#games">小游戏</a>
+        </nav>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">时间戳转换</h1>
+            <p>把 Unix 时间戳转成本地时间，也可以把日期时间转成秒级和毫秒级时间戳。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="时间戳转换表单">
+            <form id="timestampForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="timestampInput">Unix 时间戳</label>
+                        <input type="text" id="timestampInput" inputmode="numeric" placeholder="例如：1713024000">
+                    </div>
+                    <div class="field">
+                        <label for="dateTimeInput">本地日期时间</label>
+                        <input type="datetime-local" id="dateTimeInput">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="button" id="nowButton">填入当前时间</button>
+                    <button class="button secondary" type="button" id="timestampToDateButton">时间戳转日期</button>
+                    <button class="button secondary" type="button" id="dateToTimestampButton">日期转时间戳</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden aria-live="polite">
+                <h2 id="resultTitle">转换结果</h2>
+                <p class="result-copy" id="resultCopy"></p>
+                <div class="detail-list" id="detailList"></div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const timestampInput = document.getElementById("timestampInput");
+        const dateTimeInput = document.getElementById("dateTimeInput");
+        const nowButton = document.getElementById("nowButton");
+        const timestampToDateButton = document.getElementById("timestampToDateButton");
+        const dateToTimestampButton = document.getElementById("dateToTimestampButton");
+        const resultPanel = document.getElementById("resultPanel");
+        const resultTitle = document.getElementById("resultTitle");
+        const resultCopy = document.getElementById("resultCopy");
+        const detailList = document.getElementById("detailList");
+
+        function padNumber(number) {
+            return String(number).padStart(2, "0");
+        }
+
+        function formatForDateTimeInput(date) {
+            return [
+                date.getFullYear(),
+                "-",
+                padNumber(date.getMonth() + 1),
+                "-",
+                padNumber(date.getDate()),
+                "T",
+                padNumber(date.getHours()),
+                ":",
+                padNumber(date.getMinutes())
+            ].join("");
+        }
+
+        function showError(message) {
+            resultPanel.hidden = false;
+            resultPanel.classList.add("is-error");
+            resultTitle.textContent = "需要再检查一下";
+            resultCopy.textContent = message;
+            detailList.replaceChildren();
+        }
+
+        function showDetails(summary, rows) {
+            const items = rows.map(([label, value]) => {
+                const item = document.createElement("div");
+                const name = document.createElement("span");
+                const content = document.createElement("strong");
+
+                item.className = "detail-item";
+                name.textContent = label;
+                content.textContent = value;
+                item.append(name, content);
+                return item;
+            });
+
+            resultPanel.hidden = false;
+            resultPanel.classList.remove("is-error");
+            resultTitle.textContent = "转换结果";
+            resultCopy.textContent = summary;
+            detailList.replaceChildren(...items);
+        }
+
+        function fillCurrentTime() {
+            const now = new Date();
+
+            timestampInput.value = Math.floor(now.getTime() / 1000);
+            dateTimeInput.value = formatForDateTimeInput(now);
+            showDetails("已经填入当前时间。", [
+                ["秒级时间戳", String(Math.floor(now.getTime() / 1000))],
+                ["毫秒级时间戳", String(now.getTime())],
+                ["本地时间", now.toLocaleString()]
+            ]);
+        }
+
+        function convertTimestampToDate() {
+            const rawValue = timestampInput.value.trim();
+
+            if (!/^-?\d+$/.test(rawValue)) {
+                showError("请输入整数时间戳。");
+                return;
+            }
+
+            const numberValue = Number(rawValue);
+            const milliseconds = Math.abs(numberValue) < 100000000000 ? numberValue * 1000 : numberValue;
+            const date = new Date(milliseconds);
+
+            if (Number.isNaN(date.getTime())) {
+                showError("这个时间戳无法转换。");
+                return;
+            }
+
+            dateTimeInput.value = formatForDateTimeInput(date);
+            showDetails("已根据时间戳生成日期。", [
+                ["本地时间", date.toLocaleString()],
+                ["ISO 时间", date.toISOString()],
+                ["秒级时间戳", String(Math.floor(date.getTime() / 1000))],
+                ["毫秒级时间戳", String(date.getTime())]
+            ]);
+        }
+
+        function convertDateToTimestamp() {
+            if (!dateTimeInput.value) {
+                showError("请选择一个日期时间。");
+                return;
+            }
+
+            const date = new Date(dateTimeInput.value);
+
+            if (Number.isNaN(date.getTime())) {
+                showError("这个日期时间无法转换。");
+                return;
+            }
+
+            timestampInput.value = Math.floor(date.getTime() / 1000);
+            showDetails("已根据日期生成时间戳。", [
+                ["秒级时间戳", String(Math.floor(date.getTime() / 1000))],
+                ["毫秒级时间戳", String(date.getTime())],
+                ["本地时间", date.toLocaleString()],
+                ["ISO 时间", date.toISOString()]
+            ]);
+        }
+
+        nowButton.addEventListener("click", fillCurrentTime);
+        timestampToDateButton.addEventListener("click", convertTimestampToDate);
+        dateToTimestampButton.addEventListener("click", convertDateToTimestamp);
+        fillCurrentTime();
+    </script>
+</body>
+
+</html>

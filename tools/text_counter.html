@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="统计文本的字数、字符数、行数和段落数。">
+    <title>文本统计 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="返回 Starki 主页">
+            <img src="../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="工具导航">
+            <a href="../index.html#tools">小工具</a>
+            <a href="../index.html#games">小游戏</a>
+        </nav>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">文本统计</h1>
+            <p>粘贴一段文字，快速统计字符数、字数、行数和段落数。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="文本统计表单">
+            <form id="textCounterForm">
+                <div class="field-grid">
+                    <div class="field full">
+                        <label for="sourceText">文本内容</label>
+                        <textarea id="sourceText" placeholder="把要统计的文字粘贴到这里"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="button" id="clearButton">清空</button>
+                </div>
+            </form>
+
+            <section class="result-panel" aria-live="polite">
+                <h2>统计结果</h2>
+                <p class="result-copy">中文按单字统计，英文和数字按连续词统计。</p>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span>字符数</span>
+                        <strong id="charCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>不含空格</span>
+                        <strong id="charNoSpaceCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>估算字数</span>
+                        <strong id="wordCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>行数</span>
+                        <strong id="lineCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>段落数</span>
+                        <strong id="paragraphCount">0</strong>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const sourceText = document.getElementById("sourceText");
+        const clearButton = document.getElementById("clearButton");
+        const charCount = document.getElementById("charCount");
+        const charNoSpaceCount = document.getElementById("charNoSpaceCount");
+        const wordCount = document.getElementById("wordCount");
+        const lineCount = document.getElementById("lineCount");
+        const paragraphCount = document.getElementById("paragraphCount");
+
+        function updateStats() {
+            const text = sourceText.value;
+            const trimmedText = text.trim();
+            const chineseCharacters = text.match(/[\u4e00-\u9fff]/g) || [];
+            const latinWords = text.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?/g) || [];
+            const lines = trimmedText ? text.split(/\r\n|\r|\n/).length : 0;
+            const paragraphs = trimmedText ? trimmedText.split(/\n\s*\n/).filter(Boolean).length : 0;
+
+            charCount.textContent = text.length;
+            charNoSpaceCount.textContent = text.replace(/\s/g, "").length;
+            wordCount.textContent = chineseCharacters.length + latinWords.length;
+            lineCount.textContent = lines;
+            paragraphCount.textContent = paragraphs;
+        }
+
+        clearButton.addEventListener("click", () => {
+            sourceText.value = "";
+            sourceText.focus();
+            updateStats();
+        });
+
+        sourceText.addEventListener("input", updateStats);
+        updateStats();
+    </script>
+</body>
+
+</html>
