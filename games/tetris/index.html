@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="经典俄罗斯方块小游戏，支持键盘和手机按钮操作。">
+    <title>俄罗斯方块 | Starki</title>
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="./tetris.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <a class="brand" href="../../index.html" aria-label="返回 Starki 主页">
+            <img src="../../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="游戏导航">
+            <a href="../../index.html#tools">小工具</a>
+            <a href="../../index.html#games">小游戏</a>
+        </nav>
+    </header>
+
+    <main class="tetris-shell">
+        <a class="back-link" href="../../index.html#games">返回小游戏</a>
+
+        <section class="tetris-layout" aria-labelledby="game-title">
+            <div class="board-stage" aria-label="俄罗斯方块棋盘">
+                <canvas id="tetrisBoard" class="board-canvas" width="300" height="600"></canvas>
+                <div class="board-message" id="boardMessage">
+                    <strong>准备开局</strong>
+                    <span>方向键移动，空格直接落下。</span>
+                </div>
+            </div>
+
+            <aside class="game-panel">
+                <p class="eyebrow">Game</p>
+                <h1 id="game-title">俄罗斯方块</h1>
+                <p class="game-note">凑满一行就消除，速度会随着行数慢慢加快。</p>
+
+                <div class="score-grid" aria-live="polite">
+                    <div>
+                        <span>分数</span>
+                        <strong id="score">0</strong>
+                    </div>
+                    <div>
+                        <span>最高分</span>
+                        <strong id="bestScore">0</strong>
+                    </div>
+                    <div>
+                        <span>等级</span>
+                        <strong id="level">1</strong>
+                    </div>
+                    <div>
+                        <span>消除行数</span>
+                        <strong id="lines">0</strong>
+                    </div>
+                </div>
+
+                <div class="next-panel">
+                    <span>下一个</span>
+                    <canvas id="nextPiece" width="120" height="120" aria-label="下一个方块"></canvas>
+                </div>
+
+                <div class="game-actions">
+                    <button class="button" type="button" id="startButton">开始游戏</button>
+                    <button class="button secondary" type="button" id="pauseButton" disabled>暂停</button>
+                </div>
+
+                <dl class="controls-list">
+                    <div>
+                        <dt>移动</dt>
+                        <dd>方向键左右</dd>
+                    </div>
+                    <div>
+                        <dt>旋转</dt>
+                        <dd>上方向键 / Z</dd>
+                    </div>
+                    <div>
+                        <dt>加速</dt>
+                        <dd>下方向键</dd>
+                    </div>
+                    <div>
+                        <dt>直落</dt>
+                        <dd>空格</dd>
+                    </div>
+                </dl>
+            </aside>
+        </section>
+
+        <div class="touch-controls" aria-label="触屏操作">
+            <button type="button" data-action="left">左移</button>
+            <button type="button" data-action="rotate">旋转</button>
+            <button type="button" data-action="right">右移</button>
+            <button type="button" data-action="down">加速</button>
+            <button type="button" data-action="drop">直落</button>
+        </div>
+    </main>
+
+    <script src="./tetris.js"></script>
+</body>
+
+</html>

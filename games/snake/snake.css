@@ -1,0 +1,224 @@
+.snake-shell {
+    width: min(1120px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 24px 0 56px;
+}
+
+.snake-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 620px) minmax(280px, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 18px;
+}
+
+.board-stage {
+    position: relative;
+    justify-self: center;
+    width: min(100%, 620px);
+    border: 1px solid #203128;
+    border-radius: 8px;
+    background: #101511;
+    padding: 14px;
+    box-shadow: var(--shadow);
+}
+
+.snake-canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: #101511;
+    touch-action: none;
+}
+
+.board-message {
+    position: absolute;
+    inset: 14px;
+    display: grid;
+    place-content: center;
+    gap: 6px;
+    border-radius: 6px;
+    background: rgba(16, 21, 17, 0.78);
+    color: #ffffff;
+    padding: 24px;
+    text-align: center;
+}
+
+.board-message[hidden] {
+    display: none;
+}
+
+.board-message strong {
+    font-size: 1.35rem;
+}
+
+.board-message span {
+    color: #d8e7de;
+}
+
+.game-panel {
+    display: grid;
+    gap: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 26px;
+}
+
+.game-panel h1 {
+    margin: -8px 0 0;
+    font-size: 2.2rem;
+    line-height: 1.15;
+}
+
+.game-note {
+    margin: 0;
+    color: var(--muted);
+}
+
+.score-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.score-grid div {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-strong);
+    padding: 14px 16px;
+}
+
+.score-grid span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.score-grid strong {
+    display: block;
+    min-height: 1.4em;
+    margin-top: 4px;
+    font-size: 1.45rem;
+}
+
+.game-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.game-actions .button:disabled {
+    border-color: var(--line);
+    background: var(--surface-strong);
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.controls-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.controls-list div {
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+}
+
+.controls-list dt {
+    color: var(--ink);
+    font-weight: 800;
+}
+
+.controls-list dd {
+    margin: 2px 0 0;
+    color: var(--muted);
+}
+
+.touch-controls {
+    margin: 18px auto 0;
+}
+
+.snake-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 72px);
+    grid-template-rows: repeat(3, 48px);
+    justify-content: center;
+    gap: 8px;
+}
+
+.snake-pad button {
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--ink);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.snake-pad button:active {
+    border-color: var(--teal);
+    background: var(--surface-strong);
+}
+
+.pad-up {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.pad-left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.pad-right {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.pad-down {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+@media (max-width: 900px) {
+    .snake-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .board-stage {
+        width: min(100%, 560px);
+    }
+
+    .game-panel {
+        padding: 22px;
+    }
+}
+
+@media (max-width: 520px) {
+    .snake-shell {
+        width: min(100% - 20px, 1120px);
+    }
+
+    .score-grid,
+    .controls-list {
+        grid-template-columns: 1fr;
+    }
+
+    .game-panel h1 {
+        font-size: 1.9rem;
+    }
+
+    .snake-pad {
+        width: 100%;
+        grid-template-columns: repeat(3, minmax(64px, 1fr));
+    }
+}

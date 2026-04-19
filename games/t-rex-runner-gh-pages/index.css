@@ -57,13 +57,16 @@ html, body {
 }
 
 .offline .controller {
-  background: rgba(247, 247, 247, .1);
+  background: transparent;
   height: 100vh;
   left: 0;
-  position: absolute;
+  position: fixed;
   top: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
   width: 100vw;
-  z-index: 1;
+  z-index: 3;
 }
 
 #offline-resources {

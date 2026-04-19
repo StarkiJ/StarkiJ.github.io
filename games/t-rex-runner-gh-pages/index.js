@@ -20,6 +20,7 @@
 
         this.outerContainerEl = document.querySelector(outerContainerId);
         this.containerEl = null;
+        this.touchController = null;
         this.snackbarEl = null;
         this.detailsButton = this.outerContainerEl.querySelector('#details-button');
 
@@ -96,7 +97,9 @@
     var IS_MOBILE = /Android/.test(window.navigator.userAgent) || IS_IOS;
 
     /** @const */
-    var IS_TOUCH_ENABLED = 'ontouchstart' in window;
+    var IS_TOUCH_ENABLED = 'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0;
 
     /**
      * Default game configuration.
@@ -383,7 +386,7 @@
 
             this.outerContainerEl.appendChild(this.containerEl);
 
-            if (IS_MOBILE) {
+            if (IS_TOUCH_ENABLED) {
                 this.createTouchController();
             }
 
@@ -397,11 +400,12 @@
         /**
          * Create the touch controller. A div that covers whole screen.
          */
-        /*createTouchController: function () {
+        createTouchController: function () {
             this.touchController = document.createElement('div');
             this.touchController.className = Runner.classes.TOUCH_CONTROLLER;
+            this.touchController.setAttribute('aria-hidden', 'true');
             this.outerContainerEl.appendChild(this.touchController);
-        },*/
+        },
 
         /**
          * Debounce the resize event.
@@ -638,11 +642,12 @@
             document.addEventListener(Runner.events.KEYDOWN, this);
             document.addEventListener(Runner.events.KEYUP, this);
 
-            if (IS_MOBILE) {
+            if (this.touchController) {
                 // Mobile only touch devices.
                 this.touchController.addEventListener(Runner.events.TOUCHSTART, this);
                 this.touchController.addEventListener(Runner.events.TOUCHEND, this);
                 this.containerEl.addEventListener(Runner.events.TOUCHSTART, this);
+                this.containerEl.addEventListener(Runner.events.TOUCHEND, this);
             } else {
                 // Mouse.
                 document.addEventListener(Runner.events.MOUSEDOWN, this);
@@ -657,10 +662,11 @@
             document.removeEventListener(Runner.events.KEYDOWN, this);
             document.removeEventListener(Runner.events.KEYUP, this);
 
-            if (IS_MOBILE) {
+            if (this.touchController) {
                 this.touchController.removeEventListener(Runner.events.TOUCHSTART, this);
                 this.touchController.removeEventListener(Runner.events.TOUCHEND, this);
                 this.containerEl.removeEventListener(Runner.events.TOUCHSTART, this);
+                this.containerEl.removeEventListener(Runner.events.TOUCHEND, this);
             } else {
                 document.removeEventListener(Runner.events.MOUSEDOWN, this);
                 document.removeEventListener(Runner.events.MOUSEUP, this);
@@ -673,13 +679,15 @@
          */
         onKeyDown: function (e) {
             // Prevent native page scrolling whilst tapping on mobile.
-            if (IS_MOBILE && this.playing) {
+            if ((IS_MOBILE || IS_TOUCH_ENABLED) &&
+                e.type == Runner.events.TOUCHSTART && e.cancelable) {
                 e.preventDefault();
             }
 
             if (e.target != this.detailsButton) {
                 if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
-                    e.type == Runner.events.TOUCHSTART)) {
+                    e.type == Runner.events.TOUCHSTART ||
+                    e.type == Runner.events.MOUSEDOWN)) {
                     if (!this.playing) {
                         this.loadSounds();
                         this.playing = true;
@@ -696,7 +704,7 @@
                 }
 
                 if (this.crashed && e.type == Runner.events.TOUCHSTART &&
-                    e.currentTarget == this.containerEl) {
+                    getTimeStamp() - this.time >= this.config.GAMEOVER_CLEAR_TIME) {
                     this.restart();
                 }
             }
@@ -719,10 +727,15 @@
          * @param {Event} e
          */
         onKeyUp: function (e) {
+            if ((IS_MOBILE || IS_TOUCH_ENABLED) &&
+                e.type == Runner.events.TOUCHEND && e.cancelable) {
+                e.preventDefault();
+            }
+
             var keyCode = String(e.keyCode);
             var isjumpKey = Runner.keycodes.JUMP[keyCode] ||
                 e.type == Runner.events.TOUCHEND ||
-                e.type == Runner.events.MOUSEDOWN;
+                e.type == Runner.events.MOUSEUP;
 
             if (this.isRunning() && isjumpKey) {
                 this.tRex.endJump();
@@ -734,6 +747,8 @@
                 var deltaTime = getTimeStamp() - this.time;
 
                 if (Runner.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
+                    (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
+                        e.type == Runner.events.TOUCHEND) ||
                     (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
                         Runner.keycodes.JUMP[keyCode])) {
                     this.restart();

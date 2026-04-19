@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="经典贪吃蛇小游戏，支持键盘、WASD、触屏按钮和滑动操作。">
+    <title>贪吃蛇 | Starki</title>
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="./snake.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <a class="brand" href="../../index.html" aria-label="返回 Starki 主页">
+            <img src="../../images/head.jpg" alt="Starki 的头像">
+            <span>Starki</span>
+        </a>
+        <nav class="site-nav" aria-label="游戏导航">
+            <a href="../../index.html#tools">小工具</a>
+            <a href="../../index.html#games">小游戏</a>
+        </nav>
+    </header>
+
+    <main class="snake-shell">
+        <a class="back-link" href="../../index.html#games">返回小游戏</a>
+
+        <section class="snake-layout" aria-labelledby="game-title">
+            <div class="board-stage" aria-label="贪吃蛇棋盘">
+                <canvas id="snakeBoard" class="snake-canvas" width="588" height="588"></canvas>
+                <div class="board-message" id="boardMessage">
+                    <strong>准备开局</strong>
+                    <span>方向键或 WASD 控制方向，吃苹果变长。</span>
+                </div>
+            </div>
+
+            <aside class="game-panel">
+                <p class="eyebrow">Game</p>
+                <h1 id="game-title">贪吃蛇</h1>
+                <p class="game-note">吃掉苹果拿分并提速，别撞墙，也别把自己绕进死胡同。</p>
+
+                <div class="score-grid" aria-live="polite">
+                    <div>
+                        <span>分数</span>
+                        <strong id="score">0</strong>
+                    </div>
+                    <div>
+                        <span>最高分</span>
+                        <strong id="bestScore">0</strong>
+                    </div>
+                    <div>
+                        <span>长度</span>
+                        <strong id="snakeLength">3</strong>
+                    </div>
+                    <div>
+                        <span>速度</span>
+                        <strong id="speedLevel">1</strong>
+                    </div>
+                </div>
+
+                <div class="game-actions">
+                    <button class="button" type="button" id="startButton">开始游戏</button>
+                    <button class="button secondary" type="button" id="pauseButton" disabled>暂停</button>
+                </div>
+
+                <dl class="controls-list">
+                    <div>
+                        <dt>移动</dt>
+                        <dd>方向键 / WASD</dd>
+                    </div>
+                    <div>
+                        <dt>暂停</dt>
+                        <dd>P 键</dd>
+                    </div>
+                    <div>
+                        <dt>开局</dt>
+                        <dd>空格 / 开始按钮</dd>
+                    </div>
+                    <div>
+                        <dt>手机</dt>
+                        <dd>按钮或滑动棋盘</dd>
+                    </div>
+                </dl>
+            </aside>
+        </section>
+
+        <div class="touch-controls snake-pad" aria-label="触屏操作">
+            <button class="pad-up" type="button" data-action="up">上</button>
+            <button class="pad-left" type="button" data-action="left">左</button>
+            <button class="pad-right" type="button" data-action="right">右</button>
+            <button class="pad-down" type="button" data-action="down">下</button>
+        </div>
+    </main>
+
+    <script src="./snake.js"></script>
+</body>
+
+</html>

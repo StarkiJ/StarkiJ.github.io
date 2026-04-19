@@ -12,7 +12,7 @@
 
 <body id="t" class="offline">
     <div id="messageBox" class="sendmessage">
-         <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">Press Space to start</h1>
+         <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">Press Space or tap to start</h1>
          <div class="niokbutton" onclick="okbuttonsend()"></div>
     </div>
     <div id="main-frame-error" class="interstitial-wrapper">
@@ -32,13 +32,28 @@
 </body>
 
 <script>
-    document.onkeydown = function(evt) {
-    evt = evt || window.event;
-    if (evt.keyCode == 32) {
-        var box = document.getElementById("messageBox");
-        box.style.visibility="hidden";
-    }
-};
+    (function () {
+        function hideStartMessage() {
+            var box = document.getElementById("messageBox");
+
+            if (box) {
+                box.style.visibility = "hidden";
+            }
+        }
+
+        window.okbuttonsend = hideStartMessage;
+
+        document.addEventListener("keydown", function (evt) {
+            evt = evt || window.event;
+
+            if (evt.keyCode == 32 || evt.keyCode == 38) {
+                hideStartMessage();
+            }
+        });
+
+        document.addEventListener("touchstart", hideStartMessage);
+        document.addEventListener("mousedown", hideStartMessage);
+    })();
 </script>
     
 </html>

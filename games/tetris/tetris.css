@@ -1,0 +1,217 @@
+.tetris-shell {
+    width: min(1120px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 24px 0 56px;
+}
+
+.tetris-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(280px, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 18px;
+}
+
+.board-stage {
+    position: relative;
+    justify-self: center;
+    width: min(100%, 360px);
+    border: 1px solid #1f2933;
+    border-radius: 8px;
+    background: #111612;
+    padding: 14px;
+    box-shadow: var(--shadow);
+}
+
+.board-canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 2;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: #151a16;
+}
+
+.board-message {
+    position: absolute;
+    inset: 14px;
+    display: grid;
+    place-content: center;
+    gap: 6px;
+    border-radius: 6px;
+    background: rgba(17, 22, 18, 0.78);
+    color: #ffffff;
+    padding: 24px;
+    text-align: center;
+}
+
+.board-message[hidden] {
+    display: none;
+}
+
+.board-message strong {
+    font-size: 1.35rem;
+}
+
+.board-message span {
+    color: #d8e7de;
+}
+
+.game-panel {
+    display: grid;
+    gap: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 26px;
+}
+
+.game-panel h1 {
+    margin: -8px 0 0;
+    font-size: 2.2rem;
+    line-height: 1.15;
+}
+
+.game-note {
+    margin: 0;
+    color: var(--muted);
+}
+
+.score-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.score-grid div,
+.next-panel {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-strong);
+    padding: 14px 16px;
+}
+
+.score-grid span,
+.next-panel span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.score-grid strong {
+    display: block;
+    min-height: 1.4em;
+    margin-top: 4px;
+    font-size: 1.45rem;
+}
+
+.next-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: 14px;
+    align-items: center;
+}
+
+.next-panel canvas {
+    width: 120px;
+    height: 120px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+.game-actions,
+.touch-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.game-actions .button:disabled {
+    border-color: var(--line);
+    background: var(--surface-strong);
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.controls-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.controls-list div {
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+}
+
+.controls-list dt {
+    color: var(--ink);
+    font-weight: 800;
+}
+
+.controls-list dd {
+    margin: 2px 0 0;
+    color: var(--muted);
+}
+
+.touch-controls {
+    justify-content: center;
+    margin-top: 18px;
+}
+
+.touch-controls button {
+    min-width: 82px;
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--ink);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.touch-controls button:active {
+    border-color: var(--teal);
+    background: var(--surface-strong);
+}
+
+@media (max-width: 820px) {
+    .tetris-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .board-stage {
+        width: min(100%, 330px);
+    }
+
+    .game-panel {
+        padding: 22px;
+    }
+}
+
+@media (max-width: 520px) {
+    .tetris-shell {
+        width: min(100% - 20px, 1120px);
+    }
+
+    .score-grid,
+    .controls-list {
+        grid-template-columns: 1fr;
+    }
+
+    .next-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .game-panel h1 {
+        font-size: 1.9rem;
+    }
+
+    .touch-controls button {
+        flex: 1 1 calc(33.333% - 10px);
+    }
+}
