@@ -4,50 +4,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五子棋</title>
+    <meta name="description" content="支持普通和困难难度的人机五子棋。">
+    <title>五子棋 | Starki</title>
     <link rel="icon" href="../../images/head.jpg">
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px 16px 32px;
-            background: #f7faf8;
-            color: #161a17;
-            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-        }
-
-        .game-shell {
-            width: min(100%, 560px);
-            margin: 0 auto;
-        }
-
-        #c1:focus-visible {
-            outline: 3px solid rgba(15, 118, 110, 0.32);
-            outline-offset: 3px;
-        }
-
-        #c1 {
-            display: block;
-            width: min(450px, 100%);
-            height: auto;
-            aspect-ratio: 1;
-            margin: 0 auto;
-            border-radius: 8px;
-            background: #ffffff;
-            box-shadow: 0 18px 44px rgba(22, 26, 23, 0.12);
-            touch-action: manipulation;
-        }
-    </style>
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="./gobang.css">
     <script src="./index.js" defer></script>
 </head>
 
 <body>
-    <main class="game-shell">
-        <canvas id="c1" width="450" height="450" tabindex="0" aria-label="五子棋"></canvas>
+    <main class="gobang-shell">
+        <a class="back-link" href="../../index.html#games">返回游戏</a>
+
+        <section class="gobang-layout" aria-labelledby="game-title">
+            <div class="board-stage">
+                <canvas
+                    id="c1"
+                    width="450"
+                    height="450"
+                    tabindex="0"
+                    aria-label="五子棋棋盘，使用方向键移动，回车或空格落子"
+                    aria-describedby="gameStatus"
+                ></canvas>
+            </div>
+
+            <aside class="game-panel">
+                <p class="eyebrow">Game</p>
+                <h1 id="game-title">五子棋</h1>
+                <p class="game-note">你执黑棋并先手，横、竖或斜线连成五子即可获胜。</p>
+
+                <div class="game-settings">
+                    <label for="difficulty">难度</label>
+                    <select id="difficulty">
+                        <option value="normal">普通</option>
+                        <option value="medium">中等</option>
+                        <option value="hard">困难</option>
+                    </select>
+                    <button class="button secondary" type="button" id="restartButton">重新开始</button>
+                </div>
+
+                <p class="game-status" id="gameStatus" role="status" aria-live="polite">你执黑棋，先手。</p>
+
+                <dl class="controls-list">
+                    <div>
+                        <dt>鼠标 / 触屏</dt>
+                        <dd>点击棋盘交叉点</dd>
+                    </div>
+                    <div>
+                        <dt>键盘</dt>
+                        <dd>方向键移动，回车落子</dd>
+                    </div>
+                </dl>
+            </aside>
+        </section>
     </main>
 </body>
 
