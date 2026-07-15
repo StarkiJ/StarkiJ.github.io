@@ -415,6 +415,10 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 });
 
 document.addEventListener("keydown", (event) => {
+    if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) {
+        return;
+    }
+
     const keyMap = {
         ArrowUp: "up",
         ArrowDown: "down",
@@ -453,6 +457,7 @@ document.addEventListener("keydown", (event) => {
 
 boardCanvas.addEventListener("pointerdown", (event) => {
     touchStart = { x: event.clientX, y: event.clientY };
+    boardCanvas.setPointerCapture(event.pointerId);
 });
 
 boardCanvas.addEventListener("pointerup", (event) => {
@@ -472,5 +477,15 @@ boardCanvas.addEventListener("pointerup", (event) => {
         handleAction(deltaX > 0 ? "right" : "left");
     } else {
         handleAction(deltaY > 0 ? "down" : "up");
+    }
+});
+
+boardCanvas.addEventListener("pointercancel", () => {
+    touchStart = null;
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && gameState === "playing") {
+        togglePause();
     }
 });

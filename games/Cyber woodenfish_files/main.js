@@ -10,12 +10,17 @@ var myCookie = document.cookie.replace(
   /(?:(?:^|.*;\s*)muyvNumSpan\s*\=\s*([^;]*).*$)|^.*$/,
   "$1"
 );
-if (myCookie > 0) {
-  gongDeSum = parseInt(myCookie);
+var savedGongDeSum = Number.parseInt(myCookie, 10);
+if (Number.isFinite(savedGongDeSum)) {
+  gongDeSum = savedGongDeSum;
   muyvNumSpan.innerText = gongDeSum;
 } else {
   gongDeSum = 0;
   muyvNumSpan.innerText = gongDeSum;
+}
+
+function saveGongDeSum() {
+  document.cookie = "muyvNumSpan=" + gongDeSum + "; max-age=315360000; SameSite=Lax";
 }
 
 function gongDeSumUpPlus() {
@@ -30,14 +35,14 @@ function gongDeSumUpPlus() {
 
 function muyvAudioFunction(pointerEvent) {
   var muyvAudioVar = new Audio(muyvAudio.src);
-  muyvAudioVar.play();
-  gongDeSum += gongDeSumUp;
+  muyvAudioVar.play().catch(function () {});
+  var gongDeIncrement = gongDeSumUp;
+  gongDeSum += gongDeIncrement;
   muyvNumSpan.innerText = gongDeSum;
   gongDeSumUpPlus();
-  document.cookie =
-    "muyvNumSpan=" + gongDeSum + "; max-age=315360000";
+  saveGongDeSum();
   const text = document.createElement("div");
-  text.textContent = "功德+" + gongDeSumUp;
+  text.textContent = "功德+" + gongDeIncrement;
   text.classList.add("floating-text");
   var pointerX = pointerEvent && Number.isFinite(pointerEvent.clientX) ? pointerEvent.clientX : window.innerWidth / 2;
   var pointerY = pointerEvent && Number.isFinite(pointerEvent.clientY) ? pointerEvent.clientY : window.innerHeight / 2;
@@ -61,11 +66,6 @@ function muyvAudioFunction(pointerEvent) {
     text.remove();
   };
 }
-var muyvAudioFunctionSetInterval;
-
-function srartMuyvAudioFunctionSetInterval() {
-  muyvAudioFunctionSetInterval = setInterval(muyvAudioFunction, 1000);
-}
 
 function changeAudio(changeAudioNum) {
   switch (changeAudioNum) {
@@ -83,20 +83,20 @@ function changeAudio(changeAudioNum) {
       break;
     default:
       alert("音效切换错误，请刷新重试");
-      break;
+      return;
   }
   var muyvAudioVar = new Audio(muyvAudio.src);
-  muyvAudioVar.play();
+  muyvAudioVar.play().catch(function () {});
   gongDeSum -= 20;
-  document.cookie = "muyvNumSpan=" + gongDeSum;
+  saveGongDeSum();
   muyvNumSpan.innerText = gongDeSum;
 }
 
 function GautamaLaugh() {
   var GautamaLaughAudioVar = new Audio(GautamaLaughAudio);
-  GautamaLaughAudioVar.play();
+  GautamaLaughAudioVar.play().catch(function () {});
   gongDeSum -= 60;
-  document.cookie = "muyvNumSpan=" + gongDeSum;
+  saveGongDeSum();
   muyvNumSpan.innerText = gongDeSum;
 }
 var autoTimerClick;

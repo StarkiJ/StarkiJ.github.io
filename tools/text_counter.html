@@ -72,48 +72,7 @@
         </section>
     </main>
 
-    <script>
-        const sourceText = document.getElementById("sourceText");
-        const clearButton = document.getElementById("clearButton");
-        const charCount = document.getElementById("charCount");
-        const charNoSpaceCount = document.getElementById("charNoSpaceCount");
-        const wordCount = document.getElementById("wordCount");
-        const lineCount = document.getElementById("lineCount");
-        const paragraphCount = document.getElementById("paragraphCount");
-        const graphemeSegmenter = typeof Intl.Segmenter === "function"
-            ? new Intl.Segmenter("zh-CN", { granularity: "grapheme" })
-            : null;
-
-        function countCharacters(text) {
-            return graphemeSegmenter
-                ? Array.from(graphemeSegmenter.segment(text)).length
-                : Array.from(text).length;
-        }
-
-        function updateStats() {
-            const text = sourceText.value;
-            const trimmedText = text.trim();
-            const chineseCharacters = text.match(/[\u4e00-\u9fff]/g) || [];
-            const latinWords = text.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?/g) || [];
-            const lines = trimmedText ? text.split(/\r\n|\r|\n/).length : 0;
-            const paragraphs = trimmedText ? trimmedText.split(/\n\s*\n/).filter(Boolean).length : 0;
-
-            charCount.textContent = countCharacters(text);
-            charNoSpaceCount.textContent = countCharacters(text.replace(/\s/gu, ""));
-            wordCount.textContent = chineseCharacters.length + latinWords.length;
-            lineCount.textContent = lines;
-            paragraphCount.textContent = paragraphs;
-        }
-
-        clearButton.addEventListener("click", () => {
-            sourceText.value = "";
-            sourceText.focus();
-            updateStats();
-        });
-
-        sourceText.addEventListener("input", updateStats);
-        updateStats();
-    </script>
+    <script src="./js/text_counter.js"></script>
 </body>
 
 </html>

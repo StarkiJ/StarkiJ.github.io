@@ -562,6 +562,10 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 });
 
 document.addEventListener("keydown", (event) => {
+    if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea")) {
+        return;
+    }
+
     const keyMap = {
         ArrowLeft: "left",
         ArrowRight: "right",
@@ -583,4 +587,10 @@ document.addEventListener("keydown", (event) => {
 
     event.preventDefault();
     handleAction(action);
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && gameState === "playing") {
+        togglePause();
+    }
 });
