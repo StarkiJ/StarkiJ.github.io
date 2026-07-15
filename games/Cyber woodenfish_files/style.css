@@ -4,10 +4,17 @@
 }
 
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
     scroll-behavior: smooth;
-    transition: all .3s ease-in-out;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+    outline: 3px solid rgba(23, 238, 76, .65);
+    outline-offset: 3px;
 }
 
 body[data-theme=light] {
@@ -128,6 +135,7 @@ a:active {
 #muyvImg {
     width: 600px;
     border-radius: 100px;
+    cursor: pointer;
     transition: .3s;
     user-select: none;
 }
@@ -145,19 +153,19 @@ a:active {
     position: absolute;
 }
 
-#btnChangeAudio {
+.action-button {
     width: 120px;
     height: 40px;
     border: var(--bg-theme) 3px solid;
     border-radius: 16px;
 }
 
-#btnChangeAudio:hover {
+.action-button:hover {
     border: var(--bg-theme) 1px solid;
     border-radius: 12px;
 }
 
-#btnChangeAudio:active {
+.action-button:active {
     border: var(--bg-theme) 2px solid;
     border-radius: 14px;
 }
@@ -224,7 +232,7 @@ a:active {
     border-radius: 4px;
 }
 
-#settingsBoxExitIcon i {
+#settingsBoxExitIcon span {
     color: #ffffff;
     margin: 0 auto;
     font-size: 30px;
@@ -280,7 +288,7 @@ a:active {
         right: 20%;
     }
 
-    #btnChangeAudio {
+    .action-button {
         width: 47%;
         height: 10vh;
         margin-top: 5px;

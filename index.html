@@ -5,48 +5,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Starki 的个人 GitHub Pages 主页。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="Starki">
+    <meta property="og:description" content="Starki 的个人 GitHub Pages 主页。">
+    <meta property="og:url" content="https://starkij.github.io/">
+    <meta property="og:image" content="https://starkij.github.io/images/head.jpg">
+    <meta name="twitter:card" content="summary">
     <title>Starki</title>
+    <link rel="canonical" href="https://starkij.github.io/">
     <link rel="icon" href="images/head.jpg">
     <link rel="stylesheet" href="styles.css">
+    <script src="home.js" defer></script>
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "name": "Starki",
+            "url": "https://starkij.github.io/",
+            "sameAs": ["https://github.com/StarkiJ"]
+        }
+    </script>
 </head>
 
-<body>
+<body class="home-page">
     <header class="site-header">
-        <a class="brand" href="./" aria-label="Starki 主页">
-            <img src="images/head.jpg" alt="Starki 的头像">
-            <span>Starki</span>
-        </a>
-        <nav class="site-nav" aria-label="站点导航">
-            <a href="#tools">小工具</a>
-            <a href="#games">小游戏</a>
-            <a href="https://gugugugugutian.github.io/" target="_blank" rel="noreferrer">推荐</a>
-        </nav>
+        <div class="site-header-inner">
+            <a class="brand" href="./" aria-label="Starki 主页">
+                <img src="images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="#about">关于</a>
+                <a href="#tools">工具</a>
+                <a href="#games">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
     </header>
 
     <main class="home-shell">
-        <section class="intro" aria-labelledby="home-title">
+        <section class="intro" id="about" aria-labelledby="home-title">
             <div class="intro-copy">
                 <p class="eyebrow">Fool Student</p>
                 <h1 id="home-title">Hi，我是 Starki。</h1>
                 <p class="lead">AI 真好用，零前端基础也能做网页。</p>
-                <div class="intro-actions">
-                    <a class="button" href="#tools">看看工具</a>
-                    <a class="button secondary" href="#games">玩点游戏</a>
-                </div>
             </div>
-            <img class="intro-portrait" src="images/head.jpg" alt="Starki 的头像">
+            <img class="intro-portrait" src="images/head.jpg" alt="Starki 的头像" width="210" height="210">
         </section>
 
         <section class="recommend-line" aria-label="推荐链接">
-            <p><span>Recommended</span> <a href="https://gugugugugutian.github.io/" target="_blank" rel="noreferrer">gugugugugutian</a></p>
+            <p>
+                <span>Recommended</span>
+                <a href="https://gugugugugutian.github.io/" target="_blank" rel="noreferrer">gugugugugutian</a>
+                <a href="https://fizgrad.github.io/" target="_blank" rel="noreferrer">fizgrad</a>
+            </p>
         </section>
 
         <section class="section-block" id="tools" aria-labelledby="tools-title">
             <div class="section-heading">
-                <div>
-                    <p class="section-kicker">Tools</p>
-                    <h2 id="tools-title">小工具</h2>
-                </div>
+                <p class="section-kicker">Tools</p>
+                <h2 id="tools-title">工具</h2>
             </div>
 
             <div class="link-grid">
@@ -97,10 +117,8 @@
 
         <section class="section-block" id="games" aria-labelledby="games-title">
             <div class="section-heading">
-                <div>
-                    <p class="section-kicker">Games</p>
-                    <h2 id="games-title">来玩点小游戏</h2>
-                </div>
+                <p class="section-kicker">Games</p>
+                <h2 id="games-title">游戏</h2>
             </div>
 
             <div class="link-grid">

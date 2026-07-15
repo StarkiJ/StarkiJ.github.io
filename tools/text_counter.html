@@ -17,13 +17,13 @@
             <span>Starki</span>
         </a>
         <nav class="site-nav" aria-label="工具导航">
-            <a href="../index.html#tools">小工具</a>
-            <a href="../index.html#games">小游戏</a>
+            <a href="../index.html#tools">工具</a>
+            <a href="../index.html#games">游戏</a>
         </nav>
     </header>
 
     <main class="tool-shell">
-        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <a class="back-link" href="../index.html#tools">返回工具</a>
         <section class="tool-hero" aria-labelledby="tool-title">
             <p class="eyebrow">Tool</p>
             <h1 id="tool-title">文本统计</h1>
@@ -80,6 +80,15 @@
         const wordCount = document.getElementById("wordCount");
         const lineCount = document.getElementById("lineCount");
         const paragraphCount = document.getElementById("paragraphCount");
+        const graphemeSegmenter = typeof Intl.Segmenter === "function"
+            ? new Intl.Segmenter("zh-CN", { granularity: "grapheme" })
+            : null;
+
+        function countCharacters(text) {
+            return graphemeSegmenter
+                ? Array.from(graphemeSegmenter.segment(text)).length
+                : Array.from(text).length;
+        }
 
         function updateStats() {
             const text = sourceText.value;
@@ -89,8 +98,8 @@
             const lines = trimmedText ? text.split(/\r\n|\r|\n/).length : 0;
             const paragraphs = trimmedText ? trimmedText.split(/\n\s*\n/).filter(Boolean).length : 0;
 
-            charCount.textContent = text.length;
-            charNoSpaceCount.textContent = text.replace(/\s/g, "").length;
+            charCount.textContent = countCharacters(text);
+            charNoSpaceCount.textContent = countCharacters(text.replace(/\s/gu, ""));
             wordCount.textContent = chineseCharacters.length + latinWords.length;
             lineCount.textContent = lines;
             paragraphCount.textContent = paragraphs;

@@ -28,7 +28,7 @@ function gongDeSumUpPlus() {
   }
 }
 
-function muyvAudioFunction() {
+function muyvAudioFunction(pointerEvent) {
   var muyvAudioVar = new Audio(muyvAudio.src);
   muyvAudioVar.play();
   gongDeSum += gongDeSumUp;
@@ -39,8 +39,10 @@ function muyvAudioFunction() {
   const text = document.createElement("div");
   text.textContent = "功德+" + gongDeSumUp;
   text.classList.add("floating-text");
-  text.style.left = (event.clientX - 20) + "px";
-  text.style.top = (event.clientY - 30) + "px";
+  var pointerX = pointerEvent && Number.isFinite(pointerEvent.clientX) ? pointerEvent.clientX : window.innerWidth / 2;
+  var pointerY = pointerEvent && Number.isFinite(pointerEvent.clientY) ? pointerEvent.clientY : window.innerHeight / 2;
+  text.style.left = (pointerX - 20) + "px";
+  text.style.top = (pointerY - 30) + "px";
   document.body.appendChild(text);
   const animation = text.animate(
     [{
@@ -114,12 +116,22 @@ function autoClick() {
   }
 }
 document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && settingsBoxDisplayTemp === 1) {
+    settingsBoxDisplay();
+    return;
+  }
+
+  if (event.target.closest("button, a, audio")) {
+    return;
+  }
+
   if (
     event.code === "Enter" ||
     event.code === "Space" ||
     event.code === "NumpadEnter"
   ) {
-    muyvAudioFunction();
+    event.preventDefault();
+    muyvAudioFunction(event);
   }
 });
 const lightOrDarkModelBtn = document.getElementById("lightOrDarkModelBtn");
@@ -131,13 +143,15 @@ function lightOrDarkModel() {
     document.body.setAttribute("data-theme", "dark");
     muyvImg.removeAttribute("style", "filter: invert(100%);");
     muyvImg.setAttribute("style", "filter: invert(0%);");
-    lightOrDarkIcon.className = "fa fa-moon-o";
+    lightOrDarkIcon.textContent = "☾";
+    lightOrDarkModelBtn.setAttribute("aria-label", "切换到浅色模式");
   } else if (document.body.getAttribute("data-theme") == "dark") {
     document.body.removeAttribute("data-theme", "dark");
     document.body.setAttribute("data-theme", "light");
     muyvImg.removeAttribute("style", "filter: invert(0%);");
     muyvImg.setAttribute("style", "filter: invert(100%);");
-    lightOrDarkIcon.className = "fa fa-sun-o";
+    lightOrDarkIcon.textContent = "☀";
+    lightOrDarkModelBtn.setAttribute("aria-label", "切换到深色模式");
   }
 }
 var settingsBoxDisplayTemp = 0;
@@ -145,13 +159,21 @@ var settingsBoxDisplayTemp = 0;
 function settingsBoxDisplay() {
   var settingsBox = document.getElementById("settingsBox");
   var divMask = document.getElementById("mask");
+  var settingsButton = document.getElementById("settingsBtn");
+  var closeButton = document.getElementById("settingsBoxExitIcon");
   if (settingsBoxDisplayTemp == 0) {
     settingsBox.style.cssText = "display: block;";
     divMask.style.cssText = "display: block;";
+    settingsBox.setAttribute("aria-hidden", "false");
+    settingsButton.setAttribute("aria-expanded", "true");
     settingsBoxDisplayTemp = 1;
+    closeButton.focus();
   } else if (settingsBoxDisplayTemp == 1) {
     settingsBox.style.cssText = "display: none;";
     divMask.style.cssText = "display: none;";
+    settingsBox.setAttribute("aria-hidden", "true");
+    settingsButton.setAttribute("aria-expanded", "false");
     settingsBoxDisplayTemp = 0;
+    settingsButton.focus();
   }
 }

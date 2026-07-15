@@ -17,13 +17,13 @@
             <span>Starki</span>
         </a>
         <nav class="site-nav" aria-label="工具导航">
-            <a href="../index.html#tools">小工具</a>
-            <a href="../index.html#games">小游戏</a>
+            <a href="../index.html#tools">工具</a>
+            <a href="../index.html#games">游戏</a>
         </nav>
     </header>
 
     <main class="tool-shell">
-        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <a class="back-link" href="../index.html#tools">返回工具</a>
         <section class="tool-hero" aria-labelledby="tool-title">
             <p class="eyebrow">Tool</p>
             <h1 id="tool-title">文本对比</h1>
@@ -89,6 +89,7 @@
         const diffOutput = document.getElementById("diffOutput");
         let latestDiffText = "";
         let liveCompareTimer;
+        const liveCompareMaxCharacters = 12000;
 
         function splitLines(text) {
             if (!text) {
@@ -339,9 +340,17 @@
         function scheduleLiveCompare() {
             updateAllLineNumbers();
             window.clearTimeout(liveCompareTimer);
+
+            if (oldTextInput.value.length + newTextInput.value.length > liveCompareMaxCharacters) {
+                resultPanel.hidden = true;
+                latestDiffText = "";
+                clearEditorHighlights();
+                return;
+            }
+
             liveCompareTimer = window.setTimeout(() => {
                 diffForm.dispatchEvent(new Event("submit"));
-            }, 160);
+            }, 360);
         }
 
         function showError(message) {

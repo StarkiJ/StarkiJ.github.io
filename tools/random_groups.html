@@ -17,13 +17,13 @@
             <span>Starki</span>
         </a>
         <nav class="site-nav" aria-label="工具导航">
-            <a href="../index.html#tools">小工具</a>
-            <a href="../index.html#games">小游戏</a>
+            <a href="../index.html#tools">工具</a>
+            <a href="../index.html#games">游戏</a>
         </nav>
     </header>
 
     <main class="tool-shell">
-        <a class="back-link" href="../index.html#tools">返回小工具</a>
+        <a class="back-link" href="../index.html#tools">返回工具</a>
         <section class="tool-hero" aria-labelledby="tool-title">
             <p class="eyebrow">Tool</p>
             <h1 id="tool-title">随机分组</h1>
@@ -35,11 +35,11 @@
                 <div class="field-grid">
                     <div class="field">
                         <label for="numPeople">人数</label>
-                        <input type="number" id="numPeople" value="8" min="1" inputmode="numeric">
+                        <input type="number" id="numPeople" value="8" min="1" max="500" inputmode="numeric">
                     </div>
                     <div class="field">
                         <label for="numGroups">组数</label>
-                        <input type="number" id="numGroups" value="4" min="1" inputmode="numeric">
+                        <input type="number" id="numGroups" value="4" min="1" max="500" inputmode="numeric">
                     </div>
                     <div class="field full">
                         <label for="names">成员名单（可选）</label>
@@ -65,6 +65,7 @@
         const resultTitle = document.getElementById("resultTitle");
         const resultCopy = document.getElementById("resultCopy");
         const groupContainer = document.getElementById("groupContainer");
+        const maxPeople = 500;
 
         function showError(message) {
             resultPanel.hidden = false;
@@ -74,17 +75,11 @@
             groupContainer.replaceChildren();
         }
 
-        function getPeople(numPeople) {
-            const names = document.getElementById("names").value
+        function getNames() {
+            return document.getElementById("names").value
                 .split(/\r?\n/)
                 .map((name) => name.trim())
                 .filter(Boolean);
-
-            if (names.length > 0) {
-                return names;
-            }
-
-            return Array.from({ length: numPeople }, (_, index) => `成员 ${index + 1}`);
         }
 
         function shuffle(items) {
@@ -130,13 +125,26 @@
 
             const numPeople = Number.parseInt(document.getElementById("numPeople").value, 10);
             const numGroups = Number.parseInt(document.getElementById("numGroups").value, 10);
+            const names = getNames();
 
-            if (!Number.isInteger(numPeople) || !Number.isInteger(numGroups) || numPeople <= 0 || numGroups <= 0) {
-                showError("请输入有效的人数和组数。");
+            if (!Number.isInteger(numGroups) || numGroups <= 0 || numGroups > maxPeople) {
+                showError(`组数需要在 1 到 ${maxPeople} 之间。`);
                 return;
             }
 
-            const people = shuffle(getPeople(numPeople));
+            if (names.length === 0 && (!Number.isInteger(numPeople) || numPeople <= 0 || numPeople > maxPeople)) {
+                showError(`未填写名单时，人数需要在 1 到 ${maxPeople} 之间。`);
+                return;
+            }
+
+            if (names.length > maxPeople) {
+                showError(`名单最多支持 ${maxPeople} 人。`);
+                return;
+            }
+
+            const people = shuffle(names.length > 0
+                ? names
+                : Array.from({ length: numPeople }, (_, index) => `成员 ${index + 1}`));
 
             if (numGroups > people.length) {
                 showError("组数不能大于成员人数。");

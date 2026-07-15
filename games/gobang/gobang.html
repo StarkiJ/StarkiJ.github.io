@@ -1,38 +1,54 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<!-- saved from url=(0032)https://haiyong.site/moyu/wzq-2/ -->
-<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!DOCTYPE html>
+<html lang="zh-CN">
 
-<title>五子棋</title>
-<meta name="viewport" content="device-width; initial-scale=1.0;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋</title>
+    <link rel="icon" href="../../images/head.jpg">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-<style>
-#c1 {
-	display: block;
-	margin: 60px auto;
-	box-shadow: 1px 1px 5px #000000;
-}
-</style>
-<script src="./hm.js"></script><script>
-	var _hmt = _hmt || [];
-	(function() {
-		var hm = document.createElement("script");
-		hm.src = "https://hm.baidu.com/hm.js?a9430a37066911650e26adadcc42798a";
-		var s = document.getElementsByTagName("script")[0];
-		s.parentNode.insertBefore(hm, s);
-	})();
-</script>
-<script src="./index.js"></script>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 16px 32px;
+            background: #f7faf8;
+            color: #161a17;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
 
-<script charset="UTF-8" id="LA_COLLECT" src="./js-sdk-pro.min.js"></script>
-<script>LA.init({id:"JxVJPIpe3UAQqoDx",ck:"JxVJPIpe3UAQqoDx"})</script>
-<!-- 谷歌广告 -->
-<script async="" src="./f.txt" crossorigin="anonymous"></script>
+        .game-shell {
+            width: min(100%, 560px);
+            margin: 0 auto;
+        }
+
+        #c1:focus-visible {
+            outline: 3px solid rgba(15, 118, 110, 0.32);
+            outline-offset: 3px;
+        }
+
+        #c1 {
+            display: block;
+            width: min(450px, 100%);
+            height: auto;
+            aspect-ratio: 1;
+            margin: 0 auto;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 18px 44px rgba(22, 26, 23, 0.12);
+            touch-action: manipulation;
+        }
+    </style>
+    <script src="./index.js" defer></script>
 </head>
 
 <body>
+    <main class="game-shell">
+        <canvas id="c1" width="450" height="450" tabindex="0" aria-label="五子棋"></canvas>
+    </main>
+</body>
 
-<canvas id="c1" width="450px" height="450px"></canvas>
-
-
-
-</body></html>
+</html>

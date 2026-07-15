@@ -119,16 +119,16 @@ window.onload = function(){
 		if(!me){return;}
 		if(over){return;}
 		
-		var x = ev.offsetX;
-		var y = ev.offsetY;
+		var rect = oC.getBoundingClientRect();
+		var x = (ev.clientX - rect.left) * (oC.width / rect.width);
+		var y = (ev.clientY - rect.top) * (oC.height / rect.height);
 		var i = Math.floor(x/30);
 		var j = Math.floor(y/30);
-		
-		if(chessBoard[i][j] == 0){
-			oneStep(i,j,me);
-			chessBoard[i][j] = 1;
 
-		}
+		if(i < 0 || i >= 15 || j < 0 || j >= 15 || chessBoard[i][j] != 0){return;}
+
+		oneStep(i,j,me);
+		chessBoard[i][j] = 1;
 		
 		for(var k=0;k<count;k++){
 			if(wins[i][j][k]){
@@ -230,7 +230,6 @@ window.onload = function(){
 			}
 		}
 		
-		console.log(iMax);
 		if(!over){
 			me = !me;
 		}
