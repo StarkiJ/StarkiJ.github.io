@@ -26,6 +26,7 @@ const ZOBRIST_TABLE = buildZobristTable();
 
 const boardCanvas = document.getElementById("c1");
 const context = boardCanvas.getContext("2d");
+const pieceColorSelect = document.getElementById("pieceColor");
 const difficultySelect = document.getElementById("difficulty");
 const restartButton = document.getElementById("restartButton");
 const gameStatus = document.getElementById("gameStatus");
@@ -44,6 +45,7 @@ let searchNodeCount = 0;
 let searchHash = 0;
 let transpositionTable = new Map();
 let lastSearchStats = { depth: 0, nodes: 0, duration: 0, timedOut: false };
+let humanPlaysBlack = true;
 
 function createBoard() {
     return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
@@ -183,7 +185,7 @@ function drawPiece(row, col, player) {
     const y = BOARD_PADDING + row * CELL_SIZE;
     const gradient = context.createRadialGradient(x - 4, y - 5, 2, x, y, 13);
 
-    if (player === HUMAN) {
+    if (isBlackPiece(player)) {
         gradient.addColorStop(0, "#5b615f");
         gradient.addColorStop(0.45, "#252928");
         gradient.addColorStop(1, "#050606");
@@ -197,7 +199,7 @@ function drawPiece(row, col, player) {
     context.arc(x, y, 13, 0, Math.PI * 2);
     context.fillStyle = gradient;
     context.fill();
-    context.strokeStyle = player === HUMAN ? "rgba(0, 0, 0, 0.72)" : "rgba(74, 82, 77, 0.48)";
+    context.strokeStyle = isBlackPiece(player) ? "rgba(0, 0, 0, 0.72)" : "rgba(74, 82, 77, 0.48)";
     context.stroke();
 }
 
@@ -207,7 +209,7 @@ function drawLastMoveMarker(move) {
 
     context.beginPath();
     context.arc(x, y, 3.2, 0, Math.PI * 2);
-    context.fillStyle = move.player === HUMAN ? "#f4dfb1" : "#3156a3";
+    context.fillStyle = isBlackPiece(move.player) ? "#f4dfb1" : "#3156a3";
     context.fill();
 }
 
@@ -226,16 +228,39 @@ function setStatus(message) {
     gameStatus.textContent = message;
 }
 
+function isBlackPiece(player) {
+    return humanPlaysBlack ? player === HUMAN : player === COMPUTER;
+}
+
+function scheduleComputerTurn(delay = 60) {
+    const requestedVersion = gameVersion;
+
+    window.setTimeout(() => {
+        if (requestedVersion === gameVersion && !gameOver) {
+            playComputerTurn();
+        }
+    }, delay);
+}
+
 function resetGame() {
     gameVersion += 1;
     board = createBoard();
     gameOver = false;
-    isHumanTurn = true;
+    humanPlaysBlack = pieceColorSelect.value === "black";
+    isHumanTurn = humanPlaysBlack;
     moveCount = 0;
     lastMove = null;
     keyboardCursor = { row: 7, col: 7 };
-    setStatus("你执黑棋，先手。");
+    boardCanvas.setAttribute(
+        "aria-label",
+        `五子棋棋盘，你执${humanPlaysBlack ? "黑棋" : "白棋"}。使用方向键移动，回车或空格落子`
+    );
+    setStatus(humanPlaysBlack ? "你执黑棋，先手。" : "你执白棋，电脑先手，正在思考…");
     drawBoard();
+
+    if (!humanPlaysBlack) {
+        scheduleComputerTurn(120);
+    }
 }
 
 function placeMove(row, col, player) {
@@ -296,13 +321,7 @@ function handleHumanMove(row, col) {
 
     isHumanTurn = false;
     setStatus("电脑思考中…");
-    const requestedVersion = gameVersion;
-
-    window.setTimeout(() => {
-        if (requestedVersion === gameVersion && !gameOver) {
-            playComputerTurn();
-        }
-    }, 60);
+    scheduleComputerTurn();
 }
 
 function playComputerTurn() {
@@ -1328,6 +1347,7 @@ boardCanvas.addEventListener("keydown", (event) => {
 boardCanvas.addEventListener("focus", drawBoard);
 boardCanvas.addEventListener("blur", drawBoard);
 restartButton.addEventListener("click", resetGame);
+pieceColorSelect.addEventListener("change", resetGame);
 difficultySelect.addEventListener("change", resetGame);
 window.addEventListener("resize", () => {
     const nextPixelRatio = Math.min(window.devicePixelRatio || 1, 2);

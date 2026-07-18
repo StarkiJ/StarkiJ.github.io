@@ -31,9 +31,14 @@
             <aside class="game-panel">
                 <p class="eyebrow">Game</p>
                 <h1 id="game-title">五子棋</h1>
-                <p class="game-note">你执黑棋并先手，横、竖或斜线连成五子即可获胜。</p>
+                <p class="game-note">黑棋先手，横、竖或斜线连成五子即可获胜。</p>
 
                 <div class="game-settings">
+                    <label for="pieceColor">执子</label>
+                    <select id="pieceColor">
+                        <option value="black">黑棋（先手）</option>
+                        <option value="white">白棋（后手）</option>
+                    </select>
                     <label for="difficulty">难度</label>
                     <select id="difficulty">
                         <option value="normal">普通</option>
