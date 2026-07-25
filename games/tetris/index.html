@@ -12,15 +12,19 @@
 </head>
 
 <body>
-    <header class="site-header">
-        <a class="brand" href="../../index.html" aria-label="返回 Starki 主页">
-            <img src="../../images/head.jpg" alt="Starki 的头像">
-            <span>Starki</span>
-        </a>
-        <nav class="site-nav" aria-label="游戏导航">
-            <a href="../../index.html#tools">工具</a>
-            <a href="../../index.html#games">游戏</a>
-        </nav>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a class="is-active" href="../../index.html#games" aria-current="location">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
     </header>
 
     <main class="tetris-shell">

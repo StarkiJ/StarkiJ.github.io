@@ -1,0 +1,160 @@
+{
+  "version": 2,
+  "settings": {
+    "year": 2026,
+    "weeksPerYear": 52,
+    "basicDeduction": 60000,
+    "specialAdditionalDeduction": 0,
+    "otherDeductions": 0,
+    "otherComprehensiveIncome": 0,
+    "socialInsuranceRate": 0.105,
+    "socialInsuranceMonths": 12,
+    "housingFundMonths": 12,
+    "lunchBreakHours": 2,
+    "dinnerBreakHours": 1,
+    "dinnerThreshold": "19:00",
+    "standardWorkDaysPerMonth": 21.75,
+    "standardPaidHoursPerDay": 8,
+    "bonusTaxMode": "auto",
+    "annualBonusSeparateTaxThrough": 2027,
+    "primaryHoursBasis": "presence"
+  },
+  "offers": [
+    {
+      "id": "demo-a",
+      "company": "A公司",
+      "department": "A部门",
+      "city": "A市",
+      "pay": {
+        "monthlySalary": 28000,
+        "salaryMonths": 15,
+        "otherAnnualCash": 0,
+        "bonusTaxMode": "auto"
+      },
+      "socialInsuranceRate": null,
+      "housingFundRate": 0.12,
+      "schedule": {
+        "cycleWeeks": 1,
+        "lunchBreakHours": null,
+        "dinnerBreakHours": null,
+        "days": [
+          {"week": 1, "weekday": 1, "start": "10:00", "end": "20:00"},
+          {"week": 1, "weekday": 2, "start": "10:00", "end": "20:00"},
+          {"week": 1, "weekday": 3, "start": "10:00", "end": "18:00"},
+          {"week": 1, "weekday": 4, "start": "10:00", "end": "20:00"},
+          {"week": 1, "weekday": 5, "start": "10:00", "end": "18:00"}
+        ]
+      },
+      "overtime": {
+        "shiftsPerYear": 0,
+        "start": "09:00",
+        "end": "18:00",
+        "paidHours": 8,
+        "payMultiplier": 0,
+        "payBaseMonthly": null
+      }
+    },
+    {
+      "id": "demo-b",
+      "company": "B公司",
+      "department": "B部门",
+      "city": "B市",
+      "pay": {
+        "monthlySalary": 32000,
+        "salaryMonths": 14,
+        "otherAnnualCash": 12000,
+        "bonusTaxMode": "auto"
+      },
+      "socialInsuranceRate": null,
+      "housingFundRate": 0.07,
+      "schedule": {
+        "cycleWeeks": 1,
+        "lunchBreakHours": null,
+        "dinnerBreakHours": null,
+        "days": [
+          {"week": 1, "weekday": 1, "start": "09:30", "end": "20:30"},
+          {"week": 1, "weekday": 2, "start": "09:30", "end": "20:30"},
+          {"week": 1, "weekday": 3, "start": "09:30", "end": "20:30"},
+          {"week": 1, "weekday": 4, "start": "09:30", "end": "20:30"},
+          {"week": 1, "weekday": 5, "start": "09:30", "end": "18:00"}
+        ]
+      },
+      "overtime": {
+        "shiftsPerYear": 0,
+        "start": "09:00",
+        "end": "18:00",
+        "paidHours": 8,
+        "payMultiplier": 0,
+        "payBaseMonthly": null
+      }
+    },
+    {
+      "id": "demo-c",
+      "company": "C公司",
+      "department": "C部门",
+      "city": "C市",
+      "pay": {
+        "monthlySalary": 24000,
+        "salaryMonths": 16,
+        "otherAnnualCash": 0,
+        "bonusTaxMode": "auto"
+      },
+      "socialInsuranceRate": null,
+      "housingFundRate": 0.12,
+      "schedule": {
+        "cycleWeeks": 1,
+        "lunchBreakHours": null,
+        "dinnerBreakHours": null,
+        "days": [
+          {"week": 1, "weekday": 1, "start": "09:00", "end": "19:00"},
+          {"week": 1, "weekday": 2, "start": "09:00", "end": "19:00"},
+          {"week": 1, "weekday": 3, "start": "09:00", "end": "18:00"},
+          {"week": 1, "weekday": 4, "start": "09:00", "end": "19:00"},
+          {"week": 1, "weekday": 5, "start": "09:00", "end": "18:00"}
+        ]
+      },
+      "overtime": {
+        "shiftsPerYear": 12,
+        "start": "09:00",
+        "end": "18:00",
+        "paidHours": 8,
+        "payMultiplier": 2,
+        "payBaseMonthly": null
+      }
+    },
+    {
+      "id": "demo-d",
+      "company": "D公司",
+      "department": "D部门",
+      "city": "D市",
+      "pay": {
+        "monthlySalary": 20000,
+        "salaryMonths": 14,
+        "otherAnnualCash": 6000,
+        "bonusTaxMode": "auto"
+      },
+      "socialInsuranceRate": null,
+      "housingFundRate": 0.08,
+      "schedule": {
+        "cycleWeeks": 1,
+        "lunchBreakHours": null,
+        "dinnerBreakHours": null,
+        "days": [
+          {"week": 1, "weekday": 1, "start": "09:30", "end": "18:30"},
+          {"week": 1, "weekday": 2, "start": "09:30", "end": "18:30"},
+          {"week": 1, "weekday": 3, "start": "09:30", "end": "18:30"},
+          {"week": 1, "weekday": 4, "start": "09:30", "end": "18:30"},
+          {"week": 1, "weekday": 5, "start": "09:30", "end": "18:30"}
+        ]
+      },
+      "overtime": {
+        "shiftsPerYear": 0,
+        "start": "09:00",
+        "end": "18:00",
+        "paidHours": 8,
+        "payMultiplier": 0,
+        "payBaseMonthly": null
+      }
+    }
+  ]
+}

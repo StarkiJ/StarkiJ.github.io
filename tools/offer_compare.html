@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="对比多个工作 Offer 的年收入、税后到手、平均周工时与等效时薪，并保留可编辑的计算假设。">
+    <title>Offer 对比器 | Starki</title>
+    <link rel="icon" href="../images/head.jpg">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="offer-page">
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../index.html" aria-label="Starki 主页">
+                <img src="../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../index.html#about">关于</a>
+                <a class="is-active" href="../index.html#tools" aria-current="location">工具</a>
+                <a href="../index.html#games">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="tool-shell offer-comparator" id="offerComparator" data-testid="offer-comparator">
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">Offer 对比器</h1>
+            <p>把薪酬和排班放到同一套口径下，快速比较税前收入、税后到手、平均周工时与等效时薪。</p>
+        </section>
+
+        <details class="tool-panel offer-settings" id="settingsPanel" aria-labelledby="settings-title"
+            data-testid="offer-settings">
+            <summary>
+                <h2 id="settings-title">
+                    <span class="settings-summary__heading">
+                        <span class="eyebrow">Settings</span>
+                        <span>我的计算设置</span>
+                    </span>
+                    <span class="settings-summary__meta" id="settingsSummaryMeta">
+                        2026 · 默认社保 10.5%
+                    </span>
+                </h2>
+            </summary>
+
+            <div class="settings-content">
+                <p class="settings-intro">
+                    应用于全部 Offer；未知信息按下方的默认假设估算。
+                </p>
+
+                <form id="settingsForm" novalidate data-testid="settings-form">
+                    <div class="field-grid">
+                        <div class="field">
+                            <div class="field-label-row">
+                                <label for="taxYear">税务年份</label>
+                                <button class="field-help" type="button"
+                                    data-tooltip="决定采用哪一年的个税与奖金政策。"
+                                    aria-label="税务年份说明：决定采用哪一年的个税与奖金政策。">?</button>
+                            </div>
+                            <input type="number" id="taxYear" name="taxYear" value="2026" min="2020" max="2100"
+                                step="1" inputmode="numeric" aria-describedby="taxYearHint" data-testid="tax-year">
+                            <p class="visually-hidden" id="taxYearHint">决定适用的个税与奖金政策年份。</p>
+                        </div>
+
+                        <div class="field">
+                            <div class="field-label-row">
+                                <label for="socialSecurityRate">默认个人社保比例（%）</label>
+                                <button class="field-help" type="button"
+                                    data-tooltip="作为未单独填写社保比例的 Offer 默认值；未套用不同城市的缴费基数上下限。"
+                                    aria-label="默认个人社保比例说明：作为未单独填写社保比例的 Offer 默认值；未套用不同城市的缴费基数上下限。">?</button>
+                            </div>
+                            <input type="number" id="socialSecurityRate" name="socialSecurityRate" value="10.5" min="0"
+                                max="100" step="0.1" inputmode="decimal"
+                                aria-describedby="socialSecurityRateHint" data-testid="social-security-rate">
+                            <p class="visually-hidden" id="socialSecurityRateHint">作为 Offer 默认个人社保比例，不套用城市缴费基数上下限。</p>
+                        </div>
+
+                        <div class="field">
+                            <div class="field-label-row">
+                                <label for="annualSpecialDeduction">专项附加扣除（元/年）</label>
+                                <button class="field-help" type="button"
+                                    data-tooltip="填写租房、房贷、赡养老人等专项附加扣除的全年合计；未知时保留为 0。"
+                                    aria-label="专项附加扣除说明：填写租房、房贷、赡养老人等专项附加扣除的全年合计；未知时保留为 0。">?</button>
+                            </div>
+                            <input type="number" id="annualSpecialDeduction" name="annualSpecialDeduction" value="0"
+                                min="0" step="100" inputmode="decimal"
+                                aria-describedby="annualSpecialDeductionHint" data-testid="annual-special-deduction">
+                            <p class="visually-hidden" id="annualSpecialDeductionHint">填写全年合计；未知时保留为零。</p>
+                        </div>
+
+                        <div class="field">
+                            <div class="field-label-row">
+                                <label for="settingsPrimaryHoursBasis">工时口径</label>
+                                <button class="field-help" type="button"
+                                    data-tooltip="在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与对比结果中的同名选项同步。"
+                                    aria-label="工时口径说明：在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与对比结果中的同名选项同步。">?</button>
+                            </div>
+                            <select id="settingsPrimaryHoursBasis" name="settingsPrimaryHoursBasis"
+                                aria-describedby="settingsPrimaryHoursBasisHint" data-hours-basis-control
+                                data-testid="settings-primary-hours-basis">
+                                <option value="presence" selected>在岗时长</option>
+                                <option value="net">净时长</option>
+                            </select>
+                            <p class="visually-hidden" id="settingsPrimaryHoursBasisHint">
+                                与对比结果中的工时口径同步。
+                            </p>
+                        </div>
+
+                    </div>
+                </form>
+
+                <details class="assumption-panel" id="assumptionPanel" data-testid="assumption-panel">
+                    <summary id="assumptionSummary">查看全局默认假设</summary>
+                    <div class="assumption-content">
+                        <p>这些假设让信息不完整的 Offer 也能立即得到参考结果。修改上方设置或 Offer 后会自动重新计算。</p>
+                        <ul>
+                            <li>按中国大陆居民个人、完整工作一个自然年估算。</li>
+                            <li>使用当前年份税务口径，基本减除费用按每年 60,000 元。</li>
+                            <li>专项附加扣除使用上方设置，其他依法扣除和其他综合所得默认按 0 元。</li>
+                            <li>奖金计税未指定时，比较并入综合所得与全年一次性奖金单独计税并采用税额较低者；单独计税政策默认有效至 2027 年。</li>
+                            <li>总薪数未提供时按 12 薪；超过 12 薪的部分按目标奖金 100% 兑现；其他年现金未提供时按 0 元。</li>
+                            <li>未提供的股票、签字费、餐补、打车等按 0 元。</li>
+                            <li>未提供的额外班次和加班费按 0；付费加班工资基数留空时使用 Offer 月薪，并按默认计薪日和计薪小时折算。</li>
+                            <li>个人社保未填写时使用上方默认比例，按月薪全额缴纳 12 个月，不套用城市缴费基数上下限。</li>
+                            <li>公积金比例未知时按 0%；已知时个人与单位同率，按月薪全额缴纳 12 个月，不套用城市缴存上限。</li>
+                            <li>排班未提供时按周一至周五 09:00–18:00；年度固定按 52 周折算，不扣法定节假日、调休和年假。</li>
+                            <li>Offer 休息时长留空时，每个工作日默认扣除 2 小时午休，19:00 后下班再扣除 1 小时晚休。</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </details>
+
+        <details class="tool-panel offer-editor-panel" id="offerEditorPanel" aria-labelledby="offers-title"
+            data-testid="offer-editor">
+            <summary class="offer-editor-summary">
+                <h2 id="offers-title">
+                    <span class="offer-editor-summary__heading">
+                        <span class="eyebrow">Offers</span>
+                        <span>Offer 信息</span>
+                    </span>
+                    <span class="offer-editor-summary__meta">
+                        <span class="offer-count-badge" id="offerCountLabel">8 个 Offer</span>
+                        <span class="data-source-badge" id="dataSourceLabel">读取数据中</span>
+                        <span class="offer-editor-state" aria-hidden="true"></span>
+                    </span>
+                </h2>
+            </summary>
+
+            <div class="offer-editor-content">
+                <p class="offer-editor-intro" id="offerListHelp">
+                    卡片按来源或录入顺序排列；复制项紧随原项，新增项排在末尾。点击公司 / 部门名称可查看汇总。
+                </p>
+
+                <div class="form-actions offer-actions" aria-label="Offer 数据操作">
+                    <button class="button" type="button" id="addOfferButton" data-testid="add-offer">新增 Offer</button>
+                    <button class="button secondary" type="button" id="resetOffersButton"
+                        data-testid="reset-offers" disabled>正在载入数据</button>
+                    <button class="button secondary" type="button" id="importOffersButton"
+                        aria-controls="importOffersInput" data-testid="import-offers">导入 JSON</button>
+                    <button class="button secondary" type="button" id="exportOffersButton"
+                        data-testid="export-offers">导出 JSON</button>
+                    <input type="file" id="importOffersInput" name="importOffersInput" accept="application/json,.json"
+                        hidden data-testid="import-file">
+                </div>
+
+                <p class="save-status" id="saveStatus" role="status" aria-live="polite" aria-atomic="true">
+                    正在读取本机私有数据或脱敏示例……
+                </p>
+
+                <div class="offer-list" id="offerList" role="list" aria-labelledby="offers-title"
+                    aria-describedby="offerListHelp" aria-live="off" data-testid="offer-list"></div>
+
+                <noscript>
+                    <p class="inline-notice">Offer 对比器需要 JavaScript 才能计算，请启用后重新打开本页。</p>
+                </noscript>
+            </div>
+        </details>
+
+        <details class="tool-panel result-panel collapsible-tool-panel" id="resultPanel"
+            aria-labelledby="results-title" data-testid="comparison-results" open>
+            <summary class="collapsible-tool-summary">
+                <h2 id="results-title">
+                    <span class="collapsible-tool-summary__heading">
+                        <span class="eyebrow">Comparison</span>
+                        <span>对比结果</span>
+                    </span>
+                </h2>
+            </summary>
+
+            <div class="collapsible-tool-content result-content">
+                <div class="result-toolbar">
+                    <p class="result-copy" id="resultStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+                    <div class="sort-controls" role="group" aria-label="结果口径与排序">
+                        <div class="field sort-field hours-basis-field">
+                            <label for="primaryHoursBasis">工时口径</label>
+                            <select id="primaryHoursBasis" name="primaryHoursBasis"
+                                aria-describedby="primaryHoursBasisHint" data-hours-basis-control
+                                data-testid="primary-hours-basis">
+                                <option value="presence" selected>在岗时长</option>
+                                <option value="net">净时长</option>
+                            </select>
+                            <p class="visually-hidden" id="primaryHoursBasisHint">
+                                在岗时长按到岗至离岗计算；净时长会扣除内置的休息时间。
+                            </p>
+                        </div>
+                        <div class="field sort-field">
+                            <label for="sortMetric">排序属性</label>
+                            <select id="sortMetric" name="sortMetric" data-testid="sort-metric">
+                                <option value="companyDepartment">公司 / 部门</option>
+                                <option value="monthlySalary">税前月薪</option>
+                                <option value="salaryMonths">总薪数</option>
+                                <option value="weeklyHours">周工作时长</option>
+                                <option value="annualPretaxCash">税前年收入</option>
+                                <option value="annualTakeHomeCash">税后年收入</option>
+                                <option value="pretaxHourly">税前时薪</option>
+                                <option value="afterTaxHourly" selected>税后时薪</option>
+                                <option value="housingFundEquity">公积金</option>
+                                <option value="cashAndHousingFundEquity">年度综合权益</option>
+                                <option value="annualIncomeTax">个人所得税</option>
+                            </select>
+                        </div>
+                        <div class="field sort-field sort-direction-field">
+                            <label for="sortDirection">顺序</label>
+                            <select id="sortDirection" name="sortDirection" data-testid="sort-direction">
+                                <option value="desc" selected>降序</option>
+                                <option value="asc">升序</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="offer-result-summary" id="resultSummary" aria-live="polite" aria-atomic="true"
+                    data-testid="result-summary">
+                    <p>正在读取 Offer 并计算参考结果……</p>
+                </div>
+                <p class="table-scroll-hint" aria-hidden="true">左右滑动查看全部指标</p>
+
+                <div class="comparison-table-wrap" id="comparisonTableWrap" role="region"
+                    aria-labelledby="results-title" tabindex="0" data-testid="comparison-table-wrap">
+                    <table class="comparison-table" id="comparisonTable" data-testid="comparison-table">
+                        <caption class="visually-hidden">Offer 收入、权益、工时与时薪对比</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">公司 / 部门</th>
+                                <th scope="col">税前月薪</th>
+                                <th scope="col">总薪数</th>
+                                <th scope="col" id="hoursColumnHeading">周工作时长</th>
+                                <th scope="col">税前年收入</th>
+                                <th scope="col">税后年收入</th>
+                                <th scope="col">税前时薪</th>
+                                <th scope="col">税后时薪</th>
+                                <th scope="col">公积金</th>
+                                <th scope="col">年度综合权益</th>
+                                <th scope="col">个人所得税</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonTableBody" data-testid="comparison-table-body">
+                            <tr>
+                                <td colspan="11">正在计算……</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <section class="tax-explanations" id="taxExplanations"
+                    aria-labelledby="tax-explanations-title" hidden data-testid="tax-explanations">
+                    <div class="tax-explanations__heading">
+                        <h3 id="tax-explanations-title">个人所得税计算说明</h3>
+                        <p>点击汇总表中的个税金额可跳到对应说明；点击说明中的 Offer 名称可返回该金额。</p>
+                    </div>
+                    <div class="tax-explanation-list" id="taxExplanationList"></div>
+                </section>
+            </div>
+        </details>
+
+        <details class="tool-panel method-panel collapsible-tool-panel" aria-labelledby="method-title"
+            data-testid="calculation-method">
+            <summary class="collapsible-tool-summary">
+                <h2 id="method-title">
+                    <span class="collapsible-tool-summary__heading">
+                        <span class="eyebrow">Method</span>
+                        <span>计算方法</span>
+                    </span>
+                    <span class="collapsible-tool-summary__meta">口径与参考说明</span>
+                </h2>
+            </summary>
+
+            <div class="collapsible-tool-content method-content">
+                <div class="method-grid">
+                    <section aria-labelledby="income-method-title">
+                        <h3 id="income-method-title">收入、权益与个税</h3>
+                        <p>税前年现金为固定工资、目标奖金、加班费与现金补贴之和。税后到手再扣除个人社保、个人公积金和个人所得税。</p>
+                        <p>个人社保优先使用 Offer 单独填写的比例；留空时继承“我的计算设置”中的默认比例。</p>
+                        <p>“公积金”表示个人与单位公积金缴存额之和。“年度综合权益”表示税后到手现金加公积金；它包含受限资金，因此不等同于税前年收入或可自由支配现金。</p>
+                    </section>
+                    <section aria-labelledby="hours-method-title">
+                        <h3 id="hours-method-title">工时与时薪</h3>
+                        <p>大小周按两周周期取平均，月度额外班次按全年次数折算。等效时薪等于年收入除以“所选口径的周工作时长 × 固定 52 周”。</p>
+                        <p>净时长使用该岗位统一的午休与晚休设置；岗位留空时继承全局默认值。</p>
+                        <p>在“我的计算设置”或“对比结果”中切换工时口径后，两处选项及周工作时长、排序、摘要和时薪都会同步更新。</p>
+                    </section>
+                </div>
+
+                <aside class="inline-notice" aria-labelledby="disclaimer-title">
+                    <h3 id="disclaimer-title">参考说明</h3>
+                    <p>结果用于 Offer 横向比较，不构成税务、法律或劳动关系建议。实际到手金额会受工作城市、社保基数上下限、奖金兑现与计税资格等因素影响；请以合同、工资单及主管部门口径为准。</p>
+                    <p class="policy-links">
+                        政策口径更新于 2026 年 7 月：
+                        <a href="https://www.chinatax.gov.cn/n810219/n810744/n3752930/n3752974/c3970366/content.html"
+                            target="_blank" rel="noreferrer">个人所得税法</a>、
+                        <a href="https://www.mof.gov.cn/jrttts/202308/t20230828_3904461.htm"
+                            target="_blank" rel="noreferrer">全年一次性奖金政策</a>、
+                        <a href="https://www.bjfsh.gov.cn/zsk/zcwd/202411/t20241119_40082848.shtml"
+                            target="_blank" rel="noreferrer">加班工资折算说明</a>。
+                    </p>
+                </aside>
+            </div>
+        </details>
+    </main>
+
+    <script src="./js/offer_compare_core.js"></script>
+    <script src="./js/offer_compare_data.js"></script>
+    <script src="./js/offer_compare.js"></script>
+</body>
+
+</html>
