@@ -40,6 +40,16 @@
         return value;
     }
 
+    function parseSeedState(core, rawState, url) {
+        var parsed = core.parseState(rawState);
+        if (parsed.validation.errors.length) {
+            throw new Error(
+                url + " 无法解析：" + parsed.validation.errors[0].message
+            );
+        }
+        return parsed.state;
+    }
+
     async function loadSeedState(core, options) {
         var settings = options || {};
         var fetcher = settings.fetch || (
@@ -63,7 +73,7 @@
         try {
             privateState = await fetchState(fetcher, PRIVATE_URL);
             return {
-                state: core.createDefaultState(privateState),
+                state: parseSeedState(core, privateState, PRIVATE_URL),
                 source: { kind: "private", label: "本机私有数据", file: PRIVATE_URL },
                 warnings: warnings
             };
@@ -76,7 +86,7 @@
         try {
             exampleState = await fetchState(fetcher, EXAMPLE_URL);
             return {
-                state: core.createDefaultState(exampleState),
+                state: parseSeedState(core, exampleState, EXAMPLE_URL),
                 source: { kind: "example", label: "脱敏示例", file: EXAMPLE_URL },
                 warnings: warnings
             };
@@ -92,8 +102,6 @@
     }
 
     return {
-        PRIVATE_URL: PRIVATE_URL,
-        EXAMPLE_URL: EXAMPLE_URL,
         loadSeedState: loadSeedState
     };
 }));

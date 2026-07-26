@@ -1,310 +1,103 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
-import { createServer } from "node:http";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import {
+    delay,
+    evaluate,
+    startOfferCompareBrowser,
+    waitFor
+} from "./helpers/offer_compare_browser_harness.mjs";
+import {
+    measureCollapsedPrimaryPanels,
+    readOfferCardPresentation,
+    readTypography
+} from "./helpers/offer_compare_browser_probes.mjs";
 
-const testsDirectory = path.dirname(fileURLToPath(import.meta.url));
-const workspace = path.resolve(testsDirectory, "..");
-const browserCandidates = [
-    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
-];
-
-function delay(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function existingBrowser() {
-    for (const candidate of browserCandidates) {
-        try {
-            await access(candidate);
-            return candidate;
-        } catch {
-            // Try the next installed browser path.
-        }
-    }
-    throw new Error("Microsoft Edge was not found");
-}
-
-function contentType(filePath) {
-    const extension = path.extname(filePath).toLowerCase();
-    return {
-        ".css": "text/css; charset=utf-8",
-        ".html": "text/html; charset=utf-8",
-        ".js": "text/javascript; charset=utf-8",
-        ".json": "application/json; charset=utf-8",
-        ".svg": "image/svg+xml"
-    }[extension] || "application/octet-stream";
-}
-
-async function startPublicExampleServer() {
-    let seedFilesUnavailable = false;
-    const server = createServer(async (request, response) => {
-        try {
-            const requestUrl = new URL(request.url, "http://127.0.0.1");
-            const pathname = decodeURIComponent(requestUrl.pathname);
-
-            if (pathname === "/tools/data/offer_compare_private.json") {
-                response.writeHead(seedFilesUnavailable ? 503 : 404);
-                response.end();
-                return;
-            }
-
-            if (seedFilesUnavailable &&
-                    pathname === "/tools/data/offer_compare_examples.json") {
-                response.writeHead(503);
-                response.end();
-                return;
-            }
-
-            const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
-            const filePath = path.resolve(workspace, relativePath);
-            const workspacePrefix = workspace.endsWith(path.sep)
-                ? workspace
-                : workspace + path.sep;
-
-            if (filePath !== workspace && !filePath.startsWith(workspacePrefix)) {
-                response.writeHead(403);
-                response.end();
-                return;
-            }
-
-            const body = await readFile(filePath);
-            response.writeHead(200, {
-                "Cache-Control": "no-store",
-                "Content-Type": contentType(filePath)
-            });
-            response.end(body);
-        } catch {
-            response.writeHead(404);
-            response.end();
-        }
-    });
-
-    await new Promise((resolve, reject) => {
-        server.once("error", reject);
-        server.listen(0, "127.0.0.1", resolve);
-    });
-    server.setSeedFilesUnavailable = (value) => {
-        seedFilesUnavailable = Boolean(value);
-    };
-    return server;
-}
-
-async function waitForDevTools(profileDirectory, browserProcess) {
-    const activePortFile = path.join(profileDirectory, "DevToolsActivePort");
-
-    for (let attempt = 0; attempt < 120; attempt += 1) {
-        if (browserProcess.exitCode !== null) {
-            throw new Error("Browser exited before DevTools became available");
-        }
-        try {
-            const [port] = (await readFile(activePortFile, "utf8")).trim().split(/\r?\n/);
-            if (port) {
-                return Number(port);
-            }
-        } catch {
-            // Edge creates the file after its browser process is ready.
-        }
-        await delay(100);
-    }
-    throw new Error("Timed out waiting for the DevTools port");
-}
-
-class CdpClient {
-    constructor(webSocketUrl) {
-        this.nextId = 1;
-        this.pending = new Map();
-        this.listeners = new Map();
-        this.socket = new WebSocket(webSocketUrl);
-    }
-
-    async open() {
-        await new Promise((resolve, reject) => {
-            this.socket.addEventListener("open", resolve, { once: true });
-            this.socket.addEventListener("error", reject, { once: true });
-        });
-        this.socket.addEventListener("message", (event) => {
-            const message = JSON.parse(event.data);
-
-            if (message.id && this.pending.has(message.id)) {
-                const { resolve, reject } = this.pending.get(message.id);
-                this.pending.delete(message.id);
-                if (message.error) {
-                    reject(new Error(message.error.message));
-                } else {
-                    resolve(message.result);
-                }
-                return;
-            }
-
-            const callbacks = this.listeners.get(message.method) || [];
-            callbacks.forEach((callback) => callback(message.params));
-        });
-    }
-
-    on(method, callback) {
-        const callbacks = this.listeners.get(method) || [];
-        callbacks.push(callback);
-        this.listeners.set(method, callbacks);
-    }
-
-    send(method, params = {}) {
-        const id = this.nextId;
-        this.nextId += 1;
-        this.socket.send(JSON.stringify({ id, method, params }));
-        return new Promise((resolve, reject) => {
-            this.pending.set(id, { resolve, reject });
-        });
-    }
-
-    close() {
-        this.socket.close();
-    }
-}
-
-async function evaluate(client, expression) {
-    const response = await client.send("Runtime.evaluate", {
-        expression,
-        awaitPromise: true,
-        returnByValue: true
-    });
-
-    if (response.exceptionDetails) {
-        throw new Error(response.exceptionDetails.text || "Browser evaluation failed");
-    }
-    return response.result.value;
-}
-
-async function waitFor(client, expression, message) {
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-        if (await evaluate(client, expression)) {
-            return;
-        }
-        await delay(100);
-    }
-    throw new Error(message);
-}
+const collapsedPrimaryPanelsProbe =
+    `(${measureCollapsedPrimaryPanels.toString()})()`;
+const offerCardPresentationProbe =
+    readOfferCardPresentation.toString();
+const typographyProbe = readTypography.toString();
 
 async function run() {
-    const server = await startPublicExampleServer();
-    const serverAddress = server.address();
-    const pageUrl = `http://127.0.0.1:${serverAddress.port}/tools/offer_compare.html`;
-    const profileDirectory = await mkdtemp(path.join(os.tmpdir(), "codex-offer-edge-qa-"));
-    const browserPath = await existingBrowser();
-    const browserProcess = spawn(browserPath, [
-        "--headless=new",
-        "--disable-gpu",
-        "--disable-software-rasterizer",
-        "--disable-gpu-compositing",
-        "--disable-background-networking",
-        "--disable-component-update",
-        "--disable-default-apps",
-        "--disable-extensions",
-        "--disable-sync",
-        "--no-first-run",
-        "--remote-debugging-port=0",
-        `--user-data-dir=${profileDirectory}`,
-        "--window-size=1440,1000",
-        "about:blank"
-    ], {
-        stdio: ["ignore", "ignore", "pipe"],
-        windowsHide: true
-    });
-    let browserErrors = "";
-    let client;
-
-    browserProcess.stderr.setEncoding("utf8");
-    browserProcess.stderr.on("data", (chunk) => {
-        browserErrors = (browserErrors + chunk).slice(-4000);
-    });
+    const browser = await startOfferCompareBrowser();
+    const {
+        client,
+        server,
+        pageUrl,
+        runtimeErrors
+    } = browser;
 
     try {
-        const debuggingPort = await waitForDevTools(profileDirectory, browserProcess);
-        const target = await fetch(
-            `http://127.0.0.1:${debuggingPort}/json/new?about:blank`,
-            { method: "PUT" }
-        ).then((response) => response.json());
-
-        client = new CdpClient(target.webSocketDebuggerUrl);
-        await client.open();
-
-        const runtimeErrors = [];
-        client.on("Runtime.exceptionThrown", ({ exceptionDetails }) => {
-            runtimeErrors.push(exceptionDetails.text || "Unhandled browser exception");
-        });
-        client.on("Log.entryAdded", ({ entry }) => {
-            const expectedSeedFileMiss = entry.url && (
-                entry.url.endsWith("/tools/data/offer_compare_private.json") ||
-                entry.url.endsWith("/tools/data/offer_compare_examples.json")
-            );
-            if (entry.level === "error" && !expectedSeedFileMiss) {
-                runtimeErrors.push(entry.text);
-            }
-        });
-
-        await client.send("Page.enable");
-        await client.send("Runtime.enable");
-        await client.send("Log.enable");
-        await client.send("Emulation.setDeviceMetricsOverride", {
-            width: 1440,
-            height: 1000,
-            deviceScaleFactor: 1,
-            mobile: false
-        });
+        server.setSeedResponseDelay(1500);
         await client.send("Page.navigate", { url: pageUrl });
         await waitFor(
             client,
-            "document.readyState === 'complete' && document.querySelectorAll('.offer-card').length === 4",
+            `document.readyState === 'complete' &&
+                document.querySelector('#offerComparator')?.getAttribute('aria-busy') === 'true'`,
+            "The Offer comparator did not expose its initializing state"
+        );
+        const initializing = await evaluate(client, `(() => {
+            const application = document.querySelector('#offerComparator');
+            const addButton = document.querySelector('#addOfferButton');
+            const taxYear = document.querySelector('#taxYear');
+            const inputEvent = new Event('input', {
+                bubbles: true,
+                cancelable: true
+            });
+            const clickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true
+            });
+
+            addButton.focus();
+            const focusBlocked = document.activeElement !== addButton;
+            taxYear.value = '2099';
+            taxYear.dispatchEvent(inputEvent);
+            addButton.dispatchEvent(clickEvent);
+
+            return {
+                ariaBusy: application.getAttribute('aria-busy'),
+                hasInertAttribute: application.hasAttribute('inert'),
+                inertProperty: application.inert,
+                focusBlocked,
+                inputPrevented: inputEvent.defaultPrevented,
+                clickPrevented: clickEvent.defaultPrevented,
+                offerCount: document.querySelectorAll('.offer-card').length
+            };
+        })()`);
+        assert.equal(initializing.ariaBusy, "true");
+        assert.equal(initializing.hasInertAttribute, true);
+        assert.equal(initializing.inertProperty, true);
+        assert.equal(initializing.focusBlocked, true);
+        assert.equal(initializing.inputPrevented, true);
+        assert.equal(initializing.clickPrevented, true);
+        assert.equal(initializing.offerCount, 0);
+
+        server.setSeedResponseDelay(0);
+        await waitFor(
+            client,
+            `document.readyState === 'complete' &&
+                document.querySelectorAll('.offer-card').length === 4 &&
+                document.querySelector('#offerComparator').getAttribute('aria-busy') === 'false'`,
             "The public example Offers did not render"
         );
+        const initialized = await evaluate(client, `({
+            ariaBusy: document.querySelector('#offerComparator')
+                .getAttribute('aria-busy'),
+            hasInertAttribute: document.querySelector('#offerComparator')
+                .hasAttribute('inert'),
+            inertProperty: document.querySelector('#offerComparator').inert,
+            taxYear: document.querySelector('#taxYear').value,
+            offerCount: document.querySelectorAll('.offer-card').length
+        })`);
+        assert.equal(initialized.ariaBusy, "false");
+        assert.equal(initialized.hasInertAttribute, false);
+        assert.equal(initialized.inertProperty, false);
+        assert.equal(initialized.taxYear, "2026");
+        assert.equal(initialized.offerCount, 4);
 
         const desktop = await evaluate(client, `(() => {
             const settings = document.querySelector('#settingsPanel');
-            const primaryPanels = [
-                ['我的计算设置', settings],
-                ['Offer 信息', document.querySelector('#offerEditorPanel')],
-                ['对比结果', document.querySelector('#resultPanel')],
-                ['计算方法', document.querySelector(
-                    '[data-testid="calculation-method"]'
-                )]
-            ];
-            const primaryPanelOpenStates = primaryPanels.map(([, panel]) => panel.open);
-            primaryPanels.forEach(([, panel]) => {
-                panel.open = false;
-            });
-            const collapsedPrimaryPanels = primaryPanels.map(([name, panel]) => {
-                const summary = panel.querySelector(':scope > summary');
-                const heading = summary.querySelector('h2 > span:first-child');
-                const eyebrow = heading.querySelector('.eyebrow');
-                const panelRect = panel.getBoundingClientRect();
-                const summaryRect = summary.getBoundingClientRect();
-                const summaryStyle = getComputedStyle(summary);
-                const markerStyle = getComputedStyle(summary, '::after');
-                return {
-                    name,
-                    width: panelRect.width,
-                    height: panelRect.height,
-                    summaryHeight: summaryRect.height,
-                    minHeight: summaryStyle.minHeight,
-                    padding: summaryStyle.padding,
-                    gap: summaryStyle.gap,
-                    titleFontSize: getComputedStyle(summary.querySelector('h2')).fontSize,
-                    headingGap: getComputedStyle(heading).gap,
-                    eyebrowFontSize: getComputedStyle(eyebrow).fontSize,
-                    markerWidth: markerStyle.width,
-                    markerHeight: markerStyle.height,
-                    markerBorderRightWidth: markerStyle.borderRightWidth,
-                    markerBorderBottomWidth: markerStyle.borderBottomWidth,
-                    summaryFits: summary.scrollWidth <= summary.clientWidth + 1
-                };
-            });
-            primaryPanels.forEach(([, panel], index) => {
-                panel.open = primaryPanelOpenStates[index];
-            });
+            const collapsedPrimaryPanels = ${collapsedPrimaryPanelsProbe};
             settings.open = true;
             document.querySelector('#offerEditorPanel').open = true;
             const fields = [...settings.querySelectorAll('#settingsForm .field')];
@@ -316,87 +109,8 @@ async function run() {
             const firstHelp = settings.querySelector('.field-help');
             const offerCards = [...document.querySelectorAll('.offer-card')];
             const firstOfferId = offerCards[0].dataset.offerId;
-            const typography = (element) => {
-                const style = getComputedStyle(element);
-                return {
-                    fontSize: style.fontSize,
-                    lineHeight: style.lineHeight,
-                    fontWeight: style.fontWeight,
-                    fontFamily: style.fontFamily
-                };
-            };
-            const cardPresentation = (card) => {
-                const cardStyle = getComputedStyle(card);
-                const header = card.querySelector('.offer-card__header');
-                const headerStyle = getComputedStyle(header);
-                const heading = card.querySelector('.offer-card__identity h3');
-                const headingStyle = getComputedStyle(heading);
-                const title = card.querySelector('.offer-card__title-link');
-                const titleStyle = getComputedStyle(title);
-                const subtitle = card.querySelector('[data-card-subtitle]');
-                const subtitleStyle = getComputedStyle(subtitle);
-                const actions = card.querySelector('.offer-card__actions');
-                const actionsStyle = getComputedStyle(actions);
-                const headerRect = header.getBoundingClientRect();
-                const actionsRect = actions.getBoundingClientRect();
-
-                return {
-                    card: {
-                        paddingTop: cardStyle.paddingTop,
-                        paddingRight: cardStyle.paddingRight,
-                        paddingBottom: cardStyle.paddingBottom,
-                        paddingLeft: cardStyle.paddingLeft,
-                        rowGap: cardStyle.rowGap,
-                        columnGap: cardStyle.columnGap
-                    },
-                    header: {
-                        alignItems: headerStyle.alignItems,
-                        borderBottomWidth: headerStyle.borderBottomWidth,
-                        borderBottomStyle: headerStyle.borderBottomStyle,
-                        borderBottomColor: headerStyle.borderBottomColor,
-                        paddingBottom: headerStyle.paddingBottom,
-                        rowGap: headerStyle.rowGap,
-                        columnGap: headerStyle.columnGap,
-                        height: headerRect.height
-                    },
-                    heading: {
-                        marginTop: headingStyle.marginTop,
-                        marginRight: headingStyle.marginRight,
-                        marginBottom: headingStyle.marginBottom,
-                        marginLeft: headingStyle.marginLeft
-                    },
-                    title: {
-                        display: titleStyle.display,
-                        width: titleStyle.width,
-                        maxWidth: titleStyle.maxWidth,
-                        marginTop: titleStyle.marginTop,
-                        marginRight: titleStyle.marginRight,
-                        marginBottom: titleStyle.marginBottom,
-                        marginLeft: titleStyle.marginLeft,
-                        whiteSpace: titleStyle.whiteSpace,
-                        overflow: titleStyle.overflow,
-                        textOverflow: titleStyle.textOverflow,
-                        overflowWrap: titleStyle.overflowWrap
-                    },
-                    subtitle: {
-                        display: subtitleStyle.display,
-                        marginTop: subtitleStyle.marginTop,
-                        marginRight: subtitleStyle.marginRight,
-                        marginBottom: subtitleStyle.marginBottom,
-                        marginLeft: subtitleStyle.marginLeft,
-                        whiteSpace: subtitleStyle.whiteSpace,
-                        overflow: subtitleStyle.overflow,
-                        textOverflow: subtitleStyle.textOverflow,
-                        overflowWrap: subtitleStyle.overflowWrap
-                    },
-                    actions: {
-                        alignSelf: actionsStyle.alignSelf,
-                        topOffset: Number(
-                            (actionsRect.top - headerRect.top).toFixed(3)
-                        )
-                    }
-                };
-            };
+            const typography = ${typographyProbe};
+            const cardPresentation = ${offerCardPresentationProbe};
             const assumptionItems = [
                 ...document.querySelectorAll(
                     '#assumptionPanel .assumption-content li'
@@ -431,11 +145,10 @@ async function run() {
                 card.querySelector('[data-action="toggle-offer-card"]')
                     .getAttribute('aria-controls')
             );
-            const offerOverrideFields = offerCards.map((card) => ({
-                social: card.querySelector('[data-path="socialInsuranceRate"]'),
-                lunch: card.querySelector('[data-path="schedule.lunchBreakHours"]'),
-                dinner: card.querySelector('[data-path="schedule.dinnerBreakHours"]')
-            }));
+            const offerEditorsInitiallyUnmounted = offerCards.every((card) =>
+                !card.querySelector('.offer-card__content input, ' +
+                    '.offer-card__content select')
+            );
             const firstCardToggle = offerCards[0].querySelector(
                 '[data-action="toggle-offer-card"]'
             );
@@ -449,6 +162,20 @@ async function run() {
             const collapsedSubtitleTypography = typography(firstCardSubtitle);
             const collapsedCardPresentation = cardPresentation(offerCards[0]);
             firstCardToggle.click();
+            const offerEditorMountedOnExpand = Boolean(
+                offerCards[0].querySelector('.offer-card__content input')
+            );
+            const offerOverrideFields = {
+                social: offerCards[0].querySelector(
+                    '[data-path="socialInsuranceRate"]'
+                ),
+                lunch: offerCards[0].querySelector(
+                    '[data-path="schedule.lunchBreakHours"]'
+                ),
+                dinner: offerCards[0].querySelector(
+                    '[data-path="schedule.dinnerBreakHours"]'
+                )
+            };
             const expandedTitleTypography = typography(firstCardTitle);
             const expandedSubtitleTypography = typography(firstCardSubtitle);
             const expandedCardPresentation = cardPresentation(offerCards[0]);
@@ -469,8 +196,14 @@ async function run() {
             ].map((field) => field.getBoundingClientRect());
             const schedulePrimaryControlsRect =
                 schedulePrimaryControls.getBoundingClientRect();
+            const initialScheduleSummary = firstScheduleDetails.querySelector(
+                ':scope > summary'
+            ).textContent.trim();
             firstScheduleDetails.open = false;
             firstCardToggle.click();
+            const offerEditorUnmountedOnCollapse = !offerCards[0].querySelector(
+                '.offer-card__content input, .offer-card__content select'
+            );
             firstHelp.focus();
             return {
                 source: document.querySelector('#dataSourceLabel').textContent.trim(),
@@ -565,16 +298,10 @@ async function run() {
                             '.tax-explanation__summary-offer-link'
                         ).getBoundingClientRect().height
                     ),
-                taxExplanationBodiesDeduplicated:
-                    taxExplanations.every((details) => {
-                        const body = details.querySelector('.tax-explanation__body');
-                        return body &&
-                            !body.querySelector(
-                                '.tax-explanation__heading, ' +
-                                '.tax-explanation__total, ' +
-                                '.tax-explanation__offer-link'
-                            );
-                    }),
+                taxBodiesInitiallyUnmounted:
+                    taxExplanations.every((details) =>
+                        !details.querySelector('.tax-explanation__body')
+                    ),
                 legacyTaxPopoverAbsent:
                     !document.querySelector('#taxBreakdownPopover'),
                 resultPanelMetaAbsent: !document.querySelector('#resultPanelMeta'),
@@ -609,24 +336,27 @@ async function run() {
                 sortDirectionLabels: [...document.querySelectorAll(
                     '#sortDirection option'
                 )].map((option) => option.textContent.trim()),
-                offerOverrideFieldsValid: offerOverrideFields.every((fields) =>
-                    fields.social &&
-                    fields.social.value === '' &&
-                    fields.social.dataset.nullable === 'true' &&
-                    fields.social.placeholder === '默认 10.5%' &&
-                    fields.social.getAttribute('aria-description').includes('留空继承') &&
-                    fields.lunch &&
-                    fields.lunch.value === '' &&
-                    fields.lunch.dataset.nullable === 'true' &&
-                    fields.lunch.placeholder === '默认 2' &&
-                    fields.lunch.getAttribute('aria-description').includes('留空继承') &&
-                    fields.lunch.closest('.schedule-primary-controls') &&
-                    fields.dinner &&
-                    fields.dinner.value === '' &&
-                    fields.dinner.dataset.nullable === 'true' &&
-                    fields.dinner.placeholder === '默认 1' &&
-                    fields.dinner.getAttribute('aria-description').includes('留空继承') &&
-                    fields.dinner.closest('.schedule-primary-controls')
+                offerEditorsInitiallyUnmounted,
+                offerEditorMountedOnExpand,
+                offerEditorUnmountedOnCollapse,
+                offerOverrideFieldsValid: Boolean(
+                    offerOverrideFields.social &&
+                    offerOverrideFields.social.value === '' &&
+                    offerOverrideFields.social.dataset.nullable === 'true' &&
+                    offerOverrideFields.social.placeholder === '默认 10.5%' &&
+                    offerOverrideFields.social.getAttribute('aria-description').includes('留空继承') &&
+                    offerOverrideFields.lunch &&
+                    offerOverrideFields.lunch.value === '' &&
+                    offerOverrideFields.lunch.dataset.nullable === 'true' &&
+                    offerOverrideFields.lunch.placeholder === '默认 2' &&
+                    offerOverrideFields.lunch.getAttribute('aria-description').includes('留空继承') &&
+                    offerOverrideFields.lunch.closest('.schedule-primary-controls') &&
+                    offerOverrideFields.dinner &&
+                    offerOverrideFields.dinner.value === '' &&
+                    offerOverrideFields.dinner.dataset.nullable === 'true' &&
+                    offerOverrideFields.dinner.placeholder === '默认 1' &&
+                    offerOverrideFields.dinner.getAttribute('aria-description').includes('留空继承') &&
+                    offerOverrideFields.dinner.closest('.schedule-primary-controls')
                 ),
                 schedulePrimaryControlCount: schedulePrimaryControlRects.length,
                 schedulePrimaryControlRows: new Set(
@@ -645,9 +375,7 @@ async function run() {
                 presenceWeeklyText: document.querySelector(
                     \`tr[data-offer-id="\${firstOfferId}"] td:nth-child(4)\`
                 ).textContent.trim(),
-                scheduleSummary: document.querySelector(
-                    \`.offer-card[data-offer-id="\${firstOfferId}"] .schedule-details > summary\`
-                ).textContent.trim(),
+                scheduleSummary: initialScheduleSummary,
                 resetButtonText:
                     document.querySelector('#resetOffersButton').textContent.trim(),
                 resetButtonTitle:
@@ -743,7 +471,7 @@ async function run() {
         assert.ok(
             desktop.taxSummaryOfferLinkHeights.every((height) => height >= 24)
         );
-        assert.equal(desktop.taxExplanationBodiesDeduplicated, true);
+        assert.equal(desktop.taxBodiesInitiallyUnmounted, true);
         assert.equal(desktop.legacyTaxPopoverAbsent, true);
         assert.equal(desktop.resultPanelMetaAbsent, true);
         assert.equal(desktop.rowTops.length, 1);
@@ -766,6 +494,9 @@ async function run() {
             desktop.resetButtonTitle,
             "删除当前浏览器保存的全部 Offer 和计算设置，恢复为本次打开页面时载入的“脱敏示例”快照（4 个 Offer）；不会重新读取或修改 JSON 文件。"
         );
+        assert.equal(desktop.offerEditorsInitiallyUnmounted, true);
+        assert.equal(desktop.offerEditorMountedOnExpand, true);
+        assert.equal(desktop.offerEditorUnmountedOnCollapse, true);
         assert.equal(desktop.offerOverrideFieldsValid, true);
         assert.equal(desktop.schedulePrimaryControlCount, 4);
         assert.equal(desktop.schedulePrimaryControlRows, 1);
@@ -795,6 +526,13 @@ async function run() {
                 const text = await capturedBlob.text();
                 const parsed = JSON.parse(text);
                 const days = parsed.offers.flatMap((offer) => offer.schedule.days);
+                const rates = [
+                    parsed.settings.socialInsuranceRate,
+                    ...parsed.offers.flatMap((offer) => [
+                        offer.socialInsuranceRate,
+                        offer.housingFundRate
+                    ]).filter((value) => value !== null)
+                ];
                 const dayLines = text.split(/\\r?\\n/).filter((line) =>
                     line.includes('"week":')
                 );
@@ -812,6 +550,9 @@ async function run() {
                         !Object.prototype.hasOwnProperty.call(day, 'lunchBreakHours') &&
                         !Object.prototype.hasOwnProperty.call(day, 'dinnerBreakHours')
                     ),
+                    canonicalRates: rates.every((value) =>
+                        typeof value === 'number' && value >= 0 && value <= 1
+                    ),
                     matchesCoreFormat:
                         text === window.OfferCompareCore.stringifyState(parsed)
                 };
@@ -828,7 +569,62 @@ async function run() {
         assert.equal(exportedJson.dayLineCount, exportedJson.dayCount);
         assert.equal(exportedJson.compactDayLines, true);
         assert.equal(exportedJson.legacyBreakFieldsAbsent, true);
+        assert.equal(exportedJson.canonicalRates, true);
         assert.equal(exportedJson.matchesCoreFormat, true);
+
+        const invalidImport = await evaluate(client, `(async () => {
+            const input = document.querySelector('#importOffersInput');
+            const originalConfirm = window.confirm;
+            const beforeIds = [...document.querySelectorAll('.offer-card')]
+                .map((card) => card.dataset.offerId);
+            const transfer = new DataTransfer();
+            const invalidState = {
+                version: 2,
+                offers: [{
+                    id: 'invalid-time',
+                    company: '非法时间示例',
+                    department: '测试',
+                    city: '上海',
+                    pay: {
+                        monthlySalary: 10000,
+                        salaryMonths: 12
+                    },
+                    housingFundRate: 0,
+                    schedule: {
+                        cycleWeeks: 1,
+                        days: [{
+                            week: 1,
+                            weekday: 1,
+                            start: 'bad-time',
+                            end: '18:00'
+                        }]
+                    }
+                }]
+            };
+
+            window.confirm = () => true;
+            try {
+                transfer.items.add(new File(
+                    [JSON.stringify(invalidState)],
+                    'invalid-offer.json',
+                    { type: 'application/json' }
+                ));
+                input.files = transfer.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                return {
+                    status: document.querySelector('#saveStatus').textContent.trim(),
+                    beforeIds,
+                    afterIds: [...document.querySelectorAll('.offer-card')]
+                        .map((card) => card.dataset.offerId)
+                };
+            } finally {
+                window.confirm = originalConfirm;
+            }
+        })()`);
+        assert.match(invalidImport.status, /^导入失败：/);
+        assert.match(invalidImport.status, /上下班时间无效/);
+        assert.deepStrictEqual(invalidImport.afterIds, invalidImport.beforeIds);
 
         const resetToExample = await evaluate(client, `(() => {
             const resetButton = document.querySelector('#resetOffersButton');
@@ -873,8 +669,8 @@ async function run() {
                     offerIds: [...document.querySelectorAll('.offer-card')]
                         .map((card) => card.dataset.offerId),
                     firstCompany: document.querySelector(
-                        '.offer-card [data-path="company"]'
-                    ).value,
+                        '.offer-card .offer-card__title-link'
+                    ).textContent.trim(),
                     defaultRate: document.querySelector(
                         '#socialSecurityRate'
                     ).value,
@@ -898,8 +694,7 @@ async function run() {
                             card.querySelector('.offer-card__content').hidden
                         ),
                     browserSaveCleared:
-                        localStorage.getItem('starki.offerCompare.v2') === null &&
-                        localStorage.getItem('starki.offerCompare.v1') === null
+                        localStorage.getItem('starki.offerCompare.v2') === null
                 }
             };
         })()`);
@@ -921,7 +716,7 @@ async function run() {
             resetToExample.afterReset.offerIds,
             ["demo-a", "demo-b", "demo-c", "demo-d"]
         );
-        assert.equal(resetToExample.afterReset.firstCompany, "A公司");
+        assert.equal(resetToExample.afterReset.firstCompany, "A公司 · A部门");
         assert.equal(resetToExample.afterReset.defaultRate, "10.5");
         assert.equal(resetToExample.afterReset.source, "脱敏示例");
         assert.equal(resetToExample.afterReset.sourceKind, "example");
@@ -941,8 +736,12 @@ async function run() {
         assert.equal(resetToExample.afterReset.cardsCollapsed, true);
         assert.equal(resetToExample.afterReset.browserSaveCleared, true);
 
-        const dynamicSocialPlaceholder = await evaluate(client, `(() => {
+        const dynamicSocialPlaceholder = await evaluate(client, `(async () => {
             const defaultRate = document.querySelector('#socialSecurityRate');
+            const firstToggle = document.querySelector(
+                '.offer-card [data-action="toggle-offer-card"]'
+            );
+            firstToggle.click();
             const offerRate = document.querySelector(
                 '.offer-card [data-path="socialInsuranceRate"]'
             );
@@ -952,19 +751,234 @@ async function run() {
             const updated = offerRate.placeholder;
             defaultRate.value = '10.5';
             defaultRate.dispatchEvent(new Event('input', { bubbles: true }));
-            return {
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const result = {
                 updated,
-                restored: offerRate.placeholder
+                restored: offerRate.placeholder,
+                storedRate: JSON.parse(
+                    localStorage.getItem('starki.offerCompare.v2')
+                ).settings.socialInsuranceRate
             };
+            firstToggle.click();
+            return result;
         })()`);
         assert.equal(dynamicSocialPlaceholder.updated, "默认 11%");
         assert.equal(dynamicSocialPlaceholder.restored, "默认 10.5%");
+        assert.equal(dynamicSocialPlaceholder.storedRate, 0.105);
+
+        const invalidDraftSave = await evaluate(client, `(async () => {
+            const firstCard = document.querySelector('.offer-card');
+            const firstToggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            firstToggle.click();
+            const start = firstCard.querySelector(
+                '[data-day-field="start"]:not(:disabled)'
+            );
+            const end = firstCard.querySelector(
+                '[data-day-field="end"]:not(:disabled)'
+            );
+            const originalEnd = end.value;
+
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const storageBefore = localStorage.getItem('starki.offerCompare.v2');
+            end.value = start.value;
+            end.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const invalidSnapshot = {
+                startValue: start.value,
+                inputValue: end.value,
+                resultStatus: document.querySelector('#resultStatus').textContent.trim(),
+                saveStatus: document.querySelector('#saveStatus').textContent.trim(),
+                ariaInvalid: end.getAttribute('aria-invalid'),
+                fieldError: end.nextElementSibling?.matches(
+                    '[data-field-validation-error]'
+                )
+                    ? end.nextElementSibling.textContent.trim()
+                    : '',
+                storageUnchanged:
+                    localStorage.getItem('starki.offerCompare.v2') === storageBefore
+            };
+
+            end.value = originalEnd;
+            end.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const result = {
+                invalidSnapshot,
+                restoredStatus: document.querySelector('#resultStatus').textContent.trim(),
+                restoredAriaInvalid: end.getAttribute('aria-invalid')
+            };
+            firstToggle.click();
+            return result;
+        })()`);
+        assert.equal(
+            invalidDraftSave.invalidSnapshot.inputValue,
+            invalidDraftSave.invalidSnapshot.startValue
+        );
+        assert.match(
+            invalidDraftSave.invalidSnapshot.resultStatus,
+            /上下班时间无效/
+        );
+        assert.match(
+            invalidDraftSave.invalidSnapshot.saveStatus,
+            /无效更改暂未自动保存/
+        );
+        assert.equal(invalidDraftSave.invalidSnapshot.ariaInvalid, "true");
+        assert.match(invalidDraftSave.invalidSnapshot.fieldError, /上下班时间无效/);
+        assert.equal(invalidDraftSave.invalidSnapshot.storageUnchanged, true);
+        assert.doesNotMatch(invalidDraftSave.restoredStatus, /上下班时间无效/);
+        assert.equal(invalidDraftSave.restoredAriaInvalid, null);
+
+        const rawNumericDraftSave = await evaluate(client, `(async () => {
+            const firstCard = document.querySelector('.offer-card');
+            const firstToggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            const taxYear = document.querySelector('#taxYear');
+
+            firstToggle.click();
+            const housingFund = firstCard.querySelector(
+                '[data-path="housingFundRate"]'
+            );
+            const originalValue = housingFund.value;
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const storageBefore = localStorage.getItem('starki.offerCompare.v2');
+
+            housingFund.value = '101';
+            housingFund.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const invalidSnapshot = {
+                inputValue: housingFund.value,
+                resultStatus: document.querySelector('#resultStatus').textContent.trim(),
+                saveStatus: document.querySelector('#saveStatus').textContent.trim(),
+                ariaInvalid: housingFund.getAttribute('aria-invalid'),
+                storageUnchanged:
+                    localStorage.getItem('starki.offerCompare.v2') === storageBefore
+            };
+
+            firstToggle.click();
+            taxYear.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const collapsedSnapshot = {
+                mountedControls: firstCard.querySelectorAll(
+                    '.offer-card__content input, .offer-card__content select'
+                ).length,
+                resultStatus: document.querySelector('#resultStatus').textContent.trim(),
+                storageUnchanged:
+                    localStorage.getItem('starki.offerCompare.v2') === storageBefore
+            };
+
+            firstToggle.click();
+            const restoredHousingFund = firstCard.querySelector(
+                '[data-path="housingFundRate"]'
+            );
+            const invalidValueSurvivedUnmount = restoredHousingFund.value;
+            restoredHousingFund.value = originalValue;
+            restoredHousingFund.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 220));
+            const storedState = JSON.parse(
+                localStorage.getItem('starki.offerCompare.v2')
+            );
+            const correctedSnapshot = {
+                resultStatus: document.querySelector('#resultStatus').textContent.trim(),
+                ariaInvalid: restoredHousingFund.getAttribute('aria-invalid'),
+                storedRate: storedState.offers.find(
+                    (offer) => offer.id === firstCard.dataset.offerId
+                ).housingFundRate
+            };
+            firstToggle.click();
+
+            return {
+                invalidSnapshot,
+                collapsedSnapshot,
+                invalidValueSurvivedUnmount,
+                correctedSnapshot
+            };
+        })()`);
+        assert.equal(rawNumericDraftSave.invalidSnapshot.inputValue, "101");
+        assert.match(
+            rawNumericDraftSave.invalidSnapshot.resultStatus,
+            /公积金比例必须是 0%–100%/
+        );
+        assert.match(
+            rawNumericDraftSave.invalidSnapshot.saveStatus,
+            /无效更改暂未自动保存/
+        );
+        assert.equal(rawNumericDraftSave.invalidSnapshot.ariaInvalid, "true");
+        assert.equal(rawNumericDraftSave.invalidSnapshot.storageUnchanged, true);
+        assert.equal(rawNumericDraftSave.collapsedSnapshot.mountedControls, 0);
+        assert.match(
+            rawNumericDraftSave.collapsedSnapshot.resultStatus,
+            /公积金比例必须是 0%–100%/
+        );
+        assert.equal(rawNumericDraftSave.collapsedSnapshot.storageUnchanged, true);
+        assert.equal(rawNumericDraftSave.invalidValueSurvivedUnmount, "101");
+        assert.doesNotMatch(
+            rawNumericDraftSave.correctedSnapshot.resultStatus,
+            /公积金比例必须是 0%–100%/
+        );
+        assert.equal(rawNumericDraftSave.correctedSnapshot.ariaInvalid, null);
+        assert.equal(rawNumericDraftSave.correctedSnapshot.storedRate, 0.12);
+
+        const scheduleValidationIds = await evaluate(client, `(() => {
+            const firstCard = document.querySelector('.offer-card');
+            const firstToggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            firstToggle.click();
+            const starts = [...firstCard.querySelectorAll(
+                '[data-day-field="start"]:not(:disabled)'
+            )];
+            const ends = [...firstCard.querySelectorAll(
+                '[data-day-field="end"]:not(:disabled)'
+            )];
+            const originals = ends.slice(0, 2).map((input) => input.value);
+
+            ends[0].value = starts[0].value;
+            ends[0].dispatchEvent(new Event('input', { bubbles: true }));
+            ends[1].value = starts[1].value;
+            ends[1].dispatchEvent(new Event('input', { bubbles: true }));
+
+            const errorIds = [...firstCard.querySelectorAll(
+                '[data-field-validation-error]'
+            )].map((error) => error.id);
+            const describedIds = [...firstCard.querySelectorAll(
+                '[aria-invalid="true"]'
+            )].flatMap((control) =>
+                (control.getAttribute('aria-describedby') || '')
+                    .split(/\\s+/)
+                    .filter(Boolean)
+            );
+            const allDescriptionsResolve = describedIds.every((id) =>
+                Boolean(document.getElementById(id))
+            );
+
+            ends[0].value = originals[0];
+            ends[0].dispatchEvent(new Event('input', { bubbles: true }));
+            ends[1].value = originals[1];
+            ends[1].dispatchEvent(new Event('input', { bubbles: true }));
+            firstToggle.click();
+            return {
+                count: errorIds.length,
+                uniqueCount: new Set(errorIds).size,
+                allDescriptionsResolve
+            };
+        })()`);
+        assert.ok(scheduleValidationIds.count >= 4);
+        assert.equal(
+            scheduleValidationIds.uniqueCount,
+            scheduleValidationIds.count,
+            "multiple invalid schedule days should receive unique error ids"
+        );
+        assert.equal(scheduleValidationIds.allDescriptionsResolve, true);
 
         const sortIsolation = await evaluate(client, `(() => {
             const cardOrderBefore = [...document.querySelectorAll('.offer-card')]
                 .map((card) => card.dataset.offerId);
             const metric = document.querySelector('#sortMetric');
             const direction = document.querySelector('#sortDirection');
+            const originalCalculateAll = window.OfferCompareCore.calculateAll;
+            let calculationCount = 0;
             const resultOrder = () => [...document.querySelectorAll(
                 '#comparisonTableBody tr[data-offer-id]'
             )].map((row) => row.dataset.offerId);
@@ -972,6 +986,10 @@ async function run() {
                 '#taxExplanationList .tax-explanation[data-offer-id]'
             )].map((details) => details.dataset.offerId);
 
+            window.OfferCompareCore.calculateAll = function () {
+                calculationCount += 1;
+                return originalCalculateAll.apply(this, arguments);
+            };
             metric.value = 'companyDepartment';
             direction.value = 'asc';
             metric.dispatchEvent(new Event('change', { bubbles: true }));
@@ -986,15 +1004,22 @@ async function run() {
             metric.value = 'afterTaxHourly';
             direction.value = 'desc';
             metric.dispatchEvent(new Event('change', { bubbles: true }));
+            window.OfferCompareCore.calculateAll = originalCalculateAll;
             return {
                 cardOrderBefore,
                 cardOrderAfterCompanySort,
                 ascendingResultOrder,
                 ascendingExplanationOrder,
                 descendingResultOrder,
-                descendingExplanationOrder
+                descendingExplanationOrder,
+                calculationCount
             };
         })()`);
+        assert.equal(
+            sortIsolation.calculationCount,
+            0,
+            "sorting should reuse the latest calculation snapshot"
+        );
         assert.deepStrictEqual(
             sortIsolation.cardOrderAfterCompanySort,
             sortIsolation.cardOrderBefore
@@ -1018,10 +1043,15 @@ async function run() {
 
         const hoursBasis = await evaluate(client, `(() => {
             const select = document.querySelector('#primaryHoursBasis');
-            const firstOfferId = document.querySelector('.offer-card').dataset.offerId;
+            const firstCard = document.querySelector('.offer-card');
+            const firstOfferId = firstCard.dataset.offerId;
+            const firstToggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            firstToggle.click();
             select.value = 'net';
             select.dispatchEvent(new Event('change', { bubbles: true }));
-            return {
+            const result = {
                 value: select.value,
                 settingsValue: document.querySelector(
                     '#settingsPrimaryHoursBasis'
@@ -1037,6 +1067,8 @@ async function run() {
                     \`.offer-card[data-offer-id="\${firstOfferId}"] .schedule-details > summary\`
                 ).textContent.trim()
             };
+            firstToggle.click();
+            return result;
         })()`);
         assert.equal(hoursBasis.value, "net");
         assert.equal(hoursBasis.settingsValue, "net");
@@ -1048,6 +1080,11 @@ async function run() {
 
         const settingsHoursBasis = await evaluate(client, `(() => {
             const settingsSelect = document.querySelector('#settingsPrimaryHoursBasis');
+            const firstCard = document.querySelector('.offer-card');
+            const firstToggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            firstToggle.click();
             settingsSelect.value = 'presence';
             settingsSelect.dispatchEvent(new Event('change', { bubbles: true }));
             const resultSelect = document.querySelector('#primaryHoursBasis');
@@ -1064,11 +1101,13 @@ async function run() {
             };
             settingsSelect.value = 'net';
             settingsSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            return {
+            const result = {
                 presenceState,
                 finalSettingsValue: settingsSelect.value,
                 finalResultValue: resultSelect.value
             };
+            firstToggle.click();
+            return result;
         })()`);
         assert.equal(settingsHoursBasis.presenceState.settingsValue, "presence");
         assert.equal(settingsHoursBasis.presenceState.resultValue, "presence");
@@ -1110,6 +1149,8 @@ async function run() {
                 const details = document.querySelector(
                     \`#taxExplanationList .tax-explanation[data-offer-id="\${offerId}"]\`
                 );
+                details.open = true;
+                details.dispatchEvent(new Event('toggle'));
                 const line = [...details.querySelectorAll('.tax-explanation__line')]
                     .find((candidate) => candidate.querySelector(
                         '.tax-explanation__label'
@@ -1154,8 +1195,12 @@ async function run() {
 
             sourceCard.querySelector('[data-action="duplicate-offer"]').click();
             const testCard = [...document.querySelectorAll('.offer-card')]
-                .find((card) => card.dataset.offerId !== sourceId &&
-                    card.querySelector('[data-path="company"]').value === 'A公司');
+                .find((card) => {
+                    const company = card.querySelector('[data-path="company"]');
+                    return card.dataset.offerId !== sourceId &&
+                        company &&
+                        company.value === 'A公司';
+                });
             const testOfferId = testCard.dataset.offerId;
             const assumptionsAfterDuplicate = readGlobalAssumptions();
             const baseline = readOffer(testOfferId);
@@ -1337,6 +1382,10 @@ async function run() {
             "Saved browser Offers did not survive a source-file fetch failure"
         );
         const refreshed = await evaluate(client, `({
+            ariaBusy: document.querySelector('#offerComparator')
+                .getAttribute('aria-busy'),
+            hasInertAttribute: document.querySelector('#offerComparator')
+                .hasAttribute('inert'),
             source: document.querySelector('#dataSourceLabel').textContent.trim(),
             status: document.querySelector('#saveStatus').textContent.trim(),
             resetText: document.querySelector('#resetOffersButton').textContent.trim(),
@@ -1347,6 +1396,8 @@ async function run() {
                 (card) => card.querySelector('.offer-card__content').hidden
             )
         })`);
+        assert.equal(refreshed.ariaBusy, "false");
+        assert.equal(refreshed.hasInertAttribute, false);
         assert.equal(refreshed.source, "浏览器数据");
         assert.doesNotMatch(refreshed.status, /Failed to fetch|未载入/);
         assert.match(refreshed.status, /已载入此浏览器的自动保存/);
@@ -1631,6 +1682,14 @@ async function run() {
         assert.match(taxExplanation.text, /固定工资（Offer）/);
         assert.match(taxExplanation.text, /基本减除费用（内置年度规则）/);
         assert.match(taxExplanation.text, /归属于该 Offer 的增量个税/);
+        assert.match(
+            taxExplanation.text,
+            /中国大陆居民个人综合所得年度税率（规则版本 v1）/
+        );
+        assert.match(
+            taxExplanation.text,
+            /Offer 增量税方案：并入综合所得 .*奖金单独计税 .*较低方案为/
+        );
         assert.doesNotMatch(taxExplanation.text, /归属于该 Offer 的年度个税/);
         assert.ok(taxExplanation.detailsOverflow <= 1);
         assert.ok(taxExplanation.bodyOverflow <= 1);
@@ -1689,6 +1748,27 @@ async function run() {
         assert.equal(taxCellReturn.highlighted, true);
         assert.equal(taxCellReturn.expanded, "true");
         assert.equal(taxCellReturn.explanationStillOpen, true);
+
+        const taxBodyLifecycle = await evaluate(client, `(() => {
+            const details = document.getElementById(${JSON.stringify(
+                taxJump.explanationId
+            )});
+            details.open = false;
+            details.dispatchEvent(new Event('toggle'));
+            const unmountedOnClose = !details.querySelector(
+                '.tax-explanation__body'
+            );
+            details.open = true;
+            details.dispatchEvent(new Event('toggle'));
+            return {
+                unmountedOnClose,
+                remountedOnReopen: Boolean(details.querySelector(
+                    '.tax-explanation__body'
+                ))
+            };
+        })()`);
+        assert.equal(taxBodyLifecycle.unmountedOnClose, true);
+        assert.equal(taxBodyLifecycle.remountedOnReopen, true);
 
         const taxOpenStateAfterSort = await evaluate(client, `(() => {
             const metric = document.querySelector('#sortMetric');
@@ -1763,132 +1843,13 @@ async function run() {
         await delay(150);
 
         const mobile = await evaluate(client, `(() => {
-            const primaryPanels = [
-                ['我的计算设置', document.querySelector('#settingsPanel')],
-                ['Offer 信息', document.querySelector('#offerEditorPanel')],
-                ['对比结果', document.querySelector('#resultPanel')],
-                ['计算方法', document.querySelector(
-                    '[data-testid="calculation-method"]'
-                )]
-            ];
-            const primaryPanelOpenStates = primaryPanels.map(([, panel]) => panel.open);
-            primaryPanels.forEach(([, panel]) => {
-                panel.open = false;
-            });
-            const collapsedPrimaryPanels = primaryPanels.map(([name, panel]) => {
-                const summary = panel.querySelector(':scope > summary');
-                const heading = summary.querySelector('h2 > span:first-child');
-                const eyebrow = heading.querySelector('.eyebrow');
-                const panelRect = panel.getBoundingClientRect();
-                const summaryRect = summary.getBoundingClientRect();
-                const summaryStyle = getComputedStyle(summary);
-                const markerStyle = getComputedStyle(summary, '::after');
-                return {
-                    name,
-                    width: panelRect.width,
-                    height: panelRect.height,
-                    summaryHeight: summaryRect.height,
-                    minHeight: summaryStyle.minHeight,
-                    padding: summaryStyle.padding,
-                    gap: summaryStyle.gap,
-                    titleFontSize: getComputedStyle(summary.querySelector('h2')).fontSize,
-                    headingGap: getComputedStyle(heading).gap,
-                    eyebrowFontSize: getComputedStyle(eyebrow).fontSize,
-                    markerWidth: markerStyle.width,
-                    markerHeight: markerStyle.height,
-                    markerBorderRightWidth: markerStyle.borderRightWidth,
-                    markerBorderBottomWidth: markerStyle.borderBottomWidth,
-                    summaryFits: summary.scrollWidth <= summary.clientWidth + 1
-                };
-            });
-            primaryPanels.forEach(([, panel], index) => {
-                panel.open = primaryPanelOpenStates[index];
-            });
+            const collapsedPrimaryPanels = ${collapsedPrimaryPanelsProbe};
             document.querySelector('#settingsPanel').open = true;
             document.querySelector('#offerEditorPanel').open = true;
             const settingsFields = [...document.querySelectorAll('#settingsForm .field')];
             const settingsRects = settingsFields.map((field) => field.getBoundingClientRect());
-            const typography = (element) => {
-                const style = getComputedStyle(element);
-                return {
-                    fontSize: style.fontSize,
-                    lineHeight: style.lineHeight,
-                    fontWeight: style.fontWeight,
-                    fontFamily: style.fontFamily
-                };
-            };
-            const cardPresentation = (card) => {
-                const cardStyle = getComputedStyle(card);
-                const header = card.querySelector('.offer-card__header');
-                const headerStyle = getComputedStyle(header);
-                const heading = card.querySelector('.offer-card__identity h3');
-                const headingStyle = getComputedStyle(heading);
-                const title = card.querySelector('.offer-card__title-link');
-                const titleStyle = getComputedStyle(title);
-                const subtitle = card.querySelector('[data-card-subtitle]');
-                const subtitleStyle = getComputedStyle(subtitle);
-                const actions = card.querySelector('.offer-card__actions');
-                const actionsStyle = getComputedStyle(actions);
-                const headerRect = header.getBoundingClientRect();
-                const actionsRect = actions.getBoundingClientRect();
-
-                return {
-                    card: {
-                        paddingTop: cardStyle.paddingTop,
-                        paddingRight: cardStyle.paddingRight,
-                        paddingBottom: cardStyle.paddingBottom,
-                        paddingLeft: cardStyle.paddingLeft,
-                        rowGap: cardStyle.rowGap,
-                        columnGap: cardStyle.columnGap
-                    },
-                    header: {
-                        alignItems: headerStyle.alignItems,
-                        borderBottomWidth: headerStyle.borderBottomWidth,
-                        borderBottomStyle: headerStyle.borderBottomStyle,
-                        borderBottomColor: headerStyle.borderBottomColor,
-                        paddingBottom: headerStyle.paddingBottom,
-                        rowGap: headerStyle.rowGap,
-                        columnGap: headerStyle.columnGap,
-                        height: headerRect.height
-                    },
-                    heading: {
-                        marginTop: headingStyle.marginTop,
-                        marginRight: headingStyle.marginRight,
-                        marginBottom: headingStyle.marginBottom,
-                        marginLeft: headingStyle.marginLeft
-                    },
-                    title: {
-                        display: titleStyle.display,
-                        width: titleStyle.width,
-                        maxWidth: titleStyle.maxWidth,
-                        marginTop: titleStyle.marginTop,
-                        marginRight: titleStyle.marginRight,
-                        marginBottom: titleStyle.marginBottom,
-                        marginLeft: titleStyle.marginLeft,
-                        whiteSpace: titleStyle.whiteSpace,
-                        overflow: titleStyle.overflow,
-                        textOverflow: titleStyle.textOverflow,
-                        overflowWrap: titleStyle.overflowWrap
-                    },
-                    subtitle: {
-                        display: subtitleStyle.display,
-                        marginTop: subtitleStyle.marginTop,
-                        marginRight: subtitleStyle.marginRight,
-                        marginBottom: subtitleStyle.marginBottom,
-                        marginLeft: subtitleStyle.marginLeft,
-                        whiteSpace: subtitleStyle.whiteSpace,
-                        overflow: subtitleStyle.overflow,
-                        textOverflow: subtitleStyle.textOverflow,
-                        overflowWrap: subtitleStyle.overflowWrap
-                    },
-                    actions: {
-                        alignSelf: actionsStyle.alignSelf,
-                        topOffset: Number(
-                            (actionsRect.top - headerRect.top).toFixed(3)
-                        )
-                    }
-                };
-            };
+            const typography = ${typographyProbe};
+            const cardPresentation = ${offerCardPresentationProbe};
             const firstCard = document.querySelector('.offer-card');
             const firstCardToggle = firstCard.querySelector(
                 '[data-action="toggle-offer-card"]'
@@ -2065,33 +2026,20 @@ async function run() {
         const narrowMobile = await evaluate(client, `(() => {
             const rects = [...document.querySelectorAll('.sort-controls .sort-field')]
                 .map((field) => field.getBoundingClientRect());
-            const primaryPanels = [
-                document.querySelector('#settingsPanel'),
-                document.querySelector('#offerEditorPanel'),
-                document.querySelector('#resultPanel'),
-                document.querySelector('[data-testid="calculation-method"]')
-            ];
-            const primaryPanelOpenStates = primaryPanels.map((panel) => panel.open);
-            primaryPanels.forEach((panel) => {
-                panel.open = false;
-            });
-            const primaryPanelRects = primaryPanels.map((panel) =>
-                panel.getBoundingClientRect()
-            );
-            const primaryPanelSummariesFit = primaryPanels.map((panel) => {
-                const summary = panel.querySelector(':scope > summary');
-                return summary.scrollWidth <= summary.clientWidth + 1;
-            });
-            primaryPanels.forEach((panel, index) => {
-                panel.open = primaryPanelOpenStates[index];
-            });
+            const collapsedPrimaryPanels = ${collapsedPrimaryPanelsProbe};
             return {
                 columns: new Set(rects.map((rect) => Math.round(rect.left))).size,
                 rows: new Set(rects.map((rect) => Math.round(rect.top))).size,
                 widths: rects.map((rect) => rect.width),
-                primaryPanelWidths: primaryPanelRects.map((rect) => rect.width),
-                primaryPanelHeights: primaryPanelRects.map((rect) => rect.height),
-                primaryPanelSummariesFit,
+                primaryPanelWidths: collapsedPrimaryPanels.map(
+                    (panel) => panel.width
+                ),
+                primaryPanelHeights: collapsedPrimaryPanels.map(
+                    (panel) => panel.height
+                ),
+                primaryPanelSummariesFit: collapsedPrimaryPanels.map(
+                    (panel) => panel.summaryFits
+                ),
                 documentOverflow: document.documentElement.scrollWidth - window.innerWidth
             };
         })()`);
@@ -2114,13 +2062,12 @@ async function run() {
 
         await evaluate(client, `(() => {
             localStorage.setItem('starki.offerCompare.v2', '{"broken":true}');
-            localStorage.removeItem('starki.offerCompare.v1');
         })()`);
         await client.send("Page.reload");
         await waitFor(
             client,
             `document.querySelector('#dataSourceLabel').textContent.trim() === '脱敏示例' &&
-                document.querySelector('#saveStatus').textContent.includes('旧保存已损坏')`,
+                document.querySelector('#saveStatus').textContent.includes('保存不可用或版本不兼容')`,
             "A corrupt browser save did not report the real recovery warning"
         );
         const recovered = await evaluate(client, `({
@@ -2135,10 +2082,158 @@ async function run() {
             )
         })`);
         assert.equal(recovered.source, "脱敏示例");
-        assert.match(recovered.status, /旧保存已损坏/);
+        assert.match(recovered.status, /保存不可用或版本不兼容/);
         assert.equal(recovered.offerCount, 4);
         assert.deepStrictEqual(recovered.hoursBasisValues, ["presence", "presence"]);
         assert.equal(recovered.cardsDefaultCollapsed, true);
+
+        const scaleLimit = await evaluate(client, `(async () => {
+            const offers = Array.from({ length: 100 }, (_, index) => {
+                let offer = window.OfferCompareModel.createOffer(
+                    'scale-' + String(index + 1)
+                );
+                offer.company = '规模公司 ' + String(index + 1);
+                offer = window.OfferCompareModel.resizeScheduleCycle(
+                    offer,
+                    52,
+                    52
+                );
+                return offer;
+            });
+            const state = {
+                version: 2,
+                settings: { year: 2026 },
+                offers
+            };
+            const file = new File(
+                [JSON.stringify(state)],
+                'scale-limit.json',
+                { type: 'application/json' }
+            );
+            const transfer = new DataTransfer();
+            const input = document.querySelector('#importOffersInput');
+            const originalConfirm = window.confirm;
+
+            transfer.items.add(file);
+            window.confirm = () => true;
+            try {
+                input.files = transfer.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                await new Promise((resolve) => setTimeout(resolve, 700));
+            } finally {
+                window.confirm = originalConfirm;
+            }
+
+            const initial = {
+                offerCount: document.querySelectorAll('.offer-card').length,
+                mountedOfferControls: document.querySelectorAll(
+                    '.offer-card__content input, .offer-card__content select'
+                ).length,
+                scheduleMatrices: document.querySelectorAll(
+                    '.offer-card .schedule-matrix'
+                ).length,
+                taxExplanationCount: document.querySelectorAll(
+                    '#taxExplanationList .tax-explanation'
+                ).length,
+                taxBodyCount: document.querySelectorAll(
+                    '#taxExplanationList .tax-explanation__body'
+                ).length,
+                totalDomNodes: document.querySelectorAll('*').length
+            };
+            const firstCard = document.querySelector('.offer-card');
+            const toggle = firstCard.querySelector(
+                '[data-action="toggle-offer-card"]'
+            );
+            toggle.click();
+            const expanded = {
+                scheduleWeeks: firstCard.querySelector(
+                    '.schedule-matrix'
+                ).tBodies.length,
+                mountedOfferControls: firstCard.querySelectorAll(
+                    '.offer-card__content input, .offer-card__content select'
+                ).length
+            };
+            toggle.click();
+            const collapsedAgain = {
+                mountedOfferControls: firstCard.querySelectorAll(
+                    '.offer-card__content input, .offer-card__content select'
+                ).length,
+                scheduleMatrices: firstCard.querySelectorAll(
+                    '.schedule-matrix'
+                ).length
+            };
+            document.querySelector('#addOfferButton').click();
+            const addAtLimit = {
+                offerCount: document.querySelectorAll('.offer-card').length,
+                status: document.querySelector('#saveStatus').textContent.trim()
+            };
+            firstCard.querySelector('[data-action="duplicate-offer"]').click();
+            const duplicateAtLimit = {
+                offerCount: document.querySelectorAll('.offer-card').length,
+                status: document.querySelector('#saveStatus').textContent.trim()
+            };
+            const oversizedTransfer = new DataTransfer();
+            oversizedTransfer.items.add(new File(
+                [JSON.stringify({
+                    ...state,
+                    offers: offers.concat(
+                        window.OfferCompareModel.createOffer('scale-overflow')
+                    )
+                })],
+                'scale-overflow.json',
+                { type: 'application/json' }
+            ));
+            input.files = oversizedTransfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const oversizedImport = {
+                offerCount: document.querySelectorAll('.offer-card').length,
+                status: document.querySelector('#saveStatus').textContent.trim()
+            };
+
+            const resetButton = document.querySelector('#resetOffersButton');
+            window.confirm = () => true;
+            try {
+                resetButton.click();
+            } finally {
+                window.confirm = originalConfirm;
+            }
+            return {
+                initial,
+                expanded,
+                collapsedAgain,
+                addAtLimit,
+                duplicateAtLimit,
+                oversizedImport
+            };
+        })()`);
+        assert.equal(scaleLimit.initial.offerCount, 100);
+        assert.equal(scaleLimit.initial.mountedOfferControls, 0);
+        assert.equal(scaleLimit.initial.scheduleMatrices, 0);
+        assert.equal(scaleLimit.initial.taxExplanationCount, 100);
+        assert.equal(scaleLimit.initial.taxBodyCount, 0);
+        assert.ok(scaleLimit.initial.totalDomNodes < 5000);
+        assert.equal(scaleLimit.expanded.scheduleWeeks, 52);
+        assert.ok(scaleLimit.expanded.mountedOfferControls > 1000);
+        assert.equal(scaleLimit.collapsedAgain.mountedOfferControls, 0);
+        assert.equal(scaleLimit.collapsedAgain.scheduleMatrices, 0);
+        assert.equal(scaleLimit.addAtLimit.offerCount, 100);
+        assert.match(scaleLimit.addAtLimit.status, /最多支持 100 个 Offer.*无法继续添加/);
+        assert.equal(scaleLimit.duplicateAtLimit.offerCount, 100);
+        assert.match(
+            scaleLimit.duplicateAtLimit.status,
+            /最多支持 100 个 Offer.*无法继续复制/
+        );
+        assert.equal(scaleLimit.oversizedImport.offerCount, 100);
+        assert.match(
+            scaleLimit.oversizedImport.status,
+            /^导入失败：最多支持 100 个 Offer/
+        );
+        await waitFor(
+            client,
+            "document.querySelectorAll('.offer-card').length === 4",
+            "The scale-limit fixture did not reset to the example state"
+        );
 
         await evaluate(client, "document.querySelector('#addOfferButton').click()");
         await delay(300);
@@ -2172,8 +2267,7 @@ async function run() {
                 resetText: resetButton.textContent.trim(),
                 saveStatus: document.querySelector('#saveStatus').textContent.trim(),
                 defaultRate: document.querySelector('#socialSecurityRate').value,
-                currentStorage: localStorage.getItem('starki.offerCompare.v2'),
-                legacyStorage: localStorage.getItem('starki.offerCompare.v1')
+                currentStorage: localStorage.getItem('starki.offerCompare.v2')
             };
         })()`);
         assert.equal(
@@ -2189,31 +2283,76 @@ async function run() {
         );
         assert.equal(emptySourceReset.defaultRate, "10.5");
         assert.equal(emptySourceReset.currentStorage, null);
-        assert.equal(emptySourceReset.legacyStorage, null);
         server.setSeedFilesUnavailable(false);
+
+        const forcedFailureScript = await client.send(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {
+                source: `(() => {
+                    let dataLoader;
+                    Object.defineProperty(window, 'OfferCompareData', {
+                        configurable: true,
+                        get() {
+                            return dataLoader;
+                        },
+                        set(value) {
+                            dataLoader = value;
+                            if (value && typeof value.loadSeedState === 'function') {
+                                value.loadSeedState = async () => {
+                                    throw new Error('Forced initialization failure');
+                                };
+                            }
+                        }
+                    });
+                })();`
+            }
+        );
+        await client.send("Page.reload");
+        await waitFor(
+            client,
+            `document.querySelector('#offerComparator')
+                    ?.getAttribute('aria-busy') === 'false' &&
+                document.querySelector('#saveStatus')
+                    ?.textContent.includes('Forced initialization failure')`,
+            "The Offer comparator did not recover from an initialization failure"
+        );
+        const failedInitialization = await evaluate(client, `(() => {
+            const application = document.querySelector('#offerComparator');
+            const offerCountBefore = document.querySelectorAll('.offer-card').length;
+            document.querySelector('#addOfferButton').click();
+            return {
+                ariaBusy: application.getAttribute('aria-busy'),
+                hasInertAttribute: application.hasAttribute('inert'),
+                inertProperty: application.inert,
+                status: document.querySelector('#saveStatus').textContent.trim(),
+                offerCountBefore,
+                offerCountAfter: document.querySelectorAll('.offer-card').length
+            };
+        })()`);
+        assert.equal(failedInitialization.ariaBusy, "false");
+        assert.equal(failedInitialization.hasInertAttribute, false);
+        assert.equal(failedInitialization.inertProperty, false);
+        assert.match(
+            failedInitialization.status,
+            /初始化失败：Forced initialization failure/
+        );
+        assert.equal(failedInitialization.offerCountBefore, 0);
+        assert.equal(failedInitialization.offerCountAfter, 1);
+        await client.send(
+            "Page.removeScriptToEvaluateOnNewDocument",
+            { identifier: forcedFailureScript.identifier }
+        );
         assert.deepStrictEqual(runtimeErrors, []);
 
         console.log("offer_compare browser smoke tests passed");
     } catch (error) {
-        if (browserErrors) {
-            error.message += `\nEdge diagnostics:\n${browserErrors}`;
+        const diagnostics = browser.browserDiagnostics();
+        if (diagnostics) {
+            error.message += `\nEdge diagnostics:\n${diagnostics}`;
         }
         throw error;
     } finally {
-        if (client) {
-            client.close();
-        }
-        browserProcess.kill();
-        await new Promise((resolve) => {
-            if (browserProcess.exitCode !== null) {
-                resolve();
-                return;
-            }
-            browserProcess.once("exit", resolve);
-            setTimeout(resolve, 2000);
-        });
-        await new Promise((resolve) => server.close(resolve));
-        await rm(profileDirectory, { recursive: true, force: true });
+        await browser.close();
     }
 }
 

@@ -16,7 +16,6 @@
     "standardWorkDaysPerMonth": 21.75,
     "standardPaidHoursPerDay": 8,
     "bonusTaxMode": "auto",
-    "annualBonusSeparateTaxThrough": 2027,
     "primaryHoursBasis": "presence"
   },
   "offers": [

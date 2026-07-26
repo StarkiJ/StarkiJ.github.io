@@ -8,6 +8,7 @@
     <title>Offer 对比器 | Starki</title>
     <link rel="icon" href="../images/head.jpg">
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="./css/offer_compare.css">
 </head>
 
 <body class="offer-page">
@@ -61,7 +62,7 @@
                                     data-tooltip="决定采用哪一年的个税与奖金政策。"
                                     aria-label="税务年份说明：决定采用哪一年的个税与奖金政策。">?</button>
                             </div>
-                            <input type="number" id="taxYear" name="taxYear" value="2026" min="2020" max="2100"
+                            <input type="number" id="taxYear" name="taxYear" value="2026" min="1970" max="2100"
                                 step="1" inputmode="numeric" aria-describedby="taxYearHint" data-testid="tax-year">
                             <p class="visually-hidden" id="taxYearHint">决定适用的个税与奖金政策年份。</p>
                         </div>
@@ -168,7 +169,7 @@
                         hidden data-testid="import-file">
                 </div>
 
-                <p class="save-status" id="saveStatus" role="status" aria-live="polite" aria-atomic="true">
+                <p class="save-status" id="saveStatus">
                     正在读取本机私有数据或脱敏示例……
                 </p>
 
@@ -234,13 +235,12 @@
                     </div>
                 </div>
 
-                <div class="offer-result-summary" id="resultSummary" aria-live="polite" aria-atomic="true"
-                    data-testid="result-summary">
+                <div class="offer-result-summary" id="resultSummary" data-testid="result-summary">
                     <p>正在读取 Offer 并计算参考结果……</p>
                 </div>
                 <p class="table-scroll-hint" aria-hidden="true">左右滑动查看全部指标</p>
 
-                <div class="comparison-table-wrap" id="comparisonTableWrap" role="region"
+                <div class="comparison-table-wrap" role="region"
                     aria-labelledby="results-title" tabindex="0" data-testid="comparison-table-wrap">
                     <table class="comparison-table" id="comparisonTable" data-testid="comparison-table">
                         <caption class="visually-hidden">Offer 收入、权益、工时与时薪对比</caption>
@@ -323,8 +323,11 @@
         </details>
     </main>
 
+    <script src="./js/offer_compare_tax_policy.js"></script>
     <script src="./js/offer_compare_core.js"></script>
     <script src="./js/offer_compare_data.js"></script>
+    <script src="./js/offer_compare_model.js"></script>
+    <script src="./js/offer_compare_selectors.js"></script>
     <script src="./js/offer_compare.js"></script>
 </body>
 

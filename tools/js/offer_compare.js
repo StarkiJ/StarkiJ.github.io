@@ -3,8 +3,9 @@
 
     var core = window.OfferCompareCore;
     var dataLoader = window.OfferCompareData;
+    var model = window.OfferCompareModel;
+    var selectors = window.OfferCompareSelectors;
     var storageKey = "starki.offerCompare.v2";
-    var legacyStorageKey = "starki.offerCompare.v1";
     var weekdayNames = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
     var moneyFormatter = new Intl.NumberFormat("zh-CN", {
         style: "currency",
@@ -19,15 +20,15 @@
     var numberFormatter = new Intl.NumberFormat("zh-CN", {
         maximumFractionDigits: 1
     });
-    var companyNameCollator = new Intl.Collator("zh-CN-u-co-pinyin", {
-        usage: "sort",
-        sensitivity: "base",
-        numeric: true
-    });
     var saveTimer = 0;
     var jumpHighlightTimer = 0;
-    var collapsedOfferIds = Object.create(null);
-    var expandedTaxExplanationIds = Object.create(null);
+    var uiState = {
+        collapsedOfferIds: Object.create(null),
+        expandedScheduleIds: Object.create(null),
+        expandedTaxExplanationIds: Object.create(null),
+        sortKey: "afterTaxHourly",
+        sortDirection: "desc"
+    };
     var state;
     var latestCalculation;
     var seedState;
@@ -35,8 +36,10 @@
     var seedWarnings = [];
     var storageWarning = "";
     var activeDataOrigin = "source";
+    var applicationReady = false;
 
     var elements = {
+        application: document.getElementById("offerComparator"),
         settingsPanel: document.getElementById("settingsPanel"),
         settingsSummaryMeta: document.getElementById("settingsSummaryMeta"),
         settingsForm: document.getElementById("settingsForm"),
@@ -61,16 +64,40 @@
         resultStatus: document.getElementById("resultStatus"),
         sortMetric: document.getElementById("sortMetric"),
         sortDirection: document.getElementById("sortDirection"),
-        comparisonTableWrap: document.getElementById("comparisonTableWrap"),
         comparisonTableBody: document.getElementById("comparisonTableBody"),
         hoursColumnHeading: document.getElementById("hoursColumnHeading"),
         taxExplanations: document.getElementById("taxExplanations"),
         taxExplanationList: document.getElementById("taxExplanationList")
     };
 
-    if (!core) {
-        elements.resultStatus.textContent = "计算模块加载失败，请刷新页面后重试。";
+    elements.application.setAttribute("aria-busy", "true");
+    elements.application.setAttribute("inert", "");
+    uiState.sortKey = elements.sortMetric.value;
+    uiState.sortDirection = elements.sortDirection.value;
+
+    if (!core || !model || !selectors) {
+        elements.application.setAttribute("aria-busy", "false");
+        elements.application.removeAttribute("inert");
+        elements.resultStatus.textContent = "应用模块加载失败，请刷新页面后重试。";
         return;
+    }
+
+    function finishInitialization() {
+        applicationReady = true;
+        elements.application.setAttribute("aria-busy", "false");
+        elements.application.removeAttribute("inert");
+    }
+
+    function whenApplicationReady(handler) {
+        return function (event) {
+            if (!applicationReady || !state) {
+                if (event && typeof event.preventDefault === "function") {
+                    event.preventDefault();
+                }
+                return;
+            }
+            return handler.apply(this, arguments);
+        };
     }
 
     function clone(value) {
@@ -90,7 +117,16 @@
     }
 
     function createId(prefix, suffix) {
-        return (prefix + "-" + suffix).replace(/[^a-zA-Z0-9_-]+/g, "-");
+        var source = String(prefix) + "-" + String(suffix);
+        var readable = source.replace(/[^a-zA-Z0-9_-]+/g, "-");
+        var hash = 2166136261;
+        var index;
+
+        for (index = 0; index < source.length; index += 1) {
+            hash ^= source.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return readable + "-" + (hash >>> 0).toString(36);
     }
 
     function createUniqueOfferId() {
@@ -119,6 +155,12 @@
 
     function formatRate(value) {
         return numberFormatter.format((Number.isFinite(value) ? value : 0) * 100) + "%";
+    }
+
+    function ratePercentValue(value) {
+        return Number.isFinite(value)
+            ? Number((value * 100).toFixed(3))
+            : "";
     }
 
     function formatHours(value) {
@@ -153,30 +195,55 @@
         });
     }
 
-    function loadStoredState() {
-        var keys = [storageKey, legacyStorageKey];
-        var failedKey = "";
+    function replaceOffer(updatedOffer) {
         var index;
 
-        for (index = 0; index < keys.length; index += 1) {
-            try {
-                var stored = window.localStorage.getItem(keys[index]);
-                if (stored) {
-                    var parsed = JSON.parse(stored);
-                    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.offers)) {
-                        throw new Error("浏览器保存缺少 offers 数组");
-                    }
-                    if (failedKey) {
-                        storageWarning = "浏览器中的一份旧保存已损坏，已回退到可用保存。";
-                    }
-                    return core.normalize(parsed);
-                }
-            } catch (error) {
-                failedKey = keys[index];
-            }
+        if (!updatedOffer) {
+            return false;
         }
-        if (failedKey) {
-            storageWarning = "浏览器中的一份旧保存已损坏，已回退到可用来源。";
+        index = state.offers.findIndex(function (offer) {
+            return offer.id === updatedOffer.id;
+        });
+        if (index < 0) {
+            return false;
+        }
+        state.offers[index] = updatedOffer;
+        return true;
+    }
+
+    function calculatedOfferById(offerId) {
+        return selectors.findResultByOfferId(latestCalculation, offerId);
+    }
+
+    function normalizedOfferById(offerId) {
+        var offers = latestCalculation && latestCalculation.state
+            ? latestCalculation.state.offers
+            : [];
+
+        return offers.find(function (offer) {
+            return offer.id === offerId;
+        }) || null;
+    }
+
+    function loadStoredState() {
+        try {
+            var stored = window.localStorage.getItem(storageKey);
+            if (!stored) {
+                return null;
+            }
+            var parsed = JSON.parse(stored);
+            if (!parsed || typeof parsed !== "object" ||
+                    !Array.isArray(parsed.offers)) {
+                throw new Error("浏览器保存缺少 offers 数组");
+            }
+            var parsedState = core.parseState(parsed);
+            if (parsedState.validation.errors.length) {
+                throw new Error(parsedState.validation.errors[0].message);
+            }
+            return parsedState.state;
+        } catch (error) {
+            storageWarning =
+                "浏览器保存不可用或版本不兼容，已回退到可用来源。";
         }
         return null;
     }
@@ -244,11 +311,21 @@
 
     function saveStateSoon() {
         window.clearTimeout(saveTimer);
+
+        if (latestCalculation && latestCalculation.validation.errors.length) {
+            elements.saveStatus.textContent =
+                "存在未通过校验的输入；无效更改暂未自动保存。";
+            return;
+        }
+
         activeDataOrigin = "browser";
         updateDataSourceLabel();
         saveTimer = window.setTimeout(function () {
             try {
-                window.localStorage.setItem(storageKey, JSON.stringify(state));
+                window.localStorage.setItem(
+                    storageKey,
+                    JSON.stringify(latestCalculation.state)
+                );
                 elements.saveStatus.textContent = "已保存到当前浏览器。";
             } catch (error) {
                 elements.saveStatus.textContent = "浏览器未允许本地保存；本次计算仍然有效。";
@@ -257,14 +334,22 @@
     }
 
     function updateSettingsSummary() {
+        var settings = latestCalculation
+            ? latestCalculation.state.settings
+            : state.settings;
+
         elements.settingsSummaryMeta.textContent =
-            state.settings.year + " · 默认社保 " +
-            Number((state.settings.socialInsuranceRate * 100).toFixed(3)) + "%";
+            settings.year + " · 默认社保 " +
+            Number((settings.socialInsuranceRate * 100).toFixed(3)) + "%";
     }
 
     function defaultSocialInsurancePlaceholder() {
+        var settings = latestCalculation
+            ? latestCalculation.state.settings
+            : state.settings;
+
         return "默认 " +
-            Number((state.settings.socialInsuranceRate * 100).toFixed(3)) + "%";
+            Number((settings.socialInsuranceRate * 100).toFixed(3)) + "%";
     }
 
     function updateOfferDefaultPlaceholders() {
@@ -277,7 +362,9 @@
 
     function renderSettings() {
         elements.taxYear.value = state.settings.year;
-        elements.socialSecurityRate.value = Number((state.settings.socialInsuranceRate * 100).toFixed(3));
+        elements.socialSecurityRate.value = ratePercentValue(
+            state.settings.socialInsuranceRate
+        );
         elements.annualSpecialDeduction.value = state.settings.specialAdditionalDeduction;
         syncHoursBasisControls();
         updateSettingsSummary();
@@ -295,7 +382,6 @@
 
     function createInputField(offer, options) {
         var wrapperClass = "field" +
-            (options.full ? " full" : "") +
             (options.className ? " " + options.className : "");
         var wrapper = createElement("div", wrapperClass);
         var inputId = createId(offer.id, options.path || options.name || options.label);
@@ -364,45 +450,6 @@
         return wrapper;
     }
 
-    function scheduleFromPattern(start, normalEnd, earlyEnd, earlyWeekdays, cycleWeeks, addSaturday) {
-        var days = [];
-        var week;
-        var weekday;
-
-        for (week = 1; week <= cycleWeeks; week += 1) {
-            for (weekday = 1; weekday <= 5; weekday += 1) {
-                days.push({
-                    week: week,
-                    weekday: weekday,
-                    start: start,
-                    end: earlyWeekdays.indexOf(weekday) >= 0 ? earlyEnd : normalEnd
-                });
-            }
-        }
-        if (addSaturday) {
-            days.push({
-                week: cycleWeeks,
-                weekday: 6,
-                start: start,
-                end: earlyEnd
-            });
-        }
-        return { cycleWeeks: cycleWeeks, days: days };
-    }
-
-    function scheduleForTemplate(templateName) {
-        var templates = {
-            "standard-965": scheduleFromPattern("09:00", "18:00", "18:00", [], 1, false),
-            "995-early": scheduleFromPattern("09:00", "21:00", "18:00", [3, 5], 1, false),
-            "1095-early": scheduleFromPattern("10:00", "21:00", "18:00", [3], 1, false),
-            "10105-early": scheduleFromPattern("10:00", "22:00", "18:00", [3, 5], 1, false),
-            "1085-early": scheduleFromPattern("10:00", "20:00", "18:00", [3, 5], 1, false),
-            "alternate-109": scheduleFromPattern("10:00", "21:00", "18:00", [3], 2, true)
-        };
-
-        return templates[templateName] ? clone(templates[templateName]) : null;
-    }
-
     function createTemplateField(offer) {
         return createInputField(offer, {
             label: "套用排班模板",
@@ -419,12 +466,6 @@
                 { value: "alternate-109", label: "10:00–21:00 · 大小周" }
             ],
             hint: "套用后仍可逐日修改。"
-        });
-    }
-
-    function scheduleDayFor(offer, week, weekday) {
-        return offer.schedule.days.find(function (candidate) {
-            return candidate.week === week && candidate.weekday === weekday;
         });
     }
 
@@ -482,7 +523,7 @@
             endRow.appendChild(endLabel);
 
             for (weekday = 1; weekday <= 7; weekday += 1) {
-                var day = scheduleDayFor(offer, week, weekday);
+                var day = model.scheduleDayFor(offer, week, weekday);
                 var enabledCell = document.createElement("td");
                 var startCell = document.createElement("td");
                 var endCell = document.createElement("td");
@@ -546,8 +587,8 @@
 
     function scheduleSummaryText(offer, calculatedOffer) {
         var weeklyHours = state.settings.primaryHoursBasis === "net"
-            ? calculatedOffer.metrics.averageWeeklyNetHours
-            : calculatedOffer.metrics.averageWeeklyPresenceHours;
+            ? calculatedOffer.work.averageWeeklyNetHours
+            : calculatedOffer.work.averageWeeklyPresenceHours;
 
         return "工作时长 · " +
             weeklyHoursSummaryLabel(state.settings.primaryHoursBasis) + " " +
@@ -666,6 +707,10 @@
         overtime.appendChild(overtimeGrid);
         content.appendChild(overtime);
         details.appendChild(content);
+        details.open = Boolean(uiState.expandedScheduleIds[offer.id]);
+        details.addEventListener("toggle", function () {
+            uiState.expandedScheduleIds[offer.id] = details.open;
+        });
         return details;
     }
 
@@ -707,6 +752,10 @@
             return;
         }
 
+        if (collapsed && content.dataset.mounted === "true") {
+            content.replaceChildren();
+            content.dataset.mounted = "false";
+        }
         content.hidden = collapsed;
         card.classList.toggle("is-collapsed", collapsed);
         button.textContent = collapsed ? "展开" : "收起";
@@ -716,19 +765,26 @@
             (collapsed ? "展开" : "收起") + offerName + "的详细信息"
         );
 
-        collapsedOfferIds[card.dataset.offerId] = collapsed;
+        uiState.collapsedOfferIds[card.dataset.offerId] = collapsed;
     }
 
     function toggleOfferCard(offerId) {
         var card = findOfferTarget(elements.offerList, ".offer-card", offerId);
 
         if (card) {
-            setOfferCardCollapsed(card, !card.classList.contains("is-collapsed"));
+            var collapsed = card.classList.contains("is-collapsed");
+
+            if (collapsed && typeof card.mountOfferContent === "function") {
+                card.mountOfferContent();
+            }
+            setOfferCardCollapsed(card, !collapsed);
+            if (collapsed && latestCalculation) {
+                renderFieldValidation(latestCalculation);
+            }
         }
     }
 
-    function createOfferCard(offer) {
-        var calculatedOffer = core.calculateOffer(offer, state.settings);
+    function createOfferCard(offer, calculatedOffer) {
         var card = createElement("article", "offer-card");
         var header = createElement("header", "offer-card__header");
         var headingGroup = createElement("div", "offer-card__identity");
@@ -740,7 +796,13 @@
         var duplicateButton = createElement("button", "secondary-button", "复制");
         var deleteButton = createElement("button", "danger-button", "删除");
         var content = createElement("div", "offer-card__content");
-        var grid = createElement("div", "offer-card__grid");
+        var grid;
+        var collapsed = Object.prototype.hasOwnProperty.call(
+            uiState.collapsedOfferIds,
+            offer.id
+        )
+            ? Boolean(uiState.collapsedOfferIds[offer.id])
+            : true;
 
         card.id = createId("offer-card", offer.id);
         card.dataset.offerId = offer.id;
@@ -774,7 +836,17 @@
         card.appendChild(header);
         updateCardHeader(card, offer);
 
-        grid.append(
+        card.appendChild(content);
+        content.dataset.mounted = "false";
+        card.mountOfferContent = function () {
+            if (content.dataset.mounted === "true") {
+                return;
+            }
+            offer = getOfferById(card.dataset.offerId) || offer;
+            calculatedOffer = calculatedOfferById(card.dataset.offerId) ||
+                calculatedOffer;
+            grid = createElement("div", "offer-card__grid");
+            grid.append(
             createInputField(offer, {
                 label: "公司",
                 path: "company",
@@ -815,7 +887,7 @@
                 path: "socialInsuranceRate",
                 value: offer.socialInsuranceRate === null
                     ? null
-                    : Number((offer.socialInsuranceRate * 100).toFixed(3)),
+                    : ratePercentValue(offer.socialInsuranceRate),
                 min: 0,
                 max: 100,
                 step: 0.1,
@@ -828,7 +900,7 @@
                 label: "公积金（%）",
                 type: "number",
                 path: "housingFundRate",
-                value: Number((offer.housingFundRate * 100).toFixed(3)),
+                value: ratePercentValue(offer.housingFundRate),
                 min: 0,
                 max: 100,
                 step: 0.1,
@@ -853,27 +925,36 @@
                     { value: "separate", label: "奖金单独计税" }
                 ]
             })
-        );
-        content.append(grid, createScheduleEditor(offer, calculatedOffer));
-        card.appendChild(content);
-        setOfferCardCollapsed(
-            card,
-            Object.prototype.hasOwnProperty.call(collapsedOfferIds, offer.id)
-                ? Boolean(collapsedOfferIds[offer.id])
-                : true
-        );
+            );
+            content.append(grid, createScheduleEditor(offer, calculatedOffer));
+            content.dataset.mounted = "true";
+        };
+        if (!collapsed) {
+            card.mountOfferContent();
+        }
+        setOfferCardCollapsed(card, collapsed);
         return card;
     }
 
-    function renderOfferCards() {
-        var expandedScheduleIds = [];
+    function renderOfferCards(calculation) {
+        var currentCalculation = calculation || latestCalculation ||
+            recalculateCurrentState();
+        var calculatedById = Object.create(null);
 
-        elements.offerList.querySelectorAll(".offer-card").forEach(function (card) {
-            var scheduleDetails = card.querySelector(".schedule-details");
-            if (scheduleDetails && scheduleDetails.open) {
-                expandedScheduleIds.push(card.dataset.offerId);
-            }
+        currentCalculation.state.offers.forEach(function (offer, index) {
+            calculatedById[offer.id] = currentCalculation.results[index];
         });
+
+        elements.offerList.querySelectorAll(".offer-card").forEach(
+            function (card) {
+                var scheduleDetails = card.querySelector(".schedule-details");
+
+                if (scheduleDetails) {
+                    uiState.expandedScheduleIds[card.dataset.offerId] =
+                        scheduleDetails.open;
+                }
+            }
+        );
 
         elements.offerCountLabel.textContent = state.offers.length
             ? state.offers.length + " 个 Offer"
@@ -893,113 +974,29 @@
 
         elements.offerList.replaceChildren.apply(
             elements.offerList,
-            state.offers.map(createOfferCard)
+            state.offers.map(function (offer) {
+                return createOfferCard(offer, calculatedById[offer.id]);
+            })
         );
-
-        elements.offerList.querySelectorAll(".offer-card").forEach(function (card) {
-            var scheduleDetails = card.querySelector(".schedule-details");
-            if (scheduleDetails && expandedScheduleIds.indexOf(card.dataset.offerId) >= 0) {
-                scheduleDetails.open = true;
-            }
-        });
-    }
-
-    function selectedHours(result) {
-        return state.settings.primaryHoursBasis === "net"
-            ? result.metrics.averageWeeklyNetHours
-            : result.metrics.averageWeeklyPresenceHours;
-    }
-
-    function viewForResult(result, sourceIndex) {
-        var metrics = result.metrics;
-        var weeklyHours = selectedHours(result);
-        var annualHours = weeklyHours * state.settings.weeksPerYear;
-
-        return {
-            result: result,
-            id: result.id,
-            sourceIndex: sourceIndex,
-            name: result.name,
-            company: result.company,
-            department: result.department,
-            city: result.city,
-            monthlySalary: result.payBreakdown.monthlySalary,
-            salaryMonths: result.payBreakdown.salaryMonths,
-            weeklyHours: weeklyHours,
-            annualPretaxCash: metrics.annualPretaxCash,
-            annualTakeHomeCash: metrics.annualTakeHomeCash,
-            pretaxHourly: annualHours > 0 ? metrics.annualPretaxCash / annualHours : 0,
-            afterTaxHourly: annualHours > 0 ? metrics.annualTakeHomeCash / annualHours : 0,
-            housingFundEquity: metrics.housingFundEquity,
-            cashAndHousingFundEquity: metrics.cashAndHousingFundEquity,
-            annualIncomeTax: metrics.annualIncomeTax
-        };
     }
 
     function sortViews(views) {
-        var sortKey = elements.sortMetric.value;
-        var direction = elements.sortDirection.value === "asc" ? 1 : -1;
-        var accessors = {
-            monthlySalary: function (view) { return view.monthlySalary; },
-            salaryMonths: function (view) { return view.salaryMonths; },
-            weeklyHours: function (view) { return view.weeklyHours; },
-            annualPretaxCash: function (view) { return view.annualPretaxCash; },
-            annualTakeHomeCash: function (view) { return view.annualTakeHomeCash; },
-            pretaxHourly: function (view) { return view.pretaxHourly; },
-            afterTaxHourly: function (view) { return view.afterTaxHourly; },
-            housingFundEquity: function (view) { return view.housingFundEquity; },
-            cashAndHousingFundEquity: function (view) { return view.cashAndHousingFundEquity; },
-            annualIncomeTax: function (view) { return view.annualIncomeTax; }
-        };
-        var selected = accessors[sortKey] || accessors.afterTaxHourly;
-
-        return views.slice().sort(function (left, right) {
-            var difference;
-
-            if (sortKey === "companyDepartment") {
-                difference = companyNameCollator.compare(left.company, right.company) ||
-                    companyNameCollator.compare(left.department, right.department);
-            } else {
-                difference = selected(left) - selected(right);
-            }
-            if (difference === 0 || Math.abs(difference) < 1e-9) {
-                return left.sourceIndex - right.sourceIndex;
-            }
-            return difference * direction;
-        });
-    }
-
-    function bestValues(views) {
-        function maximum(field) {
-            return views.reduce(function (best, view) {
-                return Math.max(best, view[field]);
-            }, -Infinity);
-        }
-        function minimum(field) {
-            return views.reduce(function (best, view) {
-                return Math.min(best, view[field]);
-            }, Infinity);
-        }
-
-        return {
-            monthlySalary: maximum("monthlySalary"),
-            salaryMonths: maximum("salaryMonths"),
-            weeklyHours: minimum("weeklyHours"),
-            annualPretaxCash: maximum("annualPretaxCash"),
-            annualTakeHomeCash: maximum("annualTakeHomeCash"),
-            pretaxHourly: maximum("pretaxHourly"),
-            afterTaxHourly: maximum("afterTaxHourly"),
-            housingFundEquity: maximum("housingFundEquity"),
-            cashAndHousingFundEquity: maximum("cashAndHousingFundEquity")
-        };
-    }
-
-    function isBest(value, best) {
-        return Number.isFinite(value) && Number.isFinite(best) && Math.abs(value - best) < 0.0001;
+        return selectors.sortViews(
+            views,
+            uiState.sortKey,
+            uiState.sortDirection
+        );
     }
 
     function appendMetricCell(row, value, formattedValue, best) {
-        var cell = createElement("td", isBest(value, best) ? "metric-best" : "", formattedValue);
+        var cell = createElement(
+            "td",
+            selectors.isBest(value, best) ? "metric-best" : "",
+            formattedValue
+        );
+        if (selectors.isBest(value, best)) {
+            cell.appendChild(createElement("span", "visually-hidden", "（最佳）"));
+        }
         row.appendChild(cell);
     }
 
@@ -1007,48 +1004,6 @@
         return result.tax.selectedMode === "separate"
             ? "奖金单独计税"
             : "奖金并入综合所得";
-    }
-
-    function taxInputs(result) {
-        var metrics = result.metrics;
-        var settings = result.settings;
-        var offer = result.offer;
-        var otherRegularIncome = metrics.annualOvertimePay +
-            metrics.annualOtherCash +
-            settings.otherComprehensiveIncome;
-        var regularIncome = metrics.annualBaseSalary +
-            otherRegularIncome;
-        var deductions = settings.basicDeduction +
-            settings.specialAdditionalDeduction +
-            settings.otherDeductions +
-            metrics.employeeSocialInsurance +
-            metrics.employeeHousingFund;
-
-        return {
-            monthlySalary: offer.pay.monthlySalary,
-            fixedSalaryMonths: 12,
-            bonusMonths: Math.max(0, offer.pay.salaryMonths - 12),
-            annualBaseSalary: metrics.annualBaseSalary,
-            annualOvertimePay: metrics.annualOvertimePay,
-            annualOtherCash: metrics.annualOtherCash,
-            otherComprehensiveIncome: settings.otherComprehensiveIncome,
-            otherRegularIncome: otherRegularIncome,
-            regularIncome: regularIncome,
-            bonus: metrics.annualBonus,
-            basicDeduction: settings.basicDeduction,
-            specialAdditionalDeduction: settings.specialAdditionalDeduction,
-            otherDeductions: settings.otherDeductions,
-            employeeSocialInsurance: metrics.employeeSocialInsurance,
-            socialInsuranceRate: result.contributions.socialInsuranceRate,
-            socialInsuranceMonths: result.contributions.socialInsuranceMonths,
-            employeeHousingFund: metrics.employeeHousingFund,
-            housingFundRate: offer.housingFundRate,
-            housingFundMonths: settings.housingFundMonths,
-            baselineDeductions: settings.basicDeduction +
-                settings.specialAdditionalDeduction +
-                settings.otherDeductions,
-            deductions: deductions
-        };
     }
 
     function appendTaxSection(container, title) {
@@ -1067,12 +1022,14 @@
         container.appendChild(line);
     }
 
-    function createTaxExplanationBody(result) {
+    function createTaxExplanationBody(view, policy, baseline) {
+        var result = view.result;
         var tax = result.tax;
-        var scenario = tax.selectedMode === "separate" ? tax.separate : tax.merged;
-        var inputs = taxInputs(result);
+        var scenario = tax.selectedScenario;
+        var inputs = tax.inputs;
+        var taxComparison = tax.comparison;
         var body = createElement("div", "tax-explanation__body");
-        var socialInsuranceLabel = result.offer.socialInsuranceRate === null
+        var socialInsuranceLabel = view.offer.socialInsuranceRate === null
             ? "个人社保（默认比例）"
             : "个人社保（Offer 设置）";
         var comparison;
@@ -1220,35 +1177,37 @@
             "max(0，其他综合所得 " +
                 formatPreciseMoney(inputs.otherComprehensiveIncome) + " − 非 Offer 扣除 " +
                 formatPreciseMoney(inputs.baselineDeductions) + ") = " +
-                formatPreciseMoney(tax.baseline.taxableComprehensiveIncome) + "；" +
-                formatPreciseMoney(tax.baseline.taxableComprehensiveIncome) + " × " +
-                formatRate(tax.baseline.comprehensiveRate) + " − " +
-                formatPreciseMoney(tax.baseline.comprehensiveQuickDeduction) + " = " +
-                formatPreciseMoney(tax.baseline.totalTax)
+                formatPreciseMoney(baseline.taxableComprehensiveIncome) + "；" +
+                formatPreciseMoney(baseline.taxableComprehensiveIncome) + " × " +
+                formatRate(baseline.comprehensiveRate) + " − " +
+                formatPreciseMoney(baseline.comprehensiveQuickDeduction) + " = " +
+                formatPreciseMoney(baseline.totalTax)
         );
         appendTaxFormula(
             body,
             "归属于该 Offer 的增量个税",
             formatPreciseMoney(scenario.totalTax) + " − " +
-                formatPreciseMoney(tax.baseline.totalTax) + " = " +
+                formatPreciseMoney(baseline.totalTax) + " = " +
                 formatPreciseMoney(result.metrics.annualIncomeTax),
             true
         );
 
         comparison = createElement("p", "tax-explanation__comparison");
         if (tax.separateAvailable) {
-            var mergedOfferTax = tax.merged.totalTax - tax.baseline.totalTax;
-            var separateOfferTax = tax.separate.totalTax - tax.baseline.totalTax;
-            var lowerMode = mergedOfferTax <= separateOfferTax
+            var mergedOfferTax = taxComparison.mergedIncrementalTax;
+            var separateOfferTax = taxComparison.separateIncrementalTax;
+            var lowerMode = taxComparison.lowerMode === "merged"
                 ? "并入综合所得"
                 : "奖金单独计税";
-            var difference = Math.abs(mergedOfferTax - separateOfferTax);
             comparison.textContent =
                 "Offer 增量税方案：并入综合所得 " + formatPreciseMoney(mergedOfferTax) +
                 "；奖金单独计税 " + formatPreciseMoney(separateOfferTax) +
                 "。较低方案为“" + lowerMode + "”，相差 " +
-                formatPreciseMoney(difference) + "。" +
-                (tax.requestedMode === "auto" ? "" : " 当前结果按 Offer 中的手动选择计算。");
+                formatPreciseMoney(taxComparison.absoluteDifference) + "。" +
+                (tax.requestedMode !== "auto" &&
+                        tax.selectedMode === tax.requestedMode
+                    ? " 当前结果按 Offer 中的手动选择计算。"
+                    : "");
         } else {
             comparison.textContent =
                 "当前税务年份不使用全年一次性奖金单独计税，奖金已并入综合所得。";
@@ -1258,35 +1217,43 @@
         policyNote = createElement(
             "p",
             "tax-explanation__note",
-            "数值来自该 Offer、上方计算设置和计算器内置税率表，按 " +
-                tax.policyYear +
+            "数值来自该 Offer、上方计算设置和计算器内置" +
+                policy.comprehensive.label + "（规则版本 v" + policy.version + "），按 " +
+                policy.requestedYear +
                 " 税务年份及中国大陆居民个人完整年度估算；额外 N 薪按目标奖金处理，实际计税资格与申报结果请以发放方式为准。"
         );
+        if (policy.estimated) {
+            policyNote.textContent += " 该年份超出已核验范围（" +
+                policy.verificationRange.from + "–" +
+                policy.verificationRange.through + "），当前按最近的 " +
+                policy.appliedYear + " 年规则估算。";
+        }
         body.appendChild(policyNote);
         return body;
     }
 
-    function createTaxCell(result) {
+    function createTaxCell(view) {
+        var result = view.result;
         var cell = createElement("td", "tax-cell");
         var trigger = createElement("button", "tax-cell__trigger");
         var value = createElement("span", "tax-cell__value", formatMoney(result.metrics.annualIncomeTax));
         var indicator = createElement("span", "tax-cell__indicator", "↓");
 
-        cell.id = createId("tax-cell", result.id);
-        cell.dataset.offerId = result.id;
+        cell.id = createId("tax-cell", view.id);
+        cell.dataset.offerId = view.id;
         trigger.type = "button";
-        trigger.id = createId("tax-cell-trigger", result.id);
+        trigger.id = createId("tax-cell-trigger", view.id);
         trigger.dataset.action = "jump-to-tax-explanation";
-        trigger.dataset.offerId = result.id;
+        trigger.dataset.offerId = view.id;
         trigger.setAttribute(
             "aria-label",
             formatMoney(result.metrics.annualIncomeTax) + "，前往 " +
-                result.name + " 的个人所得税计算说明"
+                view.name + " 的个人所得税计算说明"
         );
-        trigger.setAttribute("aria-controls", createId("tax-explanation", result.id));
+        trigger.setAttribute("aria-controls", createId("tax-explanation", view.id));
         trigger.setAttribute(
             "aria-expanded",
-            expandedTaxExplanationIds[result.id] ? "true" : "false"
+            uiState.expandedTaxExplanationIds[view.id] ? "true" : "false"
         );
         indicator.setAttribute("aria-hidden", "true");
         trigger.append(value, indicator);
@@ -1306,7 +1273,15 @@
         }
     }
 
-    function createTaxExplanation(view) {
+    function mountTaxExplanationBody(details, view, policy, baseline) {
+        if (details.querySelector(".tax-explanation__body") ||
+                !view || !policy || !baseline) {
+            return;
+        }
+        details.appendChild(createTaxExplanationBody(view, policy, baseline));
+    }
+
+    function createTaxExplanation(view, policy, baseline) {
         var result = view.result;
         var details = createElement("details", "tax-explanation");
         var summary = document.createElement("summary");
@@ -1314,18 +1289,18 @@
         var offerLink = createElement(
             "a",
             "tax-explanation__summary-offer-link",
-            result.name
+            view.name
         );
         var taxAmount = createElement("span", "tax-explanation__summary-tax");
 
-        details.id = createId("tax-explanation", result.id);
-        details.dataset.offerId = result.id;
-        offerLink.href = "#" + createId("tax-cell", result.id);
+        details.id = createId("tax-explanation", view.id);
+        details.dataset.offerId = view.id;
+        offerLink.href = "#" + createId("tax-cell", view.id);
         offerLink.dataset.action = "jump-to-tax-cell";
-        offerLink.dataset.offerId = result.id;
+        offerLink.dataset.offerId = view.id;
         offerLink.setAttribute(
             "aria-label",
-            "返回汇总表中 " + result.name + " 的个人所得税金额"
+            "返回汇总表中 " + view.name + " 的个人所得税金额"
         );
         identity.append(
             offerLink,
@@ -1340,17 +1315,37 @@
             createElement("strong", "", formatMoney(result.metrics.annualIncomeTax))
         );
         summary.append(identity, taxAmount);
-        details.append(summary, createTaxExplanationBody(result));
-        details.open = Boolean(expandedTaxExplanationIds[result.id]);
+        details.appendChild(summary);
+        details.open = Boolean(uiState.expandedTaxExplanationIds[view.id]);
+        details.mountTaxBody = function () {
+            mountTaxExplanationBody(details, view, policy, baseline);
+        };
+        if (details.open) {
+            details.mountTaxBody();
+        }
         details.addEventListener("toggle", function () {
-            expandedTaxExplanationIds[result.id] = details.open;
-            syncTaxTriggerExpanded(result.id, details.open);
+            if (details.open) {
+                details.mountTaxBody();
+            } else {
+                var body = details.querySelector(".tax-explanation__body");
+                if (body) {
+                    body.remove();
+                }
+            }
+            uiState.expandedTaxExplanationIds[view.id] = details.open;
+            syncTaxTriggerExpanded(view.id, details.open);
         });
         return details;
     }
 
     function renderTaxExplanations(views) {
-        var explanations = sortViews(views).map(createTaxExplanation);
+        var explanations = sortViews(views).map(function (view) {
+            return createTaxExplanation(
+                view,
+                latestCalculation.taxPolicy,
+                latestCalculation.taxBaseline
+            );
+        });
 
         elements.taxExplanations.hidden = !explanations.length;
         elements.taxExplanationList.replaceChildren.apply(
@@ -1361,7 +1356,7 @@
 
     function renderTable(views) {
         var sortedViews = sortViews(views);
-        var best = bestValues(views);
+        var best = selectors.bestValues(views);
         var rows = sortedViews.map(function (view) {
             var row = document.createElement("tr");
             var offerCell = document.createElement("th");
@@ -1425,7 +1420,7 @@
                 formatMoney(view.cashAndHousingFundEquity),
                 best.cashAndHousingFundEquity
             );
-            row.appendChild(createTaxCell(view.result));
+            row.appendChild(createTaxCell(view));
             return row;
         });
 
@@ -1444,22 +1439,11 @@
         return item;
     }
 
-    function resultWithMaximum(views, field) {
-        return views.reduce(function (best, current) {
-            return !best || current[field] > best[field] ? current : best;
-        }, null);
-    }
-
-    function resultWithMinimum(views, field) {
-        return views.reduce(function (best, current) {
-            return !best || current[field] < best[field] ? current : best;
-        }, null);
-    }
-
     function renderSummary(views) {
-        var hourlyBest = resultWithMaximum(views, "afterTaxHourly");
-        var incomeBest = resultWithMaximum(views, "annualTakeHomeCash");
-        var hoursBest = resultWithMinimum(views, "weeklyHours");
+        var leaders = selectors.summaryLeaders(views);
+        var hourlyBest = leaders.afterTaxHourly;
+        var incomeBest = leaders.annualTakeHomeCash;
+        var hoursBest = leaders.weeklyHours;
 
         elements.resultSummary.classList.add("comparison-summary");
         elements.resultSummary.replaceChildren(
@@ -1494,7 +1478,7 @@
         });
 
         elements.assumptionSummary.textContent =
-            "查看 " + calculation.defaultAssumptionCount + " 项全局默认假设";
+            "查看 " + calculation.assumptions.length + " 项全局默认假设";
         if (existingList) {
             existingList.replaceWith(list);
         } else if (content) {
@@ -1502,11 +1486,150 @@
         }
     }
 
-    function renderResults() {
+    function clearFieldValidation() {
+        elements.application.querySelectorAll(
+            "[data-field-validation-error]"
+        ).forEach(function (message) {
+            message.remove();
+        });
+        elements.application.querySelectorAll(
+            "[data-validation-marked]"
+        ).forEach(function (control) {
+            var originalDescription =
+                control.dataset.validationOriginalDescription;
+
+            control.removeAttribute("aria-invalid");
+            control.removeAttribute("data-validation-marked");
+            delete control.dataset.validationErrorId;
+            delete control.dataset.validationOriginalDescription;
+            if (originalDescription) {
+                control.setAttribute("aria-describedby", originalDescription);
+            } else {
+                control.removeAttribute("aria-describedby");
+            }
+        });
+    }
+
+    function markControlInvalid(control, message) {
+        var errorId;
+        var error;
+        var describedBy;
+
+        if (!control || control.dataset.validationMarked === "true") {
+            return;
+        }
+        errorId = createId("validation-error", control.id || (
+            control.dataset.offerId + "-" +
+            (control.dataset.path || control.dataset.dayField || "field") + "-" +
+            (control.dataset.week || "global") + "-" +
+            (control.dataset.weekday || "global")
+        ));
+        describedBy = control.getAttribute("aria-describedby") || "";
+        error = createElement("span", "field-error", message);
+        error.id = errorId;
+        error.dataset.fieldValidationError = "true";
+
+        control.dataset.validationMarked = "true";
+        control.dataset.validationErrorId = errorId;
+        control.dataset.validationOriginalDescription = describedBy;
+        control.setAttribute("aria-invalid", "true");
+        control.setAttribute(
+            "aria-describedby",
+            (describedBy ? describedBy + " " : "") + errorId
+        );
+        control.insertAdjacentElement("afterend", error);
+    }
+
+    function controlsForValidationIssue(validationIssue, calculation) {
+        var settingsControls = {
+            "settings.year": elements.taxYear,
+            "settings.socialInsuranceRate": elements.socialSecurityRate,
+            "settings.specialAdditionalDeduction": elements.annualSpecialDeduction
+        };
+        var match;
+        var offer;
+        var card;
+        var relativePath;
+        var dayMatch;
+        var day;
+
+        if (settingsControls[validationIssue.path]) {
+            return [settingsControls[validationIssue.path]];
+        }
+
+        match = /^offers\[(\d+)\](?:\.(.+))?$/.exec(validationIssue.path);
+        if (!match) {
+            return [];
+        }
+        offer = calculation.state.offers[Number(match[1])];
+        if (!offer) {
+            return [];
+        }
+        card = findOfferTarget(elements.offerList, ".offer-card", offer.id);
+        if (!card) {
+            return [];
+        }
+        relativePath = match[2] || "";
+        dayMatch = /^schedule\.days\[(\d+)\]/.exec(relativePath);
+        if (dayMatch) {
+            day = offer.schedule.days[Number(dayMatch[1])];
+            if (!day) {
+                return [];
+            }
+            return Array.prototype.filter.call(
+                card.querySelectorAll("[data-day-field]"),
+                function (control) {
+                    return Number(control.dataset.week) === day.week &&
+                        Number(control.dataset.weekday) === day.weekday;
+                }
+            );
+        }
+        if (relativePath === "overtime") {
+            return Array.prototype.slice.call(
+                card.querySelectorAll('[data-path^="overtime."]')
+            );
+        }
+        return Array.prototype.slice.call(
+            card.querySelectorAll('[data-path="' + relativePath + '"]')
+        );
+    }
+
+    function renderFieldValidation(calculation) {
+        clearFieldValidation();
+
+        elements.application.querySelectorAll("input, select").forEach(
+            function (control) {
+                if (!control.disabled && control.validity &&
+                        !control.validity.valid) {
+                    markControlInvalid(
+                        control,
+                        "请输入控件允许范围内的有效值。"
+                    );
+                }
+            }
+        );
+        calculation.validation.errors.forEach(function (validationIssue) {
+            controlsForValidationIssue(validationIssue, calculation).forEach(
+                function (control) {
+                    markControlInvalid(control, validationIssue.message);
+                }
+            );
+        });
+    }
+
+    function recalculateCurrentState() {
         latestCalculation = core.calculateAll(state);
-        state = latestCalculation.state;
+        return latestCalculation;
+    }
+
+    function renderResults(calculation) {
+        if (calculation) {
+            latestCalculation = calculation;
+        } else if (!latestCalculation) {
+            recalculateCurrentState();
+        }
         renderResultControls();
-        var views = latestCalculation.results.map(viewForResult);
+        var views = selectors.createComparisonViews(latestCalculation);
         var errors = latestCalculation.validation.errors;
         var warnings = latestCalculation.validation.warnings;
 
@@ -1537,6 +1660,7 @@
             renderTable(views);
         }
         renderTaxExplanations(views);
+        renderFieldValidation(latestCalculation);
 
         if (errors.length) {
             elements.resultStatus.textContent =
@@ -1545,35 +1669,39 @@
         } else {
             elements.resultStatus.textContent =
                 views.length + " 个 Offer · " +
-                latestCalculation.defaultAssumptionCount + " 项全局默认假设 · " +
+                latestCalculation.assumptions.length + " 项全局默认假设 · " +
                 warnings.length + " 条可选完善信息";
             elements.resultStatus.classList.remove("is-error");
         }
     }
 
-    function normalizeAndRefresh(options) {
-        state = core.normalize(state);
+    function commitStateAndRefresh(options) {
+        var calculation = recalculateCurrentState();
+
         updateSettingsSummary();
         if (options && options.renderOffers) {
-            renderOfferCards();
+            renderOfferCards(calculation);
         }
         updateOfferDefaultPlaceholders();
-        renderResults();
+        renderResults(calculation);
         if (options && options.updateScheduleSummaries) {
             updateAllScheduleCardSummaries();
         }
-        saveStateSoon();
+        if (!options || options.save !== false) {
+            saveStateSoon();
+        }
     }
 
     function updateScheduleCardSummary(offerId) {
         var offer = getOfferById(offerId);
+        var calculatedOffer = calculatedOfferById(offerId);
         var card = findOfferTarget(elements.offerList, ".offer-card", offerId);
         var summary = card ? card.querySelector(".schedule-details > summary") : null;
 
-        if (offer && summary) {
+        if (offer && calculatedOffer && summary) {
             summary.textContent = scheduleSummaryText(
                 offer,
-                core.calculateOffer(offer, state.settings)
+                calculatedOffer
             );
         }
     }
@@ -1637,7 +1765,13 @@
             if (!card) {
                 return;
             }
+            if (typeof card.mountOfferContent === "function") {
+                card.mountOfferContent();
+            }
             setOfferCardCollapsed(card, false);
+            if (latestCalculation) {
+                renderFieldValidation(latestCalculation);
+            }
             card.scrollIntoView({ behavior: jumpScrollBehavior(), block: "center" });
             highlightJumpTarget(card);
         });
@@ -1670,7 +1804,10 @@
                 return;
             }
             details.open = true;
-            expandedTaxExplanationIds[offerId] = true;
+            if (typeof details.mountTaxBody === "function") {
+                details.mountTaxBody();
+            }
+            uiState.expandedTaxExplanationIds[offerId] = true;
             syncTaxTriggerExpanded(offerId, true);
             summary = details.querySelector("summary");
             details.scrollIntoView({ behavior: jumpScrollBehavior(), block: "start" });
@@ -1707,19 +1844,22 @@
             state.settings.year = parseNumericInput(target.value, state.settings.year);
         } else if (target === elements.socialSecurityRate) {
             state.settings.socialInsuranceRate =
-                parseNumericInput(target.value, state.settings.socialInsuranceRate * 100) / 100;
+                parseNumericInput(
+                    target.value,
+                    ratePercentValue(state.settings.socialInsuranceRate)
+                ) / 100;
         } else if (target === elements.annualSpecialDeduction) {
             state.settings.specialAdditionalDeduction =
                 parseNumericInput(target.value, state.settings.specialAdditionalDeduction);
         } else {
             return;
         }
-        normalizeAndRefresh({ renderOffers: false });
+        commitStateAndRefresh({ renderOffers: false });
     }
 
     function handleHoursBasisChange(event) {
         state.settings.primaryHoursBasis = event.currentTarget.value;
-        normalizeAndRefresh({
+        commitStateAndRefresh({
             renderOffers: false,
             updateScheduleSummaries: true
         });
@@ -1731,7 +1871,9 @@
         }
         if (target.type === "number") {
             var number = parseNumericInput(target.value, 0);
-            return target.dataset.percent === "true" ? number / 100 : number;
+            return target.dataset.percent === "true"
+                ? number / 100
+                : number;
         }
         return target.value;
     }
@@ -1745,18 +1887,16 @@
 
         if (target.dataset.path) {
             setByPath(offer, target.dataset.path, valueFromOfferInput(target));
-            state = core.normalize(state);
-            var normalizedOffer = getOfferById(target.dataset.offerId);
+            commitStateAndRefresh({ renderOffers: false });
+            var normalizedOffer = normalizedOfferById(target.dataset.offerId);
             var card = target.closest(".offer-card");
             if (card && normalizedOffer) {
                 updateCardHeader(card, normalizedOffer);
             }
-            renderResults();
             if (target.dataset.path.indexOf("overtime.") === 0 ||
                     target.dataset.path.indexOf("schedule.") === 0) {
                 updateScheduleCardSummary(target.dataset.offerId);
             }
-            saveStateSoon();
             return;
         }
 
@@ -1768,7 +1908,7 @@
             });
             if (day) {
                 day[target.dataset.dayField] = target.value;
-                normalizeAndRefresh({ renderOffers: false });
+                commitStateAndRefresh({ renderOffers: false });
                 updateScheduleCardSummary(target.dataset.offerId);
             }
         }
@@ -1783,46 +1923,28 @@
         }
 
         if (action === "apply-template") {
-            var template = scheduleForTemplate(target.value);
+            var template = model.scheduleForTemplate(target.value);
             if (template) {
                 template.lunchBreakHours = offer.schedule.lunchBreakHours;
                 template.dinnerBreakHours = offer.schedule.dinnerBreakHours;
                 offer.schedule = template;
-                normalizeAndRefresh({ renderOffers: true });
+                commitStateAndRefresh({ renderOffers: true });
                 restoreScheduleControlFocus(offer.id, "apply-template");
             }
             return;
         }
 
         if (action === "cycle-weeks") {
-            var oldCycle = offer.schedule.cycleWeeks;
             var maximumCycle = core.MAX_CYCLE_WEEKS || 52;
-            var newCycle = Math.max(
-                1,
-                Math.min(maximumCycle, Math.round(parseNumericInput(target.value, oldCycle)))
+            var resizedOffer = model.resizeScheduleCycle(
+                offer,
+                target.value,
+                maximumCycle
             );
-            if (newCycle > oldCycle) {
-                var addedWeek;
-                for (addedWeek = oldCycle + 1; addedWeek <= newCycle; addedWeek += 1) {
-                    var sourceWeek = ((addedWeek - 1) % oldCycle) + 1;
-                    offer.schedule.days
-                        .filter(function (day) {
-                            return day.week === sourceWeek;
-                        })
-                        .forEach(function (day) {
-                            var copiedDay = clone(day);
-                            copiedDay.week = addedWeek;
-                            offer.schedule.days.push(copiedDay);
-                        });
-                }
-            } else {
-                offer.schedule.days = offer.schedule.days.filter(function (day) {
-                    return day.week <= newCycle;
-                });
-            }
-            offer.schedule.cycleWeeks = newCycle;
-            target.value = newCycle;
-            normalizeAndRefresh({ renderOffers: true });
+
+            replaceOffer(resizedOffer);
+            target.value = resizedOffer.schedule.cycleWeeks;
+            commitStateAndRefresh({ renderOffers: true });
             restoreScheduleControlFocus(offer.id, "cycle-weeks");
             return;
         }
@@ -1830,25 +1952,18 @@
         if (action === "toggle-day") {
             var week = Number(target.dataset.week);
             var weekday = Number(target.dataset.weekday);
-            if (target.checked) {
-                var referenceDay = offer.schedule.days.find(function (day) {
-                    return day.week === week;
-                }) || offer.schedule.days[0];
-                offer.schedule.days.push({
-                    week: week,
-                    weekday: weekday,
-                    start: referenceDay ? referenceDay.start : "09:00",
-                    end: referenceDay ? referenceDay.end : "18:00"
-                });
-            } else {
-                offer.schedule.days = offer.schedule.days.filter(function (day) {
-                    return !(day.week === week && day.weekday === weekday);
-                });
-            }
-            state = core.normalize(state);
-            var normalizedOffer = getOfferById(offer.id);
+            var toggledOffer = model.toggleScheduleDay(
+                offer,
+                week,
+                weekday,
+                target.checked
+            );
+
+            replaceOffer(toggledOffer);
+            commitStateAndRefresh({ renderOffers: false });
+            var normalizedOffer = normalizedOfferById(offer.id);
             var normalizedDay = normalizedOffer
-                ? scheduleDayFor(normalizedOffer, week, weekday)
+                ? model.scheduleDayFor(normalizedOffer, week, weekday)
                 : null;
             var card = target.closest(".offer-card");
 
@@ -1865,70 +1980,82 @@
                 });
             }
             updateScheduleCardSummary(offer.id);
-            renderResults();
-            saveStateSoon();
+            if (target.isConnected) {
+                target.focus({ preventScroll: true });
+            }
         }
     }
 
+    function canCreateOffer(actionLabel) {
+        var maximumOffers = core.MAX_OFFERS || 100;
+
+        if (state.offers.length >= maximumOffers) {
+            elements.saveStatus.textContent =
+                "最多支持 " + maximumOffers + " 个 Offer，无法继续" +
+                actionLabel + "。";
+            return false;
+        }
+        return true;
+    }
+
     function addOffer() {
-        var offer = {
-            id: createUniqueOfferId(),
-            company: "新公司",
-            department: "",
-            city: "通用",
-            pay: {
-                monthlySalary: 10000,
-                salaryMonths: 12,
-                otherAnnualCash: 0,
-                bonusTaxMode: "auto"
-            },
-            socialInsuranceRate: null,
-            housingFundRate: 0.05,
-            schedule: Object.assign(
-                scheduleFromPattern("09:00", "18:00", "18:00", [], 1, false),
-                {
-                    lunchBreakHours: null,
-                    dinnerBreakHours: null
-                }
-            ),
-            overtime: {
-                shiftsPerYear: 0,
-                start: "09:00",
-                end: "18:00",
-                paidHours: 8,
-                payMultiplier: 0,
-                payBaseMonthly: null
-            }
-        };
+        if (!canCreateOffer("添加")) {
+            return;
+        }
+        var offer = model.createOffer(createUniqueOfferId());
         state.offers.push(offer);
-        collapsedOfferIds[offer.id] = false;
-        normalizeAndRefresh({ renderOffers: true });
+        uiState.collapsedOfferIds[offer.id] = false;
+        commitStateAndRefresh({ renderOffers: true });
         var addedCard = elements.offerList.querySelector(
             '[data-offer-id="' + offer.id + '"]'
         );
         if (addedCard) {
-            addedCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            var companyInput = addedCard.querySelector('[data-path="company"]');
+            addedCard.scrollIntoView({
+                behavior: jumpScrollBehavior(),
+                block: "start"
+            });
+            if (companyInput) {
+                companyInput.focus({ preventScroll: true });
+                companyInput.select();
+            }
         }
     }
 
     function duplicateOffer(offerId) {
         var source = getOfferById(offerId);
+
         if (!source) {
             return;
         }
-        var copy = clone(source);
-        copy.id = createUniqueOfferId();
-        copy.department = copy.department ? copy.department + "（副本）" : "副本";
-        collapsedOfferIds[copy.id] = false;
+        if (!canCreateOffer("复制")) {
+            return;
+        }
+        var copy = model.duplicateOffer(source, createUniqueOfferId());
+        uiState.collapsedOfferIds[copy.id] = false;
         var sourceIndex = state.offers.findIndex(function (offer) {
             return offer.id === offerId;
         });
         state.offers.splice(sourceIndex + 1, 0, copy);
-        normalizeAndRefresh({ renderOffers: true });
+        commitStateAndRefresh({ renderOffers: true });
+        var copiedCard = findOfferTarget(elements.offerList, ".offer-card", copy.id);
+        var copiedCompanyInput = copiedCard
+            ? copiedCard.querySelector('[data-path="company"]')
+            : null;
+        if (copiedCompanyInput) {
+            copiedCompanyInput.focus({ preventScroll: true });
+            copiedCompanyInput.select();
+        }
     }
 
     function deleteOffer(offerId) {
         var offer = getOfferById(offerId);
+        var sourceIndex = state.offers.findIndex(function (candidate) {
+            return candidate.id === offerId;
+        });
+        var focusOffer = state.offers[sourceIndex + 1] ||
+            state.offers[sourceIndex - 1] ||
+            null;
         if (!offer) {
             return;
         }
@@ -1940,9 +2067,25 @@
         state.offers = state.offers.filter(function (candidate) {
             return candidate.id !== offerId;
         });
-        delete collapsedOfferIds[offerId];
-        delete expandedTaxExplanationIds[offerId];
-        normalizeAndRefresh({ renderOffers: true });
+        delete uiState.collapsedOfferIds[offerId];
+        delete uiState.expandedScheduleIds[offerId];
+        delete uiState.expandedTaxExplanationIds[offerId];
+        commitStateAndRefresh({ renderOffers: true });
+        if (focusOffer) {
+            var focusCard = findOfferTarget(
+                elements.offerList,
+                ".offer-card",
+                focusOffer.id
+            );
+            var focusButton = focusCard
+                ? focusCard.querySelector('[data-action="toggle-offer-card"]')
+                : null;
+            if (focusButton) {
+                focusButton.focus();
+            }
+        } else {
+            elements.addOfferButton.focus();
+        }
     }
 
     function resetOffers() {
@@ -1967,19 +2110,15 @@
         } catch (error) {
             storageCleared = false;
         }
-        try {
-            window.localStorage.removeItem(legacyStorageKey);
-        } catch (error) {
-            storageCleared = false;
-        }
         state = clone(seedState);
-        collapsedOfferIds = Object.create(null);
-        expandedTaxExplanationIds = Object.create(null);
+        latestCalculation = null;
+        uiState.collapsedOfferIds = Object.create(null);
+        uiState.expandedScheduleIds = Object.create(null);
+        uiState.expandedTaxExplanationIds = Object.create(null);
         activeDataOrigin = "source";
         updateDataSourceLabel();
         renderSettings();
-        renderOfferCards();
-        renderResults();
+        commitStateAndRefresh({ renderOffers: true, save: false });
         statusText = !hasSourceData
             ? "当前页面已清空 Offer，计算设置已恢复默认值；后续更改仍只会保存在当前浏览器。"
             : "当前页面已重置为本次打开页面时载入的“" + seedSource.label +
@@ -1992,8 +2131,15 @@
     }
 
     function exportState() {
+        if (latestCalculation && latestCalculation.validation.errors.length) {
+            elements.saveStatus.textContent =
+                "导出失败：请先修正未通过校验的输入。";
+            return;
+        }
         var blob = new Blob(
-            [core.stringifyState(state)],
+            [core.stringifyState(
+                latestCalculation ? latestCalculation.state : state
+            )],
             { type: "application/json;charset=utf-8" }
         );
         var url = URL.createObjectURL(blob);
@@ -2018,11 +2164,13 @@
         }
         file.text().then(function (content) {
             var parsed = JSON.parse(content);
-            if (!Array.isArray(parsed.offers) || parsed.offers.length > 100) {
-                throw new Error("JSON 必须包含不超过 100 个 Offer。");
+            var parsedState;
+            if (!Array.isArray(parsed.offers)) {
+                throw new Error("JSON 必须包含 offers 数组。");
             }
-            var imported = core.normalize(parsed);
-            var validation = core.validateState(imported);
+            parsedState = core.parseState(parsed);
+            var imported = parsedState.state;
+            var validation = parsedState.validation;
 
             if (!imported.offers.length || validation.errors.length) {
                 throw new Error(validation.errors.length
@@ -2033,12 +2181,12 @@
                 return;
             }
             state = imported;
-            collapsedOfferIds = Object.create(null);
-            expandedTaxExplanationIds = Object.create(null);
+            latestCalculation = null;
+            uiState.collapsedOfferIds = Object.create(null);
+            uiState.expandedScheduleIds = Object.create(null);
+            uiState.expandedTaxExplanationIds = Object.create(null);
             renderSettings();
-            renderOfferCards();
-            renderResults();
-            saveStateSoon();
+            commitStateAndRefresh({ renderOffers: true });
             elements.saveStatus.textContent = "导入成功，已保存到当前浏览器。";
         }).catch(function (error) {
             elements.saveStatus.textContent = "导入失败：" + error.message;
@@ -2047,22 +2195,24 @@
         });
     }
 
-    elements.settingsForm.addEventListener("input", handleSettingsInput);
-    elements.settingsForm.addEventListener("change", handleSettingsInput);
+    elements.settingsForm.addEventListener(
+        "input",
+        whenApplicationReady(handleSettingsInput)
+    );
 
-    elements.offerList.addEventListener("input", function (event) {
+    elements.offerList.addEventListener("input", whenApplicationReady(function (event) {
         if (!event.target.dataset.action) {
             handleOfferValueInput(event.target);
         }
-    });
+    }));
 
-    elements.offerList.addEventListener("change", function (event) {
+    elements.offerList.addEventListener("change", whenApplicationReady(function (event) {
         if (event.target.dataset.action) {
             handleScheduleAction(event.target);
         }
-    });
+    }));
 
-    elements.offerList.addEventListener("click", function (event) {
+    elements.offerList.addEventListener("click", whenApplicationReady(function (event) {
         var button = event.target.closest("button[data-action]");
         if (!button) {
             return;
@@ -2076,9 +2226,9 @@
         } else if (button.dataset.action === "jump-to-result") {
             jumpToResult(button.dataset.offerId);
         }
-    });
+    }));
 
-    elements.comparisonTableBody.addEventListener("click", function (event) {
+    elements.comparisonTableBody.addEventListener("click", whenApplicationReady(function (event) {
         var trigger = event.target.closest("[data-action]");
 
         if (!trigger) {
@@ -2089,9 +2239,9 @@
         } else if (trigger.dataset.action === "jump-to-tax-explanation") {
             jumpToTaxExplanation(trigger.dataset.offerId);
         }
-    });
+    }));
 
-    elements.taxExplanationList.addEventListener("click", function (event) {
+    elements.taxExplanationList.addEventListener("click", whenApplicationReady(function (event) {
         var trigger = event.target.closest('[data-action="jump-to-tax-cell"]');
 
         if (trigger) {
@@ -2099,21 +2249,27 @@
             event.stopPropagation();
             jumpToTaxCell(trigger.dataset.offerId);
         }
-    });
+    }));
 
-    elements.addOfferButton.addEventListener("click", addOffer);
-    elements.resetOffersButton.addEventListener("click", resetOffers);
-    elements.exportOffersButton.addEventListener("click", exportState);
-    elements.importOffersButton.addEventListener("click", function () {
+    elements.addOfferButton.addEventListener("click", whenApplicationReady(addOffer));
+    elements.resetOffersButton.addEventListener("click", whenApplicationReady(resetOffers));
+    elements.exportOffersButton.addEventListener("click", whenApplicationReady(exportState));
+    elements.importOffersButton.addEventListener("click", whenApplicationReady(function () {
         elements.importOffersInput.click();
-    });
-    elements.importOffersInput.addEventListener("change", function () {
+    }));
+    elements.importOffersInput.addEventListener("change", whenApplicationReady(function () {
         importState(elements.importOffersInput.files[0]);
-    });
-    elements.sortMetric.addEventListener("change", renderResults);
-    elements.sortDirection.addEventListener("change", renderResults);
+    }));
+    function handleSortChange() {
+        uiState.sortKey = elements.sortMetric.value;
+        uiState.sortDirection = elements.sortDirection.value;
+        renderResults(latestCalculation);
+    }
+
+    elements.sortMetric.addEventListener("change", whenApplicationReady(handleSortChange));
+    elements.sortDirection.addEventListener("change", whenApplicationReady(handleSortChange));
     elements.hoursBasisControls.forEach(function (control) {
-        control.addEventListener("change", handleHoursBasisChange);
+        control.addEventListener("change", whenApplicationReady(handleHoursBasisChange));
     });
 
     async function initialize() {
@@ -2135,25 +2291,29 @@
         seedWarnings = loaded.warnings.slice();
         storedState = loadStoredState();
         state = storedState || clone(seedState);
+        latestCalculation = null;
         activeDataOrigin = storedState ? "browser" : "source";
 
         updateDataSourceLabel();
         elements.saveStatus.textContent = initialSaveStatus(Boolean(storedState));
         renderSettings();
-        renderOfferCards();
-        renderResults();
+        commitStateAndRefresh({ renderOffers: true, save: false });
     }
 
-    initialize().catch(function (error) {
-        seedState = core.createDefaultState();
-        state = clone(seedState);
-        seedSource = { kind: "empty", label: "空白数据", file: "" };
-        seedWarnings = ["初始化失败：" + error.message];
-        activeDataOrigin = "source";
-        updateDataSourceLabel();
-        elements.saveStatus.textContent = seedWarnings[0];
-        renderSettings();
-        renderOfferCards();
-        renderResults();
+    initialize().then(finishInitialization, function (error) {
+        try {
+            seedState = core.createDefaultState();
+            state = clone(seedState);
+            latestCalculation = null;
+            seedSource = { kind: "empty", label: "空白数据", file: "" };
+            seedWarnings = ["初始化失败：" + error.message];
+            activeDataOrigin = "source";
+            updateDataSourceLabel();
+            elements.saveStatus.textContent = seedWarnings[0];
+            renderSettings();
+            commitStateAndRefresh({ renderOffers: true, save: false });
+        } finally {
+            finishInitialization();
+        }
     });
 }());

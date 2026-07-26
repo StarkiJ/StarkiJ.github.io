@@ -1,7 +1,10 @@
 (function (root, factory) {
     "use strict";
 
-    var api = factory();
+    var taxPolicy = typeof module === "object" && module.exports
+        ? require("./offer_compare_tax_policy.js")
+        : root && root.OfferCompareTaxPolicy;
+    var api = factory(taxPolicy);
 
     if (typeof module === "object" && module.exports) {
         module.exports = api;
@@ -12,34 +15,20 @@
     }
 }(typeof window !== "undefined"
     ? window
-    : (typeof globalThis !== "undefined" ? globalThis : this), function () {
+    : (typeof globalThis !== "undefined" ? globalThis : this), function (taxPolicy) {
     "use strict";
 
+    if (!taxPolicy || typeof taxPolicy.resolve !== "function" ||
+            typeof taxPolicy.bracketFor !== "function") {
+        throw new Error("OfferCompareTaxPolicy must be loaded before OfferCompareCore.");
+    }
+
     var VERSION = 2;
+    var MAX_OFFERS = 100;
     var MAX_CYCLE_WEEKS = 52;
     var WEEKDAY_NAMES = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
     var BONUS_TAX_MODES = ["auto", "merged", "separate"];
     var PRIMARY_HOURS_BASES = ["presence", "net"];
-
-    var ANNUAL_TAX_BRACKETS = [
-        { limit: 36000, rate: 0.03, quickDeduction: 0 },
-        { limit: 144000, rate: 0.10, quickDeduction: 2520 },
-        { limit: 300000, rate: 0.20, quickDeduction: 16920 },
-        { limit: 420000, rate: 0.25, quickDeduction: 31920 },
-        { limit: 660000, rate: 0.30, quickDeduction: 52920 },
-        { limit: 960000, rate: 0.35, quickDeduction: 85920 },
-        { limit: Infinity, rate: 0.45, quickDeduction: 181920 }
-    ];
-
-    var BONUS_TAX_BRACKETS = [
-        { limit: 3000, rate: 0.03, quickDeduction: 0 },
-        { limit: 12000, rate: 0.10, quickDeduction: 210 },
-        { limit: 25000, rate: 0.20, quickDeduction: 1410 },
-        { limit: 35000, rate: 0.25, quickDeduction: 2660 },
-        { limit: 55000, rate: 0.30, quickDeduction: 4410 },
-        { limit: 80000, rate: 0.35, quickDeduction: 7160 },
-        { limit: Infinity, rate: 0.45, quickDeduction: 15160 }
-    ];
 
     var DEFAULT_SETTINGS = {
         year: 2026,
@@ -57,7 +46,6 @@
         standardWorkDaysPerMonth: 21.75,
         standardPaidHoursPerDay: 8,
         bonusTaxMode: "auto",
-        annualBonusSeparateTaxThrough: 2027,
         primaryHoursBasis: "presence"
     };
 
@@ -80,38 +68,10 @@
         return value;
     }
 
-    function numberFrom(value, fallback) {
-        var text;
-        var multiplier = 1;
-        var parsed;
-
-        if (typeof value === "number") {
-            return Number.isFinite(value) ? value : fallback;
-        }
-
-        if (typeof value !== "string") {
-            return fallback;
-        }
-
-        text = value.trim().replace(/[,\s￥¥]/g, "");
-        if (!text) {
-            return fallback;
-        }
-
-        if (/万$/i.test(text)) {
-            multiplier = 10000;
-            text = text.slice(0, -1);
-        } else if (/k$/i.test(text)) {
-            multiplier = 1000;
-            text = text.slice(0, -1);
-        }
-
-        parsed = Number(text);
-        return Number.isFinite(parsed) ? parsed * multiplier : fallback;
-    }
-
     function finite(value, fallback, minimum, maximum) {
-        var result = numberFrom(value, fallback);
+        var result = typeof value === "number" && Number.isFinite(value)
+            ? value
+            : fallback;
 
         if (!Number.isFinite(result)) {
             result = fallback;
@@ -130,25 +90,16 @@
     }
 
     function rate(value, fallback) {
-        var parsed;
-
-        if (typeof value === "string" && /%/.test(value)) {
-            parsed = numberFrom(value.replace("%", ""), fallback * 100) / 100;
-        } else {
-            parsed = numberFrom(value, fallback);
-            if (parsed > 1 && parsed <= 100) {
-                parsed /= 100;
-            }
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+            return fallback;
         }
-
-        return finite(parsed, fallback, 0, 1);
+        return finite(value, fallback, 0, 1);
     }
 
     function nullableFinite(value, minimum, maximum) {
         var parsed;
 
-        if (value === undefined || value === null ||
-                (typeof value === "string" && !value.trim())) {
+        if (value === undefined || value === null) {
             return null;
         }
         parsed = finite(value, NaN, minimum, maximum);
@@ -158,11 +109,13 @@
     function nullableRate(value) {
         var parsed;
 
-        if (value === undefined || value === null ||
-                (typeof value === "string" && !value.trim())) {
+        if (value === undefined || value === null) {
             return null;
         }
-        parsed = rate(value, NaN);
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+            return null;
+        }
+        parsed = finite(value, NaN, 0, 1);
         return Number.isFinite(parsed) ? parsed : null;
     }
 
@@ -236,7 +189,7 @@
         if (startMinutes === null || endMinutes === null) {
             return 0;
         }
-        if (endMinutes <= startMinutes) {
+        if (endMinutes < startMinutes) {
             endMinutes += 1440;
         }
         return cleanNumber((endMinutes - startMinutes) / 60);
@@ -324,12 +277,6 @@
                 24
             ),
             bonusTaxMode: normalizeBonusTaxMode(raw.bonusTaxMode, DEFAULT_SETTINGS.bonusTaxMode),
-            annualBonusSeparateTaxThrough: integer(
-                raw.annualBonusSeparateTaxThrough,
-                DEFAULT_SETTINGS.annualBonusSeparateTaxThrough,
-                1970,
-                2027
-            ),
             primaryHoursBasis: PRIMARY_HOURS_BASES.indexOf(raw.primaryHoursBasis) >= 0
                 ? raw.primaryHoursBasis
                 : DEFAULT_SETTINGS.primaryHoursBasis
@@ -418,11 +365,58 @@
         };
     }
 
+    function schemaVersionError(rawState) {
+        if (!isObject(rawState) ||
+                !Object.prototype.hasOwnProperty.call(rawState, "version") ||
+                rawState.version === undefined ||
+                rawState.version === null) {
+            return issue(
+                "version",
+                "missing_schema_version",
+                "状态必须明确声明版本 v" + VERSION + "。"
+            );
+        }
+        if (typeof rawState.version !== "number" ||
+                !Number.isFinite(rawState.version) ||
+                Math.floor(rawState.version) !== rawState.version) {
+            return issue(
+                "version",
+                "invalid_schema_version",
+                "状态版本必须是整数。"
+            );
+        }
+        if (rawState.version > VERSION) {
+            return issue(
+                "version",
+                "unsupported_future_version",
+                "状态版本 v" + rawState.version +
+                    " 高于当前支持的 v" + VERSION + "，无法安全解析。"
+            );
+        }
+        if (rawState.version < VERSION) {
+            return issue(
+                "version",
+                "unsupported_schema_version",
+                "状态版本 v" + rawState.version +
+                    " 不是当前支持的 v" + VERSION + "。"
+            );
+        }
+        return null;
+    }
+
+    function throwValidationIssue(validationIssue) {
+        var error = new Error(validationIssue.message);
+        error.code = validationIssue.code;
+        throw error;
+    }
+
     function normalize(rawState) {
         var raw = isObject(rawState) ? rawState : {};
         var settingsSource = isObject(raw.settings) ? clone(raw.settings) : {};
         var settings;
-        var rawOffers = Array.isArray(raw.offers) ? raw.offers : [];
+        var rawOffers = Array.isArray(raw.offers)
+            ? raw.offers.slice(0, MAX_OFFERS)
+            : [];
 
         settings = normalizeSettings(settingsSource);
 
@@ -482,11 +476,18 @@
     }
 
     function stringifyState(rawState) {
-        return stringifyJsonValue(normalize(rawState), 0, []) + "\n";
+        var parsed = parseState(rawState);
+
+        if (parsed.validation.errors.length) {
+            throwValidationIssue(parsed.validation.errors[0]);
+        }
+        return stringifyJsonValue(parsed.state, 0, []) + "\n";
     }
 
     function createDefaultState(seedState) {
-        var seed = isObject(seedState) ? clone(seedState) : {};
+        var hasSeed = isObject(seedState);
+        var seed = hasSeed ? clone(seedState) : { version: VERSION };
+        var stateError;
 
         if (!Array.isArray(seed.offers)) {
             seed.offers = [];
@@ -494,27 +495,23 @@
         if (!isObject(seed.settings)) {
             seed.settings = clone(DEFAULT_SETTINGS);
         }
-        if (seed.version === undefined || seed.version === null) {
-            seed.version = VERSION;
+        stateError = schemaVersionError(seed);
+        if (stateError) {
+            throwValidationIssue(stateError);
+        }
+        if (seed.offers.length > MAX_OFFERS) {
+            var offerLimitError = new Error(
+                "最多支持 " + MAX_OFFERS + " 个 Offer。"
+            );
+            offerLimitError.code = "too_many_offers";
+            throw offerLimitError;
         }
         return normalize(seed);
     }
 
-    function bracketFor(value, brackets) {
-        var amount = Math.max(0, finite(value, 0, 0, Number.MAX_SAFE_INTEGER));
-        var index;
-
-        for (index = 0; index < brackets.length; index += 1) {
-            if (amount <= brackets[index].limit) {
-                return brackets[index];
-            }
-        }
-        return brackets[brackets.length - 1];
-    }
-
-    function annualComprehensiveTax(taxableIncome) {
+    function annualComprehensiveTax(taxableIncome, policy) {
         var taxable = Math.max(0, finite(taxableIncome, 0, 0, Number.MAX_SAFE_INTEGER));
-        var bracket = bracketFor(taxable, ANNUAL_TAX_BRACKETS);
+        var bracket = taxPolicy.bracketFor(taxable, policy.comprehensive.brackets);
 
         return {
             taxableIncome: taxable,
@@ -524,10 +521,13 @@
         };
     }
 
-    function separateBonusTax(bonus) {
+    function separateBonusTax(bonus, policy) {
         var taxableBonus = Math.max(0, finite(bonus, 0, 0, Number.MAX_SAFE_INTEGER));
         var monthlyEquivalent = taxableBonus / 12;
-        var bracket = bracketFor(monthlyEquivalent, BONUS_TAX_BRACKETS);
+        var bracket = taxPolicy.bracketFor(
+            monthlyEquivalent,
+            policy.annualBonusSeparate.brackets
+        );
 
         return {
             bonus: taxableBonus,
@@ -558,17 +558,12 @@
     function calculateWork(schedule, overtime, settings) {
         var cyclePresence = 0;
         var cycleNet = 0;
-        var regularDaysPerCycle = schedule.days.length;
         var workSettings = clone(settings);
         var overtimeDay = {
             start: overtime.start,
             end: overtime.end
         };
         var overtimeHours;
-        var annualRegularPresence;
-        var annualRegularNet;
-        var annualOvertimePresence;
-        var annualOvertimeNet;
         var annualPresence;
         var annualNet;
 
@@ -586,38 +581,22 @@
             cycleNet += hours.net;
         });
 
-        annualRegularPresence = safeDivide(cyclePresence, schedule.cycleWeeks) * settings.weeksPerYear;
-        annualRegularNet = safeDivide(cycleNet, schedule.cycleWeeks) * settings.weeksPerYear;
-        annualOvertimePresence = overtimeHours.presence * overtime.shiftsPerYear;
-        annualOvertimeNet = overtimeHours.net * overtime.shiftsPerYear;
-        annualPresence = annualRegularPresence + annualOvertimePresence;
-        annualNet = annualRegularNet + annualOvertimeNet;
+        annualPresence = safeDivide(cyclePresence, schedule.cycleWeeks) *
+            settings.weeksPerYear +
+            overtimeHours.presence * overtime.shiftsPerYear;
+        annualNet = safeDivide(cycleNet, schedule.cycleWeeks) *
+            settings.weeksPerYear +
+            overtimeHours.net * overtime.shiftsPerYear;
 
         return {
-            cycleWeeks: schedule.cycleWeeks,
-            regularDaysPerCycle: regularDaysPerCycle,
-            averageRegularDaysPerWeek: safeDivide(regularDaysPerCycle, schedule.cycleWeeks),
-            annualScheduledDays: safeDivide(regularDaysPerCycle, schedule.cycleWeeks)
-                * settings.weeksPerYear + overtime.shiftsPerYear,
-            cyclePresenceHours: cleanNumber(cyclePresence),
-            cycleNetHours: cleanNumber(cycleNet),
-            annualRegularPresenceHours: cleanNumber(annualRegularPresence),
-            annualRegularNetHours: cleanNumber(annualRegularNet),
-            annualOvertimePresenceHours: cleanNumber(annualOvertimePresence),
-            annualOvertimeNetHours: cleanNumber(annualOvertimeNet),
             annualPresenceHours: cleanNumber(annualPresence),
             annualNetHours: cleanNumber(annualNet),
             averageWeeklyPresenceHours: safeDivide(annualPresence, settings.weeksPerYear),
-            averageWeeklyNetHours: safeDivide(annualNet, settings.weeksPerYear),
-            overtimeShiftPresenceHours: overtimeHours.presence,
-            overtimeShiftNetHours: overtimeHours.net,
-            lunchBreakHours: workSettings.lunchBreakHours,
-            dinnerBreakHours: workSettings.dinnerBreakHours,
-            dinnerThreshold: workSettings.dinnerThreshold
+            averageWeeklyNetHours: safeDivide(annualNet, settings.weeksPerYear)
         };
     }
 
-    function calculateOvertimePay(offer, settings) {
+    function calculateAnnualOvertimePay(offer, settings) {
         var overtime = offer.overtime;
         var monthlyBase = overtime.payBaseMonthly === null
             ? offer.pay.monthlySalary
@@ -626,44 +605,45 @@
         var paidDayFraction = safeDivide(overtime.paidHours, settings.standardPaidHoursPerDay);
         var perShift = dailyBase * paidDayFraction * overtime.payMultiplier;
 
+        return cleanNumber(perShift * overtime.shiftsPerYear);
+    }
+
+    function taxPolicyMetadata(policy) {
         return {
-            monthlyBase: monthlyBase,
-            dailyBase: dailyBase,
-            paidHoursPerShift: overtime.paidHours,
-            multiplier: overtime.payMultiplier,
-            shiftsPerYear: overtime.shiftsPerYear,
-            payPerShift: cleanNumber(perShift),
-            annualPay: cleanNumber(perShift * overtime.shiftsPerYear)
+            id: policy.id,
+            version: policy.version,
+            requestedYear: policy.requestedYear,
+            appliedYear: policy.appliedYear,
+            verified: policy.verified,
+            estimated: policy.estimated,
+            verificationRange: clone(policy.verificationRange),
+            comprehensive: {
+                id: policy.comprehensive.id,
+                label: policy.comprehensive.label,
+                effectiveRange: clone(policy.comprehensive.effectiveRange)
+            },
+            annualBonusSeparate: {
+                id: policy.annualBonusSeparate.id,
+                label: policy.annualBonusSeparate.label,
+                effectiveRange: clone(policy.annualBonusSeparate.effectiveRange),
+                available: policy.annualBonusSeparate.available,
+                effectiveForRequestedYear:
+                    policy.annualBonusSeparate.effectiveForRequestedYear
+            },
+            warnings: clone(policy.warnings)
         };
     }
 
-    function taxScenario(mode, regularIncome, bonus, deductions, separateAvailable) {
+    function taxScenario(mode, regularIncome, bonus, deductions, policy) {
         var comprehensive;
         var bonusResult;
-
-        if (mode === "separate" && !separateAvailable) {
-            return {
-                mode: "separate",
-                available: false,
-                taxableComprehensiveIncome: null,
-                comprehensiveRate: null,
-                comprehensiveQuickDeduction: null,
-                comprehensiveTax: null,
-                bonusMonthlyEquivalent: null,
-                bonusRate: null,
-                bonusQuickDeduction: null,
-                bonusTax: null,
-                totalTax: null,
-                unavailableReason: "计算年份已超过全年一次性奖金单独计税政策有效期"
-            };
-        }
+        var totalTax;
 
         if (mode === "separate") {
-            comprehensive = annualComprehensiveTax(regularIncome - deductions);
-            bonusResult = separateBonusTax(bonus);
+            comprehensive = annualComprehensiveTax(regularIncome - deductions, policy);
+            bonusResult = separateBonusTax(bonus, policy);
+            totalTax = cleanNumber(comprehensive.tax + bonusResult.tax);
             return {
-                mode: "separate",
-                available: true,
                 taxableComprehensiveIncome: comprehensive.taxableIncome,
                 comprehensiveRate: comprehensive.rate,
                 comprehensiveQuickDeduction: comprehensive.quickDeduction,
@@ -672,42 +652,37 @@
                 bonusRate: bonusResult.rate,
                 bonusQuickDeduction: bonusResult.quickDeduction,
                 bonusTax: bonusResult.tax,
-                totalTax: cleanNumber(comprehensive.tax + bonusResult.tax),
-                unavailableReason: ""
+                totalTax: totalTax
             };
         }
 
-        comprehensive = annualComprehensiveTax(regularIncome + bonus - deductions);
+        comprehensive = annualComprehensiveTax(
+            regularIncome + bonus - deductions,
+            policy
+        );
         return {
-            mode: "merged",
-            available: true,
             taxableComprehensiveIncome: comprehensive.taxableIncome,
             comprehensiveRate: comprehensive.rate,
             comprehensiveQuickDeduction: comprehensive.quickDeduction,
-            comprehensiveTax: comprehensive.tax,
-            bonusMonthlyEquivalent: 0,
-            bonusRate: 0,
-            bonusQuickDeduction: 0,
-            bonusTax: 0,
-            totalTax: comprehensive.tax,
-            unavailableReason: ""
+            totalTax: comprehensive.tax
         };
     }
 
-    function buildDefaultAssumptions(settings) {
+    function buildDefaultAssumptions(settings, policy) {
         var bonusTaxDefault;
+        var separatePolicy = policy.annualBonusSeparate;
 
         if (settings.bonusTaxMode === "merged") {
             bonusTaxDefault = "Offer 未指定时并入综合所得计税";
         } else if (settings.bonusTaxMode === "separate" &&
-                settings.year <= settings.annualBonusSeparateTaxThrough) {
+                separatePolicy.available) {
             bonusTaxDefault = "Offer 未指定时按全年一次性奖金单独计税";
         } else if (settings.bonusTaxMode === "separate") {
-            bonusTaxDefault = "默认指定单独计税，但当前年份已超过政策有效期，改为并入综合所得";
-        } else if (settings.year <= settings.annualBonusSeparateTaxThrough) {
+            bonusTaxDefault = "默认指定单独计税，但当前年份不在政策有效期内，改为并入综合所得";
+        } else if (separatePolicy.available) {
             bonusTaxDefault = "Offer 未指定时，同时计算并入综合所得与全年一次性奖金单独计税，采用税额较低者";
         } else {
-            bonusTaxDefault = "Offer 未指定时并入综合所得；当前年份已超过全年一次性奖金单独计税政策有效期";
+            bonusTaxDefault = "Offer 未指定时并入综合所得；当前年份不在全年一次性奖金单独计税政策有效期内";
         }
 
         var assumptions = [
@@ -736,8 +711,9 @@
                 key: "bonus-tax-default",
                 category: "税务",
                 label: "奖金计税缺省",
-                value: bonusTaxDefault + "；单独计税政策默认有效至 " +
-                    settings.annualBonusSeparateTaxThrough + " 年"
+                value: bonusTaxDefault + "；单独计税政策有效期为 " +
+                    separatePolicy.effectiveRange.from + "–" +
+                    separatePolicy.effectiveRange.through + " 年"
             },
             {
                 key: "salary-defaults",
@@ -796,21 +772,21 @@
         return assumptions;
     }
 
-    function calculateOffer(rawOffer, rawSettings) {
-        var settingsSource = isObject(rawSettings) && isObject(rawSettings.settings)
-            ? rawSettings.settings
-            : rawSettings;
-        var settings = normalizeSettings(settingsSource);
-        var offer = normalizeOffer(rawOffer, 0, settings);
+    function calculateNormalizedOffer(
+        offer,
+        settings,
+        resolvedTaxPolicy,
+        baseline
+    ) {
         var work = calculateWork(offer.schedule, offer.overtime, settings);
         var socialInsuranceRate = offer.socialInsuranceRate === null
             ? settings.socialInsuranceRate
             : offer.socialInsuranceRate;
-        var overtimePay = calculateOvertimePay(offer, settings);
+        var annualOvertimePay = calculateAnnualOvertimePay(offer, settings);
         var annualBaseSalary = offer.pay.monthlySalary * 12;
         var annualBonus = offer.pay.monthlySalary * Math.max(0, offer.pay.salaryMonths - 12);
         var annualPretaxCash = annualBaseSalary + annualBonus +
-            offer.pay.otherAnnualCash + overtimePay.annualPay;
+            offer.pay.otherAnnualCash + annualOvertimePay;
         var employeeSocialInsurance = offer.pay.monthlySalary *
             socialInsuranceRate * settings.socialInsuranceMonths;
         var employeeHousingFund = offer.pay.monthlySalary *
@@ -822,35 +798,52 @@
         var taxDeductions = settings.basicDeduction + settings.specialAdditionalDeduction +
             settings.otherDeductions + employeeSocialInsurance + employeeHousingFund;
         var regularIncome = annualBaseSalary + offer.pay.otherAnnualCash +
-            overtimePay.annualPay + settings.otherComprehensiveIncome;
-        var separateAvailable = settings.year <= settings.annualBonusSeparateTaxThrough;
-        var baseline = taxScenario(
+            annualOvertimePay + settings.otherComprehensiveIncome;
+        var otherRegularIncome = annualOvertimePay + offer.pay.otherAnnualCash +
+            settings.otherComprehensiveIncome;
+        var separateAvailable = resolvedTaxPolicy.annualBonusSeparate.available;
+        var merged = taxScenario(
             "merged",
-            settings.otherComprehensiveIncome,
-            0,
-            baselineDeductions,
-            true
+            regularIncome,
+            annualBonus,
+            taxDeductions,
+            resolvedTaxPolicy
         );
-        var merged = taxScenario("merged", regularIncome, annualBonus, taxDeductions, true);
-        var separate = taxScenario("separate", regularIncome, annualBonus, taxDeductions, separateAvailable);
+        var separate = separateAvailable
+            ? taxScenario(
+                "separate",
+                regularIncome,
+                annualBonus,
+                taxDeductions,
+                resolvedTaxPolicy
+            )
+            : null;
         var requestedMode = offer.pay.bonusTaxMode === "auto" && settings.bonusTaxMode !== "auto"
             ? settings.bonusTaxMode
             : offer.pay.bonusTaxMode;
         var selected;
+        var selectedMode;
         var annualTakeHomeCash;
         var housingFundEquity;
         var cashAndHousingFundEquity;
         var offerIncomeTax;
         var primaryAnnualHours;
         var metrics;
-        var assumptions;
+        var taxInputs;
+        var taxComparison;
+        var mergedIncrementalTax;
+        var separateIncrementalTax;
+        var lowerMode;
 
         if (!separateAvailable || requestedMode === "merged") {
             selected = merged;
+            selectedMode = "merged";
         } else if (requestedMode === "separate") {
             selected = separate;
+            selectedMode = "separate";
         } else {
             selected = separate.totalTax < merged.totalTax ? separate : merged;
+            selectedMode = selected === separate ? "separate" : "merged";
         }
 
         offerIncomeTax = cleanNumber(selected.totalTax - baseline.totalTax);
@@ -863,88 +856,70 @@
             : work.annualPresenceHours;
 
         metrics = {
-            annualBaseSalary: cleanNumber(annualBaseSalary),
-            annualBonus: cleanNumber(annualBonus),
-            annualOvertimePay: overtimePay.annualPay,
-            annualOtherCash: offer.pay.otherAnnualCash,
             annualPretaxCash: cleanNumber(annualPretaxCash),
-            employeeSocialInsurance: cleanNumber(employeeSocialInsurance),
-            employeeHousingFund: cleanNumber(employeeHousingFund),
-            employerHousingFund: cleanNumber(employerHousingFund),
             housingFundEquity: cleanNumber(housingFundEquity),
             annualIncomeTax: offerIncomeTax,
             annualTakeHomeCash: cleanNumber(annualTakeHomeCash),
             cashAndHousingFundEquity: cleanNumber(cashAndHousingFundEquity),
-            monthlyEquivalentTakeHome: safeDivide(annualTakeHomeCash, 12),
-            averageWeeklyPresenceHours: work.averageWeeklyPresenceHours,
-            averageWeeklyNetHours: work.averageWeeklyNetHours,
-            annualPresenceHours: work.annualPresenceHours,
-            annualNetHours: work.annualNetHours,
-            pretaxHourlyPresence: safeDivide(annualPretaxCash, work.annualPresenceHours),
-            afterTaxHourlyPresence: safeDivide(annualTakeHomeCash, work.annualPresenceHours),
-            pretaxHourlyNet: safeDivide(annualPretaxCash, work.annualNetHours),
-            afterTaxHourlyNet: safeDivide(annualTakeHomeCash, work.annualNetHours),
             pretaxHourly: safeDivide(annualPretaxCash, primaryAnnualHours),
             afterTaxHourly: safeDivide(annualTakeHomeCash, primaryAnnualHours)
         };
 
-        assumptions = buildDefaultAssumptions(settings);
+        taxInputs = {
+            monthlySalary: offer.pay.monthlySalary,
+            fixedSalaryMonths: 12,
+            bonusMonths: Math.max(0, offer.pay.salaryMonths - 12),
+            annualBaseSalary: annualBaseSalary,
+            annualOvertimePay: annualOvertimePay,
+            annualOtherCash: offer.pay.otherAnnualCash,
+            otherComprehensiveIncome: settings.otherComprehensiveIncome,
+            otherRegularIncome: otherRegularIncome,
+            regularIncome: regularIncome,
+            bonus: annualBonus,
+            basicDeduction: settings.basicDeduction,
+            specialAdditionalDeduction: settings.specialAdditionalDeduction,
+            otherDeductions: settings.otherDeductions,
+            employeeSocialInsurance: employeeSocialInsurance,
+            socialInsuranceRate: socialInsuranceRate,
+            socialInsuranceMonths: settings.socialInsuranceMonths,
+            employeeHousingFund: employeeHousingFund,
+            housingFundRate: offer.housingFundRate,
+            housingFundMonths: settings.housingFundMonths,
+            baselineDeductions: baselineDeductions,
+            deductions: taxDeductions
+        };
+
+        mergedIncrementalTax = cleanNumber(merged.totalTax - baseline.totalTax);
+        separateIncrementalTax = separateAvailable
+            ? cleanNumber(separate.totalTax - baseline.totalTax)
+            : null;
+        lowerMode = separateAvailable
+            ? (mergedIncrementalTax <= separateIncrementalTax ? "merged" : "separate")
+            : null;
+        taxComparison = {
+            lowerMode: lowerMode,
+            absoluteDifference: separateAvailable
+                ? cleanNumber(Math.abs(mergedIncrementalTax - separateIncrementalTax))
+                : null,
+            mergedIncrementalTax: mergedIncrementalTax,
+            separateIncrementalTax: separateIncrementalTax
+        };
 
         return {
-            id: offer.id,
-            company: offer.company,
-            department: offer.department,
-            city: offer.city,
-            name: offer.department ? offer.company + " · " + offer.department : offer.company,
-            offer: offer,
-            settings: settings,
-            payBreakdown: {
-                monthlySalary: offer.pay.monthlySalary,
-                fixedSalaryMonths: 12,
-                bonusMonths: Math.max(0, offer.pay.salaryMonths - 12),
-                salaryMonths: offer.pay.salaryMonths,
-                annualBaseSalary: metrics.annualBaseSalary,
-                annualBonus: metrics.annualBonus,
-                otherAnnualCash: metrics.annualOtherCash,
-                overtimePay: overtimePay
-            },
-            contributions: {
-                socialInsuranceRate: socialInsuranceRate,
-                socialInsuranceMonths: settings.socialInsuranceMonths,
-                employeeSocialInsurance: metrics.employeeSocialInsurance,
-                employeeHousingFund: metrics.employeeHousingFund,
-                employerHousingFund: metrics.employerHousingFund,
-                housingFundEquity: metrics.housingFundEquity
-            },
             tax: {
-                policyYear: settings.year,
-                separateAvailable: separateAvailable,
                 requestedMode: requestedMode,
-                selectedMode: selected.mode,
-                selectedTax: offerIncomeTax,
-                selectedTotalTax: selected.totalTax,
-                baseline: baseline,
-                merged: merged,
-                separate: separate,
-                difference: separateAvailable
-                    ? cleanNumber(merged.totalTax - separate.totalTax)
-                    : 0,
-                savingsFromSelected: separateAvailable
-                    ? cleanNumber(Math.max(merged.totalTax, separate.totalTax) - selected.totalTax)
-                    : 0
+                selectedMode: selectedMode,
+                selectedScenario: selected,
+                separateAvailable: separateAvailable,
+                inputs: taxInputs,
+                comparison: taxComparison
             },
-            work: work,
-            metrics: metrics,
-            assumptions: assumptions,
-            defaultAssumptionCount: assumptions.length,
-
-            // Frequently displayed metrics are mirrored here to keep UI bindings simple.
-            annualPretaxCash: metrics.annualPretaxCash,
-            annualTakeHomeCash: metrics.annualTakeHomeCash,
-            averageWeeklyPresenceHours: metrics.averageWeeklyPresenceHours,
-            averageWeeklyNetHours: metrics.averageWeeklyNetHours,
-            pretaxHourly: metrics.pretaxHourly,
-            afterTaxHourly: metrics.afterTaxHourly
+            work: {
+                averageWeeklyPresenceHours:
+                    work.averageWeeklyPresenceHours,
+                averageWeeklyNetHours: work.averageWeeklyNetHours
+            },
+            metrics: metrics
         };
     }
 
@@ -952,38 +927,327 @@
         return { path: path, code: code, message: message };
     }
 
-    function validateState(rawState) {
+    function matchesNumberStep(value, step, base) {
+        var steps;
+
+        if (!Number.isFinite(step) || step <= 0) {
+            return true;
+        }
+        steps = (value - (Number.isFinite(base) ? base : 0)) / step;
+        return Math.abs(steps - Math.round(steps)) < 1e-8;
+    }
+
+    function validateRawNumber(errors, container, key, path, constraints) {
+        var rawValue;
+        var value;
+        var invalid;
+
+        if (!isObject(container) ||
+                !Object.prototype.hasOwnProperty.call(container, key)) {
+            return;
+        }
+
+        rawValue = container[key];
+        if (constraints.nullable && (
+                rawValue === null ||
+                rawValue === undefined
+        )) {
+            return;
+        }
+
+        value = typeof rawValue === "number" ? rawValue : NaN;
+        invalid = !Number.isFinite(value) ||
+            (Number.isFinite(constraints.minimum) &&
+                value < constraints.minimum) ||
+            (Number.isFinite(constraints.maximum) &&
+                value > constraints.maximum) ||
+            (constraints.integer && Math.floor(value) !== value) ||
+            !matchesNumberStep(value, constraints.step, constraints.stepBase);
+
+        if (invalid) {
+            errors.push(issue(path, constraints.code, constraints.message));
+        }
+    }
+
+    function timeValueForValidation(rawContainer, key, normalizedValue) {
+        if (isObject(rawContainer) &&
+                Object.prototype.hasOwnProperty.call(rawContainer, key)) {
+            return rawContainer[key];
+        }
+        return normalizedValue;
+    }
+
+    function validateParsedState(rawState, state, resolvedTaxPolicy) {
         var raw = isObject(rawState) ? rawState : {};
-        var state = normalize(rawState);
+        var rawSettings = isObject(raw.settings) ? raw.settings : {};
         var errors = [];
         var warnings = [];
-        var ids = {};
+        var ids = new Set();
         var rawOffers = Array.isArray(raw.offers) ? raw.offers : [];
 
         if (!state.offers.length) {
             errors.push(issue("offers", "empty_offers", "请至少添加一个 Offer。"));
         }
+        if (rawOffers.length > MAX_OFFERS) {
+            errors.push(issue(
+                "offers",
+                "too_many_offers",
+                "最多支持 " + MAX_OFFERS + " 个 Offer。"
+            ));
+        }
 
-        if (state.settings.year > state.settings.annualBonusSeparateTaxThrough) {
+        if (Object.prototype.hasOwnProperty.call(rawSettings, "year")) {
+            var rawYear = typeof rawSettings.year === "number"
+                ? rawSettings.year
+                : NaN;
+
+            if (!Number.isFinite(rawYear) ||
+                    Math.floor(rawYear) !== rawYear ||
+                    rawYear < 1970 ||
+                    rawYear > 2100) {
+                errors.push(issue(
+                    "settings.year",
+                    "invalid_tax_year",
+                    "税务年份必须是 1970–2100 之间的整数。"
+                ));
+            }
+        }
+        validateRawNumber(
+            errors,
+            rawSettings,
+            "socialInsuranceRate",
+            "settings.socialInsuranceRate",
+            {
+                minimum: 0,
+                maximum: 1,
+                step: 0.001,
+                code: "invalid_social_insurance_rate",
+                message: "默认个人社保比例必须是 0%–100%，且以 0.1% 为步长。"
+            }
+        );
+        validateRawNumber(
+            errors,
+            rawSettings,
+            "specialAdditionalDeduction",
+            "settings.specialAdditionalDeduction",
+            {
+                minimum: 0,
+                maximum: 10000000,
+                step: 100,
+                code: "invalid_special_additional_deduction",
+                message: "年度专项附加扣除必须是非负数，且以 100 元为步长。"
+            }
+        );
+
+        resolvedTaxPolicy.warnings.forEach(function (policyWarning) {
             warnings.push(issue(
                 "settings.year",
-                "separate_bonus_expired",
-                "当前计算年份已超过奖金单独计税政策有效期，将全部并入综合所得。"
+                policyWarning.code,
+                policyWarning.message
+            ));
+        });
+
+        if (!resolvedTaxPolicy.annualBonusSeparate.available) {
+            var effectiveRange =
+                resolvedTaxPolicy.annualBonusSeparate.effectiveRange;
+            var beforeEffectiveRange = state.settings.year < effectiveRange.from;
+
+            warnings.push(issue(
+                "settings.year",
+                beforeEffectiveRange
+                    ? "separate_bonus_not_effective"
+                    : "separate_bonus_expired",
+                beforeEffectiveRange
+                    ? "当前计算年份早于奖金单独计税政策有效期，将全部并入综合所得。"
+                    : "当前计算年份已超过奖金单独计税政策有效期，将全部并入综合所得。"
             ));
         }
 
         state.offers.forEach(function (offer, index) {
             var path = "offers[" + index + "]";
             var rawOffer = isObject(rawOffers[index]) ? rawOffers[index] : null;
-            var seenDays = {};
+            var rawPay = rawOffer && isObject(rawOffer.pay)
+                ? rawOffer.pay
+                : null;
+            var rawSchedule = rawOffer && isObject(rawOffer.schedule)
+                ? rawOffer.schedule
+                : null;
+            var rawScheduleDays = rawSchedule && Array.isArray(rawSchedule.days)
+                ? rawSchedule.days
+                : null;
+            var rawOvertime = rawOffer && isObject(rawOffer.overtime)
+                ? rawOffer.overtime
+                : null;
+            var seenDays = new Set();
+
+            validateRawNumber(
+                errors,
+                rawPay,
+                "monthlySalary",
+                path + ".pay.monthlySalary",
+                {
+                    maximum: 1000000000,
+                    step: 100,
+                    code: "invalid_monthly_salary",
+                    message: "月薪必须是有效金额，且以 100 元为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawPay,
+                "salaryMonths",
+                path + ".pay.salaryMonths",
+                {
+                    minimum: 12,
+                    maximum: 60,
+                    step: 0.1,
+                    stepBase: 12,
+                    code: "invalid_salary_months",
+                    message: "总薪数必须是 12–60，且以 0.1 为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawPay,
+                "otherAnnualCash",
+                path + ".pay.otherAnnualCash",
+                {
+                    minimum: 0,
+                    maximum: 1000000000,
+                    step: 100,
+                    code: "invalid_other_annual_cash",
+                    message: "其他年现金必须是非负金额，且以 100 元为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOffer,
+                "socialInsuranceRate",
+                path + ".socialInsuranceRate",
+                {
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 1,
+                    step: 0.001,
+                    code: "invalid_offer_social_insurance_rate",
+                    message: "个人社保比例必须留空或填写 0%–100%，且以 0.1% 为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOffer,
+                "housingFundRate",
+                path + ".housingFundRate",
+                {
+                    minimum: 0,
+                    maximum: 1,
+                    step: 0.001,
+                    code: "invalid_housing_fund_rate",
+                    message: "公积金比例必须是 0%–100%，且以 0.1% 为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawSchedule,
+                "cycleWeeks",
+                path + ".schedule.cycleWeeks",
+                {
+                    minimum: 1,
+                    maximum: MAX_CYCLE_WEEKS,
+                    integer: true,
+                    code: "invalid_cycle_weeks",
+                    message: "循环周数必须是 1–" + MAX_CYCLE_WEEKS + " 之间的整数。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawSchedule,
+                "lunchBreakHours",
+                path + ".schedule.lunchBreakHours",
+                {
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 8,
+                    step: 0.25,
+                    code: "invalid_lunch_break_hours",
+                    message: "午休时长必须留空或填写 0–8 小时，且以 0.25 小时为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawSchedule,
+                "dinnerBreakHours",
+                path + ".schedule.dinnerBreakHours",
+                {
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 8,
+                    step: 0.25,
+                    code: "invalid_dinner_break_hours",
+                    message: "晚休时长必须留空或填写 0–8 小时，且以 0.25 小时为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOvertime,
+                "shiftsPerYear",
+                path + ".overtime.shiftsPerYear",
+                {
+                    minimum: 0,
+                    maximum: 366,
+                    integer: true,
+                    code: "invalid_overtime_shifts",
+                    message: "额外班次必须是 0–366 之间的整数。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOvertime,
+                "payMultiplier",
+                path + ".overtime.payMultiplier",
+                {
+                    minimum: 0,
+                    maximum: 10,
+                    step: 0.5,
+                    code: "invalid_overtime_multiplier",
+                    message: "加班费倍率必须是 0–10，且以 0.5 为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOvertime,
+                "paidHours",
+                path + ".overtime.paidHours",
+                {
+                    minimum: 0,
+                    maximum: 24,
+                    step: 0.5,
+                    code: "invalid_overtime_paid_hours",
+                    message: "每次计薪小时必须是 0–24，且以 0.5 小时为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOvertime,
+                "payBaseMonthly",
+                path + ".overtime.payBaseMonthly",
+                {
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 1000000000,
+                    step: 100,
+                    code: "invalid_overtime_pay_base",
+                    message: "加班月薪基数必须留空或填写非负金额，且以 100 元为步长。"
+                }
+            );
 
             if (offer.pay.monthlySalary <= 0) {
                 errors.push(issue(path + ".pay.monthlySalary", "missing_salary", "月薪必须大于 0。"));
             }
-            if (ids[offer.id]) {
+            if (ids.has(offer.id)) {
                 errors.push(issue(path + ".id", "duplicate_id", "Offer id 不能重复。"));
             }
-            ids[offer.id] = true;
+            ids.add(offer.id);
 
             if (offer.city === "通用") {
                 warnings.push(issue(
@@ -994,13 +1258,6 @@
             }
             if (!offer.department) {
                 warnings.push(issue(path + ".department", "missing_department", "未提供部门，仅显示公司名。"));
-            }
-            if (rawOffer && Object.prototype.hasOwnProperty.call(rawOffer, "project")) {
-                warnings.push(issue(
-                    path + ".project",
-                    "deprecated_project",
-                    "project 字段已弃用，请将其内容合并到 department。"
-                ));
             }
             if (rawOffer && !isObject(rawOffer.schedule)) {
                 warnings.push(issue(
@@ -1019,18 +1276,51 @@
 
             offer.schedule.days.forEach(function (day, dayIndex) {
                 var dayKey = day.week + "-" + day.weekday;
-                var hours = durationHours(day.start, day.end);
+                var rawDay = rawScheduleDays ? rawScheduleDays[dayIndex] : null;
+                var startValue = timeValueForValidation(rawDay, "start", day.start);
+                var endValue = timeValueForValidation(rawDay, "end", day.end);
+                var startMinutes = parseTime(startValue);
+                var endMinutes = parseTime(endValue);
 
-                if (seenDays[dayKey]) {
+                validateRawNumber(
+                    errors,
+                    rawDay,
+                    "week",
+                    path + ".schedule.days[" + dayIndex + "].week",
+                    {
+                        minimum: 1,
+                        maximum: offer.schedule.cycleWeeks,
+                        integer: true,
+                        code: "invalid_schedule_week",
+                        message: "排班周次必须是循环周期内的整数。"
+                    }
+                );
+                validateRawNumber(
+                    errors,
+                    rawDay,
+                    "weekday",
+                    path + ".schedule.days[" + dayIndex + "].weekday",
+                    {
+                        minimum: 1,
+                        maximum: 7,
+                        integer: true,
+                        code: "invalid_schedule_weekday",
+                        message: "排班星期必须是 1–7 之间的整数。"
+                    }
+                );
+
+                if (seenDays.has(dayKey)) {
                     warnings.push(issue(
                         path + ".schedule.days[" + dayIndex + "]",
                         "duplicate_schedule_day",
                         "同一周期周和星期存在重复班次，工时会累加。"
                     ));
                 }
-                seenDays[dayKey] = true;
+                seenDays.add(dayKey);
 
-                if (hours <= 0 || hours > 24) {
+                if (startMinutes === null ||
+                        endMinutes === null ||
+                        startMinutes === endMinutes) {
                     errors.push(issue(
                         path + ".schedule.days[" + dayIndex + "]",
                         "invalid_shift",
@@ -1038,6 +1328,29 @@
                     ));
                 }
             });
+
+            if (offer.overtime.shiftsPerYear > 0) {
+                var overtimeStart = parseTime(timeValueForValidation(
+                    rawOvertime,
+                    "start",
+                    offer.overtime.start
+                ));
+                var overtimeEnd = parseTime(timeValueForValidation(
+                    rawOvertime,
+                    "end",
+                    offer.overtime.end
+                ));
+
+                if (overtimeStart === null ||
+                        overtimeEnd === null ||
+                        overtimeStart === overtimeEnd) {
+                    errors.push(issue(
+                        path + ".overtime",
+                        "invalid_overtime_shift",
+                        "额外班次的上下班时间无效。"
+                    ));
+                }
+            }
 
             if (offer.overtime.shiftsPerYear > 0 && offer.overtime.payMultiplier <= 0) {
                 warnings.push(issue(
@@ -1055,55 +1368,87 @@
         };
     }
 
-    function bestId(results, field, direction) {
-        var best = null;
+    function parseStateContext(rawState) {
+        var raw = isObject(rawState) ? rawState : {};
+        var versionError = schemaVersionError(raw);
+        var state = normalize(raw);
+        var resolvedTaxPolicy = taxPolicy.resolve(state.settings.year);
+        var validation = validateParsedState(
+            raw,
+            state,
+            resolvedTaxPolicy
+        );
+        var schemaErrors = versionError ? [versionError] : [];
 
-        results.forEach(function (result) {
-            var value = result.metrics[field];
-            if (!best ||
-                    (direction === "min" && value < best.value) ||
-                    (direction !== "min" && value > best.value)) {
-                best = { id: result.id, value: value };
+        return {
+            state: state,
+            resolvedTaxPolicy: resolvedTaxPolicy,
+            versionError: versionError,
+            validation: {
+                valid: schemaErrors.length === 0 && validation.valid,
+                errors: schemaErrors.concat(validation.errors),
+                warnings: validation.warnings
             }
-        });
+        };
+    }
 
-        return best ? best.id : null;
+    function parseState(rawState) {
+        var context = parseStateContext(rawState);
+        return {
+            state: context.state,
+            validation: context.validation
+        };
+    }
+
+    function validateState(rawState) {
+        return parseState(rawState).validation;
     }
 
     function calculateAll(rawState) {
-        var state = normalize(rawState);
+        var parsed = parseStateContext(rawState);
+        if (parsed.versionError) {
+            throwValidationIssue(parsed.versionError);
+        }
+        var state = parsed.state;
+        var assumptions = buildDefaultAssumptions(
+            state.settings,
+            parsed.resolvedTaxPolicy
+        );
+        var policy = taxPolicyMetadata(parsed.resolvedTaxPolicy);
+        var taxBaseline = taxScenario(
+            "merged",
+            state.settings.otherComprehensiveIncome,
+            0,
+            state.settings.basicDeduction +
+                state.settings.specialAdditionalDeduction +
+            state.settings.otherDeductions,
+            parsed.resolvedTaxPolicy
+        );
         var results = state.offers.map(function (offer) {
-            return calculateOffer(offer, state.settings);
+            return calculateNormalizedOffer(
+                offer,
+                state.settings,
+                parsed.resolvedTaxPolicy,
+                taxBaseline
+            );
         });
-        var assumptions = buildDefaultAssumptions(state.settings);
-        var validation = validateState(state);
 
         return {
             state: state,
             results: results,
-            summary: {
-                offerCount: results.length,
-                highestPretaxIncomeId: bestId(results, "annualPretaxCash", "max"),
-                highestTakeHomeIncomeId: bestId(results, "annualTakeHomeCash", "max"),
-                lowestWeeklyPresenceHoursId: bestId(results, "averageWeeklyPresenceHours", "min"),
-                highestPretaxHourlyId: bestId(results, "pretaxHourly", "max"),
-                highestAfterTaxHourlyId: bestId(results, "afterTaxHourly", "max"),
-                primaryHoursBasis: state.settings.primaryHoursBasis,
-                assumptionCount: assumptions.length
-            },
-            validation: validation,
+            validation: parsed.validation,
             assumptions: assumptions,
-            defaultAssumptionCount: assumptions.length
+            taxPolicy: policy,
+            taxBaseline: taxBaseline
         };
     }
 
     return {
         VERSION: VERSION,
+        MAX_OFFERS: MAX_OFFERS,
         MAX_CYCLE_WEEKS: MAX_CYCLE_WEEKS,
-        DEFAULT_SETTINGS: clone(DEFAULT_SETTINGS),
-        normalize: normalize,
+        parseState: parseState,
         stringifyState: stringifyState,
-        calculateOffer: calculateOffer,
         calculateAll: calculateAll,
         createDefaultState: createDefaultState,
         validateState: validateState
