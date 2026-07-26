@@ -59,79 +59,7 @@ function readTypography(element) {
     };
 }
 
-function readOfferCardPresentation(card) {
-    const cardStyle = getComputedStyle(card);
-    const header = card.querySelector(".offer-card__header");
-    const headerStyle = getComputedStyle(header);
-    const heading = card.querySelector(".offer-card__identity h3");
-    const headingStyle = getComputedStyle(heading);
-    const title = card.querySelector(".offer-card__title-link");
-    const titleStyle = getComputedStyle(title);
-    const subtitle = card.querySelector("[data-card-subtitle]");
-    const subtitleStyle = getComputedStyle(subtitle);
-    const actions = card.querySelector(".offer-card__actions");
-    const actionsStyle = getComputedStyle(actions);
-    const headerRect = header.getBoundingClientRect();
-    const actionsRect = actions.getBoundingClientRect();
-
-    return {
-        card: {
-            paddingTop: cardStyle.paddingTop,
-            paddingRight: cardStyle.paddingRight,
-            paddingBottom: cardStyle.paddingBottom,
-            paddingLeft: cardStyle.paddingLeft,
-            rowGap: cardStyle.rowGap,
-            columnGap: cardStyle.columnGap
-        },
-        header: {
-            alignItems: headerStyle.alignItems,
-            borderBottomWidth: headerStyle.borderBottomWidth,
-            borderBottomStyle: headerStyle.borderBottomStyle,
-            borderBottomColor: headerStyle.borderBottomColor,
-            paddingBottom: headerStyle.paddingBottom,
-            rowGap: headerStyle.rowGap,
-            columnGap: headerStyle.columnGap,
-            height: headerRect.height
-        },
-        heading: {
-            marginTop: headingStyle.marginTop,
-            marginRight: headingStyle.marginRight,
-            marginBottom: headingStyle.marginBottom,
-            marginLeft: headingStyle.marginLeft
-        },
-        title: {
-            display: titleStyle.display,
-            width: titleStyle.width,
-            maxWidth: titleStyle.maxWidth,
-            marginTop: titleStyle.marginTop,
-            marginRight: titleStyle.marginRight,
-            marginBottom: titleStyle.marginBottom,
-            marginLeft: titleStyle.marginLeft,
-            whiteSpace: titleStyle.whiteSpace,
-            overflow: titleStyle.overflow,
-            textOverflow: titleStyle.textOverflow,
-            overflowWrap: titleStyle.overflowWrap
-        },
-        subtitle: {
-            display: subtitleStyle.display,
-            marginTop: subtitleStyle.marginTop,
-            marginRight: subtitleStyle.marginRight,
-            marginBottom: subtitleStyle.marginBottom,
-            marginLeft: subtitleStyle.marginLeft,
-            whiteSpace: subtitleStyle.whiteSpace,
-            overflow: subtitleStyle.overflow,
-            textOverflow: subtitleStyle.textOverflow,
-            overflowWrap: subtitleStyle.overflowWrap
-        },
-        actions: {
-            alignSelf: actionsStyle.alignSelf,
-            topOffset: Number((actionsRect.top - headerRect.top).toFixed(3))
-        }
-    };
-}
-
 export {
     measureCollapsedPrimaryPanels,
-    readOfferCardPresentation,
     readTypography
 };

@@ -855,13 +855,14 @@
             createInputField(offer, {
                 label: "部门",
                 path: "department",
-                value: offer.department
+                value: offer.department,
+                hint: "可选；留空时只显示公司名，不影响任何计算。"
             }),
             createInputField(offer, {
                 label: "城市",
                 path: "city",
                 value: offer.city,
-                hint: "未知时使用“通用”。"
+                hint: "未知时使用“通用”，个人社保和公积金均按月薪与填写比例直接估算。"
             }),
             createInputField(offer, {
                 label: "月薪（元）",
@@ -1022,6 +1023,10 @@
         container.appendChild(line);
     }
 
+    function appendTaxGuide(container, text) {
+        container.appendChild(createElement("p", "tax-explanation__guide", text));
+    }
+
     function createTaxExplanationBody(view, policy, baseline) {
         var result = view.result;
         var tax = result.tax;
@@ -1113,17 +1118,29 @@
         );
 
         appendTaxSection(body, "所选方案的计算");
+        appendTaxGuide(
+            body,
+            "“速算扣除数”来自对应的官方税率表，不是个人可另行申报的扣除项；" +
+                "它用于把“应纳税所得额 × 适用税率”换算成超额累进税额。"
+        );
         if (tax.selectedMode === "separate") {
             appendTaxFormula(
                 body,
-                "综合所得应纳税额",
+                "综合所得应纳税所得额（不含单独计税奖金）",
                 "max(0，" + formatPreciseMoney(inputs.regularIncome) + " − " +
                     formatPreciseMoney(inputs.deductions) + ") = " +
                     formatPreciseMoney(scenario.taxableComprehensiveIncome)
             );
             appendTaxFormula(
                 body,
-                "综合所得税",
+                "综合所得适用税率与速算扣除数",
+                "按年度综合所得税率表：" +
+                    formatRate(scenario.comprehensiveRate) + "，" +
+                    formatPreciseMoney(scenario.comprehensiveQuickDeduction)
+            );
+            appendTaxFormula(
+                body,
+                "综合所得部分应纳税额",
                 formatPreciseMoney(scenario.taxableComprehensiveIncome) + " × " +
                     formatRate(scenario.comprehensiveRate) + " − " +
                     formatPreciseMoney(scenario.comprehensiveQuickDeduction) + " = " +
@@ -1131,13 +1148,20 @@
             );
             appendTaxFormula(
                 body,
-                "奖金月度折算",
+                "奖金换算月收入（仅用于查税率）",
                 formatPreciseMoney(inputs.bonus) + " ÷ 12 = " +
                     formatPreciseMoney(scenario.bonusMonthlyEquivalent)
             );
             appendTaxFormula(
                 body,
-                "奖金税",
+                "奖金适用税率与速算扣除数",
+                "按月换算后的综合所得税率表：" +
+                    formatRate(scenario.bonusRate) + "，" +
+                    formatPreciseMoney(scenario.bonusQuickDeduction)
+            );
+            appendTaxFormula(
+                body,
+                "全年一次性奖金应纳税额",
                 formatPreciseMoney(inputs.bonus) + " × " +
                     formatRate(scenario.bonusRate) + " − " +
                     formatPreciseMoney(scenario.bonusQuickDeduction) + " = " +
@@ -1145,7 +1169,7 @@
             );
             appendTaxFormula(
                 body,
-                "含其他收入的总税额",
+                "本方案个税合计",
                 formatPreciseMoney(scenario.comprehensiveTax) + " + " +
                     formatPreciseMoney(scenario.bonusTax) + " = " +
                     formatPreciseMoney(scenario.totalTax),
@@ -1154,7 +1178,7 @@
         } else {
             appendTaxFormula(
                 body,
-                "应纳税所得额",
+                "综合所得应纳税所得额（含奖金）",
                 "max(0，" + formatPreciseMoney(inputs.regularIncome) + " + " +
                     formatPreciseMoney(inputs.bonus) + " − " +
                     formatPreciseMoney(inputs.deductions) + ") = " +
@@ -1162,7 +1186,14 @@
             );
             appendTaxFormula(
                 body,
-                "含其他收入的总税额",
+                "综合所得适用税率与速算扣除数",
+                "按年度综合所得税率表：" +
+                    formatRate(scenario.comprehensiveRate) + "，" +
+                    formatPreciseMoney(scenario.comprehensiveQuickDeduction)
+            );
+            appendTaxFormula(
+                body,
+                "本方案年度综合所得应纳税额",
                 formatPreciseMoney(scenario.taxableComprehensiveIncome) + " × " +
                     formatRate(scenario.comprehensiveRate) + " − " +
                     formatPreciseMoney(scenario.comprehensiveQuickDeduction) + " = " +
@@ -1171,6 +1202,12 @@
             );
         }
 
+        appendTaxSection(body, "归属到该 Offer 的税额");
+        appendTaxGuide(
+            body,
+            "为避免把全局填写的其他综合所得税额重复算进每个 Offer，结果采用增量口径：" +
+                "所选方案总税额减去“没有该 Offer 收入时”的基线税额。"
+        );
         appendTaxFormula(
             body,
             "无该 Offer 的基线税额",
@@ -1631,7 +1668,6 @@
         renderResultControls();
         var views = selectors.createComparisonViews(latestCalculation);
         var errors = latestCalculation.validation.errors;
-        var warnings = latestCalculation.validation.warnings;
 
         if (errors.length && elements.offerEditorPanel) {
             elements.offerEditorPanel.open = true;
@@ -1667,10 +1703,7 @@
                 "有 " + errors.length + " 项输入需要检查：" + errors[0].message;
             elements.resultStatus.classList.add("is-error");
         } else {
-            elements.resultStatus.textContent =
-                views.length + " 个 Offer · " +
-                latestCalculation.assumptions.length + " 项全局默认假设 · " +
-                warnings.length + " 条可选完善信息";
+            elements.resultStatus.textContent = views.length + " 个 Offer";
             elements.resultStatus.classList.remove("is-error");
         }
     }

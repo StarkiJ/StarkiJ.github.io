@@ -1249,16 +1249,6 @@
             }
             ids.add(offer.id);
 
-            if (offer.city === "通用") {
-                warnings.push(issue(
-                    path + ".city",
-                    "generic_city",
-                    "未指定缴纳城市，未套用城市缴费基数上下限。"
-                ));
-            }
-            if (!offer.department) {
-                warnings.push(issue(path + ".department", "missing_department", "未提供部门，仅显示公司名。"));
-            }
             if (rawOffer && !isObject(rawOffer.schedule)) {
                 warnings.push(issue(
                     path + ".schedule",

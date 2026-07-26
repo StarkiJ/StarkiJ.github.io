@@ -110,7 +110,7 @@
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 9px;
+    gap: 13px;
     border: 1px solid var(--line);
     border-top: 3px solid var(--teal);
     border-radius: 10px;
@@ -124,6 +124,8 @@
     min-width: 0;
     flex-direction: column;
     gap: 9px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
 }
 
 .offer-card__content[hidden] {
@@ -136,8 +138,6 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 8px;
 }
 
 .offer-card__header > :first-child {
@@ -1750,6 +1750,16 @@
     margin: 0;
     color: var(--muted);
     font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.tax-explanation__guide {
+    margin: 0;
+    border-left: 3px solid rgba(15, 118, 110, 0.35);
+    padding: 7px 9px;
+    background: var(--offer-accent-soft);
+    color: var(--muted);
+    font-size: 0.8rem;
     line-height: 1.5;
 }
 

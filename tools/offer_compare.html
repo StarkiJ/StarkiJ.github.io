@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="对比多个工作 Offer 的年收入、税后到手、平均周工时与等效时薪，并保留可编辑的计算假设。">
-    <title>Offer 对比器 | Starki</title>
+    <title>Offer 分析对比 | Starki</title>
     <link rel="icon" href="../images/head.jpg">
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="./css/offer_compare.css">
@@ -30,7 +30,7 @@
     <main class="tool-shell offer-comparator" id="offerComparator" data-testid="offer-comparator">
         <section class="tool-hero" aria-labelledby="tool-title">
             <p class="eyebrow">Tool</p>
-            <h1 id="tool-title">Offer 对比器</h1>
+            <h1 id="tool-title">Offer 分析对比</h1>
             <p>把薪酬和排班放到同一套口径下，快速比较税前收入、税后到手、平均周工时与等效时薪。</p>
         </section>
 
@@ -177,7 +177,7 @@
                     aria-describedby="offerListHelp" aria-live="off" data-testid="offer-list"></div>
 
                 <noscript>
-                    <p class="inline-notice">Offer 对比器需要 JavaScript 才能计算，请启用后重新打开本页。</p>
+                    <p class="inline-notice">Offer 分析对比需要 JavaScript 才能计算，请启用后重新打开本页。</p>
                 </noscript>
             </div>
         </details>
@@ -195,7 +195,8 @@
 
             <div class="collapsible-tool-content result-content">
                 <div class="result-toolbar">
-                    <p class="result-copy" id="resultStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+                    <p class="result-copy" id="resultStatus" role="status" aria-live="polite"
+                        aria-atomic="true"></p>
                     <div class="sort-controls" role="group" aria-label="结果口径与排序">
                         <div class="field sort-field hours-basis-field">
                             <label for="primaryHoursBasis">工时口径</label>
@@ -271,7 +272,7 @@
                     aria-labelledby="tax-explanations-title" hidden data-testid="tax-explanations">
                     <div class="tax-explanations__heading">
                         <h3 id="tax-explanations-title">个人所得税计算说明</h3>
-                        <p>点击汇总表中的个税金额可跳到对应说明；点击说明中的 Offer 名称可返回该金额。</p>
+                        <p>按年度汇算口径估算。点击汇总表中的个税金额可跳到对应说明；点击说明中的 Offer 名称可返回该金额。</p>
                     </div>
                     <div class="tax-explanation-list" id="taxExplanationList"></div>
                 </section>
@@ -312,7 +313,7 @@
                     <p class="policy-links">
                         政策口径更新于 2026 年 7 月：
                         <a href="https://www.chinatax.gov.cn/n810219/n810744/n3752930/n3752974/c3970366/content.html"
-                            target="_blank" rel="noreferrer">个人所得税法</a>、
+                            target="_blank" rel="noreferrer">个人所得税法与综合所得税率表</a>、
                         <a href="https://www.mof.gov.cn/jrttts/202308/t20230828_3904461.htm"
                             target="_blank" rel="noreferrer">全年一次性奖金政策</a>、
                         <a href="https://www.bjfsh.gov.cn/zsk/zcwd/202411/t20241119_40082848.shtml"

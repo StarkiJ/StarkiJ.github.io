@@ -7,14 +7,11 @@ import {
 } from "./helpers/offer_compare_browser_harness.mjs";
 import {
     measureCollapsedPrimaryPanels,
-    readOfferCardPresentation,
     readTypography
 } from "./helpers/offer_compare_browser_probes.mjs";
 
 const collapsedPrimaryPanelsProbe =
     `(${measureCollapsedPrimaryPanels.toString()})()`;
-const offerCardPresentationProbe =
-    readOfferCardPresentation.toString();
 const typographyProbe = readTypography.toString();
 
 async function run() {
@@ -110,7 +107,6 @@ async function run() {
             const offerCards = [...document.querySelectorAll('.offer-card')];
             const firstOfferId = offerCards[0].dataset.offerId;
             const typography = ${typographyProbe};
-            const cardPresentation = ${offerCardPresentationProbe};
             const assumptionItems = [
                 ...document.querySelectorAll(
                     '#assumptionPanel .assumption-content li'
@@ -160,7 +156,6 @@ async function run() {
             );
             const collapsedTitleTypography = typography(firstCardTitle);
             const collapsedSubtitleTypography = typography(firstCardSubtitle);
-            const collapsedCardPresentation = cardPresentation(offerCards[0]);
             firstCardToggle.click();
             const offerEditorMountedOnExpand = Boolean(
                 offerCards[0].querySelector('.offer-card__content input')
@@ -176,9 +171,14 @@ async function run() {
                     '[data-path="schedule.dinnerBreakHours"]'
                 )
             };
+            const cityHelp = offerCards[0].querySelector(
+                '[data-path="city"]'
+            ).closest('.field').querySelector('.field-help');
+            const departmentHelp = offerCards[0].querySelector(
+                '[data-path="department"]'
+            ).closest('.field').querySelector('.field-help');
             const expandedTitleTypography = typography(firstCardTitle);
             const expandedSubtitleTypography = typography(firstCardSubtitle);
-            const expandedCardPresentation = cardPresentation(offerCards[0]);
             const typographyNodesStable =
                 firstCardTitle === offerCards[0].querySelector(
                     '.offer-card__title-link'
@@ -206,8 +206,11 @@ async function run() {
             );
             firstHelp.focus();
             return {
+                documentTitle: document.title,
+                toolTitle: document.querySelector('#tool-title').textContent.trim(),
                 source: document.querySelector('#dataSourceLabel').textContent.trim(),
                 saveStatus: document.querySelector('#saveStatus').textContent.trim(),
+                resultStatus: document.querySelector('#resultStatus').textContent.trim(),
                 assumptionSummary:
                     document.querySelector('#assumptionSummary').textContent.trim(),
                 assumptionItems: assumptionItems.map((item) =>
@@ -263,8 +266,6 @@ async function run() {
                 expandedTitleTypography,
                 collapsedSubtitleTypography,
                 expandedSubtitleTypography,
-                collapsedCardPresentation,
-                expandedCardPresentation,
                 typographyNodesStable,
                 offerCardOrder: offerCards.map((card) => card.dataset.offerId),
                 offerActionOrder: [
@@ -339,6 +340,9 @@ async function run() {
                 offerEditorsInitiallyUnmounted,
                 offerEditorMountedOnExpand,
                 offerEditorUnmountedOnCollapse,
+                resultWarningsAbsent: !document.querySelector('#resultWarnings'),
+                cityTooltip: cityHelp.dataset.tooltip,
+                departmentTooltip: departmentHelp.dataset.tooltip,
                 offerOverrideFieldsValid: Boolean(
                     offerOverrideFields.social &&
                     offerOverrideFields.social.value === '' &&
@@ -395,8 +399,11 @@ async function run() {
         desktopPrimaryPanelMetrics.slice(1).forEach((metrics) => {
             assert.deepStrictEqual(metrics, desktopPrimaryPanelMetrics[0]);
         });
+        assert.equal(desktop.documentTitle, "Offer 分析对比 | Starki");
+        assert.equal(desktop.toolTitle, "Offer 分析对比");
         assert.equal(desktop.source, "脱敏示例");
         assert.doesNotMatch(desktop.saveStatus, /Failed to fetch|私有数据未载入/);
+        assert.equal(desktop.resultStatus, "4 个 Offer");
         assert.equal(desktop.assumptionSummary, "查看 11 项全局默认假设");
         assert.equal(desktop.assumptionItems.length, 11);
         assert.deepStrictEqual(
@@ -449,10 +456,6 @@ async function run() {
             desktop.collapsedSubtitleTypography,
             desktop.expandedSubtitleTypography
         );
-        assert.deepStrictEqual(
-            desktop.collapsedCardPresentation,
-            desktop.expandedCardPresentation
-        );
         assert.equal(desktop.typographyNodesStable, true);
         assert.deepStrictEqual(
             desktop.offerCardOrder,
@@ -497,6 +500,15 @@ async function run() {
         assert.equal(desktop.offerEditorsInitiallyUnmounted, true);
         assert.equal(desktop.offerEditorMountedOnExpand, true);
         assert.equal(desktop.offerEditorUnmountedOnCollapse, true);
+        assert.equal(desktop.resultWarningsAbsent, true);
+        assert.match(
+            desktop.cityTooltip,
+            /没有可靠的全国通用缴费基数上下限.*按月薪与填写比例直接估算/
+        );
+        assert.match(
+            desktop.departmentTooltip,
+            /留空时只显示公司名.*不影响任何计算/
+        );
         assert.equal(desktop.offerOverrideFieldsValid, true);
         assert.equal(desktop.schedulePrimaryControlCount, 4);
         assert.equal(desktop.schedulePrimaryControlRows, 1);
@@ -1681,6 +1693,18 @@ async function run() {
         })()`);
         assert.match(taxExplanation.text, /固定工资（Offer）/);
         assert.match(taxExplanation.text, /基本减除费用（内置年度规则）/);
+        assert.match(
+            taxExplanation.text,
+            /速算扣除数.*不是个人可另行申报的扣除项/
+        );
+        assert.match(
+            taxExplanation.text,
+            /综合所得应纳税所得额（不含单独计税奖金）/
+        );
+        assert.match(
+            taxExplanation.text,
+            /全年一次性奖金应纳税额/
+        );
         assert.match(taxExplanation.text, /归属于该 Offer 的增量个税/);
         assert.match(
             taxExplanation.text,
@@ -1849,7 +1873,6 @@ async function run() {
             const settingsFields = [...document.querySelectorAll('#settingsForm .field')];
             const settingsRects = settingsFields.map((field) => field.getBoundingClientRect());
             const typography = ${typographyProbe};
-            const cardPresentation = ${offerCardPresentationProbe};
             const firstCard = document.querySelector('.offer-card');
             const firstCardToggle = firstCard.querySelector(
                 '[data-action="toggle-offer-card"]'
@@ -1865,11 +1888,9 @@ async function run() {
             }
             const collapsedTitleTypography = typography(firstCardTitle);
             const collapsedSubtitleTypography = typography(firstCardSubtitle);
-            const collapsedCardPresentation = cardPresentation(firstCard);
             firstCardToggle.click();
             const expandedTitleTypography = typography(firstCardTitle);
             const expandedSubtitleTypography = typography(firstCardSubtitle);
-            const expandedCardPresentation = cardPresentation(firstCard);
             const typographyNodesStable =
                 firstCardTitle === firstCard.querySelector(
                     '.offer-card__title-link'
@@ -1944,8 +1965,6 @@ async function run() {
                 expandedTitleTypography,
                 collapsedSubtitleTypography,
                 expandedSubtitleTypography,
-                collapsedCardPresentation,
-                expandedCardPresentation,
                 typographyNodesStable,
                 offerHeaderFits: firstCardHeader.scrollWidth <= firstCardHeader.clientWidth + 1,
                 summaryCardsFit: summaryCards.every((card) =>
@@ -2001,10 +2020,6 @@ async function run() {
         assert.deepStrictEqual(
             mobile.collapsedSubtitleTypography,
             mobile.expandedSubtitleTypography
-        );
-        assert.deepStrictEqual(
-            mobile.collapsedCardPresentation,
-            mobile.expandedCardPresentation
         );
         assert.equal(mobile.typographyNodesStable, true);
         assert.equal(mobile.offerHeaderFits, true);

@@ -1,4 +1,4 @@
-# Offer 对比器数据文件
+# Offer 分析对比数据文件
 
 公开页面默认读取 `offer_compare_examples.json` 中的代称示例。
 
