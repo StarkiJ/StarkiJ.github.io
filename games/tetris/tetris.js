@@ -6,6 +6,10 @@ const START_DROP_INTERVAL = 800;
 const MIN_DROP_INTERVAL = 90;
 const DROP_STEP = 70;
 const BEST_SCORE_KEY = "starki-tetris-best-score";
+const GESTURE_AXIS_THRESHOLD = 10;
+const GESTURE_TAP_THRESHOLD = 12;
+const HARD_DROP_DISTANCE = 88;
+const HARD_DROP_DURATION = 280;
 
 const PIECES = {
     I: {
@@ -80,6 +84,7 @@ const linesElement = document.getElementById("lines");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
 const boardMessage = document.getElementById("boardMessage");
+const boardStage = boardCanvas.closest(".board-stage");
 
 let board = createBoard();
 let bag = [];
@@ -94,6 +99,7 @@ let dropCounter = 0;
 let lastTime = 0;
 let animationFrameId = 0;
 let gameState = "idle";
+let gesture = null;
 
 bestScoreElement.textContent = bestScore;
 drawBoard();
@@ -176,7 +182,7 @@ function togglePause() {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = 0;
         pauseButton.textContent = "继续";
-        showMessage("已暂停", "按继续或 P 键回到游戏。");
+        showMessage("已暂停", "轻点棋盘或按“继续”回到游戏。");
         return;
     }
 
@@ -194,7 +200,7 @@ function endGame() {
     pauseButton.disabled = true;
     startButton.textContent = "再来一局";
     saveBestScore();
-    showMessage("游戏结束", "按再来一局重新开始。");
+    showMessage("游戏结束", "轻点棋盘再来一局。");
 }
 
 function saveBestScore() {
@@ -588,6 +594,145 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     handleAction(action);
 });
+
+function getGestureStep() {
+    const renderedCell = boardCanvas.getBoundingClientRect().width / COLS;
+    return Math.max(18, renderedCell * 0.78);
+}
+
+function beginGesture(event) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) {
+        return;
+    }
+
+    gesture = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastStepX: event.clientX,
+        lastStepY: event.clientY,
+        startTime: event.timeStamp,
+        axis: null,
+        rotatedUp: false,
+        initialState: gameState,
+    };
+
+    boardStage.classList.add("is-gesturing");
+    boardStage.setPointerCapture(event.pointerId);
+}
+
+function resumeForGesture() {
+    if (gameState === "paused") {
+        togglePause();
+    } else if (gameState !== "playing") {
+        startGame();
+    }
+}
+
+function applyGestureMovement(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    const totalX = event.clientX - gesture.startX;
+    const totalY = event.clientY - gesture.startY;
+
+    if (!gesture.axis && Math.max(Math.abs(totalX), Math.abs(totalY)) >= GESTURE_AXIS_THRESHOLD) {
+        gesture.axis = Math.abs(totalX) > Math.abs(totalY) ? "horizontal" : "vertical";
+        resumeForGesture();
+    }
+
+    if (!gesture.axis || gameState !== "playing") {
+        return;
+    }
+
+    const step = getGestureStep();
+
+    if (gesture.axis === "horizontal") {
+        const distance = event.clientX - gesture.lastStepX;
+        const steps = Math.min(COLS, Math.floor(Math.abs(distance) / step));
+
+        if (steps > 0) {
+            const action = distance > 0 ? "right" : "left";
+            for (let count = 0; count < steps; count += 1) {
+                handleAction(action);
+            }
+            gesture.lastStepX += Math.sign(distance) * steps * step;
+        }
+        return;
+    }
+
+    const distance = event.clientY - gesture.lastStepY;
+
+    if (distance > 0) {
+        const steps = Math.min(ROWS, Math.floor(distance / step));
+
+        for (let count = 0; count < steps; count += 1) {
+            handleAction("down");
+        }
+
+        if (steps > 0) {
+            gesture.lastStepY += steps * step;
+        }
+    } else if (!gesture.rotatedUp && gesture.startY - event.clientY >= step) {
+        handleAction("rotate");
+        gesture.rotatedUp = true;
+    }
+}
+
+function moveGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    event.preventDefault();
+    applyGestureMovement(event);
+}
+
+function finishGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    applyGestureMovement(event);
+
+    const totalX = event.clientX - gesture.startX;
+    const totalY = event.clientY - gesture.startY;
+    const distance = Math.hypot(totalX, totalY);
+    const duration = event.timeStamp - gesture.startTime;
+    const initialState = gesture.initialState;
+    const isQuickDownwardSwipe =
+        gesture.axis === "vertical" &&
+        totalY >= HARD_DROP_DISTANCE &&
+        duration <= HARD_DROP_DURATION;
+
+    if (initialState === "playing" && distance <= GESTURE_TAP_THRESHOLD) {
+        handleAction("rotate");
+    } else if (initialState === "paused" && distance <= GESTURE_TAP_THRESHOLD) {
+        togglePause();
+    } else if (initialState !== "playing" && initialState !== "paused" && distance <= GESTURE_TAP_THRESHOLD) {
+        startGame();
+    } else if (initialState === "playing" && isQuickDownwardSwipe && gameState === "playing") {
+        handleAction("drop");
+    }
+
+    gesture = null;
+    boardStage.classList.remove("is-gesturing");
+}
+
+function cancelGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    gesture = null;
+    boardStage.classList.remove("is-gesturing");
+}
+
+boardStage.addEventListener("pointerdown", beginGesture);
+boardStage.addEventListener("pointermove", moveGesture);
+boardStage.addEventListener("pointerup", finishGesture);
+boardStage.addEventListener("pointercancel", cancelGesture);
 
 document.addEventListener("visibilitychange", () => {
     if (document.hidden && gameState === "playing") {

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="经典贪吃蛇小游戏，支持键盘、WASD、触屏按钮和滑动操作。">
+    <meta name="description" content="经典贪吃蛇小游戏，支持键盘、WASD 和手机手势操作。">
     <title>贪吃蛇 | Starki</title>
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
@@ -33,9 +33,14 @@
         <section class="snake-layout" aria-labelledby="game-title">
             <div class="board-stage" aria-label="贪吃蛇棋盘">
                 <canvas id="snakeBoard" class="snake-canvas" width="588" height="588"></canvas>
+                <div class="gesture-guide" aria-label="手势操作说明">
+                    <span>滑动转向</span>
+                    <span>连续滑动可快速转弯</span>
+                    <span>轻点开始或继续</span>
+                </div>
                 <div class="board-message" id="boardMessage">
                     <strong>准备开局</strong>
-                    <span>方向键或 WASD 控制方向，吃苹果变长。</span>
+                    <span>在棋盘上向任意方向滑动即可开始。</span>
                 </div>
             </div>
 
@@ -71,7 +76,7 @@
                 <dl class="controls-list">
                     <div>
                         <dt>移动</dt>
-                        <dd>方向键 / WASD</dd>
+                        <dd>滑动棋盘 / 方向键 / WASD</dd>
                     </div>
                     <div>
                         <dt>暂停</dt>
@@ -79,22 +84,15 @@
                     </div>
                     <div>
                         <dt>开局</dt>
-                        <dd>空格 / 开始按钮</dd>
+                        <dd>轻点或滑动棋盘</dd>
                     </div>
                     <div>
                         <dt>手机</dt>
-                        <dd>按钮或滑动棋盘</dd>
+                        <dd>连续滑动可快速转弯</dd>
                     </div>
                 </dl>
             </aside>
         </section>
-
-        <div class="touch-controls snake-pad" aria-label="触屏操作">
-            <button class="pad-up" type="button" data-action="up">上</button>
-            <button class="pad-left" type="button" data-action="left">左</button>
-            <button class="pad-right" type="button" data-action="right">右</button>
-            <button class="pad-down" type="button" data-action="down">下</button>
-        </div>
     </main>
 
     <script src="./snake.js"></script>

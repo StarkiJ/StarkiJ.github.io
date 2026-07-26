@@ -21,6 +21,15 @@
     background: #101511;
     padding: 14px;
     box-shadow: var(--shadow);
+    touch-action: none;
+    overscroll-behavior: contain;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+}
+
+.board-stage.is-gesturing {
+    cursor: grabbing;
 }
 
 .snake-canvas {
@@ -35,7 +44,10 @@
 
 .board-message {
     position: absolute;
-    inset: 14px;
+    inset: 14px 14px auto;
+    box-sizing: border-box;
+    width: calc(100% - 28px);
+    aspect-ratio: 1 / 1;
     display: grid;
     place-content: center;
     gap: 6px;
@@ -44,6 +56,25 @@
     color: #ffffff;
     padding: 24px;
     text-align: center;
+}
+
+.gesture-guide {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 12px;
+    margin-top: 11px;
+    color: #d8e7de;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.gesture-guide span:not(:last-child)::after {
+    content: "·";
+    margin-left: 12px;
+    color: rgba(216, 231, 222, 0.48);
 }
 
 .board-message[hidden] {
@@ -141,54 +172,6 @@
     color: var(--muted);
 }
 
-.touch-controls {
-    margin: 18px auto 0;
-}
-
-.snake-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 72px);
-    grid-template-rows: repeat(3, 48px);
-    justify-content: center;
-    gap: 8px;
-}
-
-.snake-pad button {
-    min-width: 0;
-    min-height: 0;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #ffffff;
-    color: var(--ink);
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.snake-pad button:active {
-    border-color: var(--teal);
-    background: var(--surface-strong);
-}
-
-.pad-up {
-    grid-column: 2;
-    grid-row: 1;
-}
-
-.pad-left {
-    grid-column: 1;
-    grid-row: 2;
-}
-
-.pad-right {
-    grid-column: 3;
-    grid-row: 2;
-}
-
-.pad-down {
-    grid-column: 2;
-    grid-row: 3;
-}
-
 @media (max-width: 900px) {
     .snake-layout {
         grid-template-columns: 1fr;
@@ -217,8 +200,11 @@
         font-size: 1.9rem;
     }
 
-    .snake-pad {
-        width: 100%;
-        grid-template-columns: repeat(3, minmax(64px, 1fr));
+    .gesture-guide {
+        gap: 4px 8px;
+    }
+
+    .gesture-guide span:not(:last-child)::after {
+        margin-left: 8px;
     }
 }

@@ -6,6 +6,8 @@ const MIN_INTERVAL = 70;
 const SPEED_STEP = 10;
 const FOOD_SCORE = 10;
 const BEST_SCORE_KEY = "starki-snake-best-score";
+const SWIPE_THRESHOLD = 18;
+const TAP_THRESHOLD = 10;
 
 const DIRECTIONS = {
     up: { x: 0, y: -1 },
@@ -23,6 +25,7 @@ const speedElement = document.getElementById("speedLevel");
 const startButton = document.getElementById("startButton");
 const pauseButton = document.getElementById("pauseButton");
 const boardMessage = document.getElementById("boardMessage");
+const boardStage = boardCanvas.closest(".board-stage");
 
 let snake = createStartSnake();
 let direction = DIRECTIONS.right;
@@ -35,7 +38,7 @@ let moveInterval = START_INTERVAL;
 let lastMoveTime = 0;
 let animationFrameId = 0;
 let gameState = "idle";
-let touchStart = null;
+let gesture = null;
 
 bestScoreElement.textContent = bestScore;
 updateStats();
@@ -102,7 +105,7 @@ function togglePause() {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = 0;
         pauseButton.textContent = "继续";
-        showMessage("已暂停", "按继续或 P 键回到游戏。");
+        showMessage("已暂停", "轻点或滑动棋盘继续游戏。");
         return;
     }
 
@@ -116,7 +119,7 @@ function togglePause() {
 }
 
 function endGame() {
-    finishGame("游戏结束", "撞到了，按再来一局重新开始。");
+    finishGame("游戏结束", "撞到了，轻点或滑动棋盘再来一局。");
 }
 
 function finishGame(title, copy) {
@@ -192,14 +195,17 @@ function setDirection(nextDirectionName) {
     const nextDirection = DIRECTIONS[nextDirectionName];
 
     if (!nextDirection || gameState !== "playing") {
-        return;
+        return false;
     }
 
     const isReverse = direction.x + nextDirection.x === 0 && direction.y + nextDirection.y === 0;
 
     if (!isReverse) {
         pendingDirection = nextDirection;
+        return true;
     }
+
+    return false;
 }
 
 function createFood() {
@@ -455,34 +461,105 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
-boardCanvas.addEventListener("pointerdown", (event) => {
-    touchStart = { x: event.clientX, y: event.clientY };
-    boardCanvas.setPointerCapture(event.pointerId);
-});
-
-boardCanvas.addEventListener("pointerup", (event) => {
-    if (!touchStart) {
-        return;
-    }
-
-    const deltaX = event.clientX - touchStart.x;
-    const deltaY = event.clientY - touchStart.y;
-    touchStart = null;
-
-    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 24) {
-        return;
-    }
-
+function getSwipeDirection(deltaX, deltaY) {
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        handleAction(deltaX > 0 ? "right" : "left");
-    } else {
-        handleAction(deltaY > 0 ? "down" : "up");
+        return deltaX > 0 ? "right" : "left";
     }
-});
 
-boardCanvas.addEventListener("pointercancel", () => {
-    touchStart = null;
-});
+    return deltaY > 0 ? "down" : "up";
+}
+
+function beginGesture(event) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) {
+        return;
+    }
+
+    gesture = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        initialState: gameState,
+    };
+
+    boardStage.classList.add("is-gesturing");
+    boardStage.setPointerCapture(event.pointerId);
+}
+
+function resumeForGesture() {
+    if (gameState === "paused") {
+        togglePause();
+    } else if (gameState !== "playing") {
+        startGame();
+    }
+}
+
+function applySwipe(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return false;
+    }
+
+    const deltaX = event.clientX - gesture.lastX;
+    const deltaY = event.clientY - gesture.lastY;
+
+    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < SWIPE_THRESHOLD) {
+        return false;
+    }
+
+    resumeForGesture();
+    handleAction(getSwipeDirection(deltaX, deltaY));
+    gesture.lastX = event.clientX;
+    gesture.lastY = event.clientY;
+    return true;
+}
+
+function moveGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    event.preventDefault();
+    applySwipe(event);
+}
+
+function finishGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    applySwipe(event);
+
+    const distance = Math.hypot(
+        event.clientX - gesture.startX,
+        event.clientY - gesture.startY,
+    );
+
+    if (distance <= TAP_THRESHOLD) {
+        if (gesture.initialState === "paused") {
+            togglePause();
+        } else if (gesture.initialState !== "playing") {
+            startGame();
+        }
+    }
+
+    gesture = null;
+    boardStage.classList.remove("is-gesturing");
+}
+
+function cancelGesture(event) {
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+    }
+
+    gesture = null;
+    boardStage.classList.remove("is-gesturing");
+}
+
+boardStage.addEventListener("pointerdown", beginGesture);
+boardStage.addEventListener("pointermove", moveGesture);
+boardStage.addEventListener("pointerup", finishGesture);
+boardStage.addEventListener("pointercancel", cancelGesture);
 
 document.addEventListener("visibilitychange", () => {
     if (document.hidden && gameState === "playing") {

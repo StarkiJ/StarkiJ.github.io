@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="经典俄罗斯方块小游戏，支持键盘和手机按钮操作。">
+    <meta name="description" content="经典俄罗斯方块小游戏，支持键盘和手机手势操作。">
     <title>俄罗斯方块 | Starki</title>
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
@@ -33,9 +33,14 @@
         <section class="tetris-layout" aria-labelledby="game-title">
             <div class="board-stage" aria-label="俄罗斯方块棋盘">
                 <canvas id="tetrisBoard" class="board-canvas" width="300" height="600"></canvas>
+                <div class="gesture-guide" aria-label="手势操作说明">
+                    <span>轻点旋转</span>
+                    <span>左右滑动移动</span>
+                    <span>下拖加速 · 快速下划直落</span>
+                </div>
                 <div class="board-message" id="boardMessage">
                     <strong>准备开局</strong>
-                    <span>方向键移动，空格直接落下。</span>
+                    <span>轻点棋盘开始，直接在棋盘上滑动操作。</span>
                 </div>
             </div>
 
@@ -76,31 +81,23 @@
                 <dl class="controls-list">
                     <div>
                         <dt>移动</dt>
-                        <dd>方向键左右</dd>
+                        <dd>左右滑动 / ← →</dd>
                     </div>
                     <div>
                         <dt>旋转</dt>
-                        <dd>上方向键 / Z</dd>
+                        <dd>轻点棋盘 / ↑</dd>
                     </div>
                     <div>
                         <dt>加速</dt>
-                        <dd>下方向键</dd>
+                        <dd>向下拖动 / ↓</dd>
                     </div>
                     <div>
                         <dt>直落</dt>
-                        <dd>空格</dd>
+                        <dd>快速下划 / 空格</dd>
                     </div>
                 </dl>
             </aside>
         </section>
-
-        <div class="touch-controls" aria-label="触屏操作">
-            <button type="button" data-action="left">左移</button>
-            <button type="button" data-action="rotate">旋转</button>
-            <button type="button" data-action="right">右移</button>
-            <button type="button" data-action="down">加速</button>
-            <button type="button" data-action="drop">直落</button>
-        </div>
     </main>
 
     <script src="./tetris.js"></script>
