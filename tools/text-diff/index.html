@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="对比两段文本并显示行级差异。">
+    <title>文本对比 | Starki</title>
+    <link rel="canonical" href="https://starkij.github.io/tools/text-diff/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a class="is-active" href="../../index.html#tools" aria-current="location">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../../index.html#tools">返回工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">文本对比</h1>
+            <p>把旧文本和新文本分别粘贴进来，页面会实时更新类似 Git diff 的行级和行内差异。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="文本对比表单">
+            <form id="diffForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="oldText">旧文本</label>
+                        <div class="line-editor">
+                            <pre class="line-numbers" id="oldLineNumbers" aria-hidden="true">1</pre>
+                            <div class="editor-input-wrap">
+                                <div class="editor-highlight-layer" id="oldHighlightLayer" aria-hidden="true"></div>
+                                <textarea id="oldText" class="diff-textarea" placeholder="粘贴原始文本" spellcheck="false" wrap="off"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="newText">新文本</label>
+                        <div class="line-editor">
+                            <pre class="line-numbers" id="newLineNumbers" aria-hidden="true">1</pre>
+                            <div class="editor-input-wrap">
+                                <div class="editor-highlight-layer" id="newHighlightLayer" aria-hidden="true"></div>
+                                <textarea id="newText" class="diff-textarea" placeholder="粘贴修改后的文本" spellcheck="false" wrap="off"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">立即对比</button>
+                    <button class="button secondary" type="button" id="swapButton">交换两边</button>
+                    <button class="button secondary" type="button" id="clearButton">清空</button>
+                    <button class="button secondary" type="button" id="copyButton">复制 diff</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden>
+                <h2 id="resultTitle">对比结果</h2>
+                <p class="result-copy" id="resultCopy" role="status" aria-live="polite"></p>
+                <div class="diff-stats" id="diffStats"></div>
+                <div class="diff-output" id="diffOutput" role="region" aria-label="文本差异结果"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>

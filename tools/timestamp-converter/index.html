@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="在 Unix 时间戳和本地日期时间之间转换。">
+    <title>时间戳转换 | Starki</title>
+    <link rel="canonical" href="https://starkij.github.io/tools/timestamp-converter/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a class="is-active" href="../../index.html#tools" aria-current="location">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../../index.html#tools">返回工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">时间戳转换</h1>
+            <p>把 Unix 时间戳转成本地时间，也可以把日期时间转成秒级和毫秒级时间戳。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="时间戳转换表单">
+            <form id="timestampForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="timestampInput">Unix 时间戳</label>
+                        <input type="text" id="timestampInput" inputmode="numeric" placeholder="例如：1713024000">
+                    </div>
+                    <div class="field">
+                        <label for="dateTimeInput">本地日期时间</label>
+                        <input type="datetime-local" id="dateTimeInput" step="1">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="button" id="nowButton">填入当前时间</button>
+                    <button class="button secondary" type="button" id="timestampToDateButton">时间戳转日期</button>
+                    <button class="button secondary" type="button" id="dateToTimestampButton">日期转时间戳</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden>
+                <h2 id="resultTitle">转换结果</h2>
+                <p class="result-copy" id="resultCopy" role="status" aria-live="polite"></p>
+                <div class="detail-list" id="detailList"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>

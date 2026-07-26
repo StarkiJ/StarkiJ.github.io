@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    <url><loc>https://starkij.github.io/</loc></url>
-    <url><loc>https://starkij.github.io/tools/random_groups.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/random_number.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/text_counter.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/timestamp_converter.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/password_generator.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/text_diff.html</loc></url>
-    <url><loc>https://starkij.github.io/tools/offer_compare.html</loc></url>
+    <url><loc>https://starkij.github.io/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/random-groups/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/random-number/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/text-counter/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/timestamp-converter/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/password-generator/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/text-diff/index.html</loc></url>
+    <url><loc>https://starkij.github.io/tools/offer-compare/index.html</loc></url>
     <url><loc>https://starkij.github.io/games/snake/index.html</loc></url>
     <url><loc>https://starkij.github.io/games/tetris/index.html</loc></url>
-    <url><loc>https://starkij.github.io/games/gobang/gobang.html</loc></url>
-    <url><loc>https://starkij.github.io/games/Cyber%20woodenfish_files/Cyber%20woodenfish.html</loc></url>
-    <url><loc>https://starkij.github.io/games/missile-game-master/index.html</loc></url>
-    <url><loc>https://starkij.github.io/games/t-rex-runner-gh-pages/index.html</loc></url>
+    <url><loc>https://starkij.github.io/games/gobang/index.html</loc></url>
+    <url><loc>https://starkij.github.io/games/cyber-woodenfish/index.html</loc></url>
+    <url><loc>https://starkij.github.io/games/missile-game/index.html</loc></url>
+    <url><loc>https://starkij.github.io/games/t-rex-runner/index.html</loc></url>
 </urlset>

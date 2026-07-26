@@ -1,0 +1,537 @@
+
+/* Offer comparator */
+.offer-comparator {
+    --offer-accent-soft: var(--surface-strong);
+    --offer-accent-soft: color-mix(in srgb, var(--teal) 8%, var(--surface));
+    --offer-danger-soft: var(--surface-strong);
+    --offer-danger-soft: color-mix(in srgb, var(--rose) 8%, var(--surface));
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+}
+
+.offer-comparator > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.offer-comparator :where(input, select) {
+    min-width: 0;
+    color: var(--ink);
+}
+
+.offer-comparator :where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--teal);
+}
+
+.offer-comparator .field :where(input, select),
+.schedule-matrix :where(input, select) {
+    background: var(--surface);
+}
+
+.offer-comparator :where(input, select):disabled {
+    cursor: not-allowed;
+    opacity: 0.66;
+}
+
+.offer-settings {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.offer-settings > summary {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 18px;
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.offer-settings > summary::-webkit-details-marker {
+    display: none;
+}
+
+.offer-settings > summary::after {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-right: 2px solid var(--teal);
+    border-bottom: 2px solid var(--teal);
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.offer-settings[open] > summary {
+    border-bottom: 1px solid var(--line);
+    background: var(--offer-accent-soft);
+}
+
+.offer-settings[open] > summary::after {
+    transform: rotate(225deg);
+}
+
+.offer-settings > :not(summary) {
+    margin-right: 18px;
+    margin-left: 18px;
+}
+
+.offer-settings > :last-child {
+    margin-bottom: 18px;
+}
+
+.offer-settings > summary + * {
+    margin-top: 18px;
+}
+
+.offer-settings .field-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.offer-list {
+    display: grid;
+    min-width: 0;
+    align-items: start;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+    gap: 14px;
+}
+
+.offer-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 13px;
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--teal);
+    border-radius: 10px;
+    padding: 12px 13px 13px;
+    background: var(--surface);
+    box-shadow: var(--home-card-shadow);
+}
+
+.offer-card__content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 9px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+}
+
+.offer-card__content[hidden] {
+    display: none;
+}
+
+.offer-card__header {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.offer-card__header > :first-child {
+    min-width: 0;
+}
+
+.offer-card__header :where(h3, p) {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.offer-card__header h3 {
+    font-size: 1.1rem;
+    line-height: 1.35;
+}
+
+.offer-card__header p {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.offer-card__grid {
+    display: grid;
+    min-width: 0;
+    align-items: start;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 9px;
+}
+
+.offer-card__grid > .field {
+    align-content: start;
+    grid-auto-rows: max-content;
+}
+
+.offer-card__grid > .field > .field-label-row {
+    min-height: 1.4em;
+}
+
+.offer-card__grid > .field > :where(input, select) {
+    height: 38px;
+    min-height: 38px;
+    padding: 5px 9px;
+}
+
+.schedule-editor {
+    min-width: 0;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--offer-accent-soft);
+}
+
+.schedule-editor > legend {
+    padding: 0 6px;
+    color: var(--ink);
+    font-weight: 800;
+}
+
+.comparison-summary {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 7px;
+}
+
+.comparison-summary > article {
+    display: grid;
+    min-width: 0;
+    grid-template-rows: auto minmax(1.5em, 1fr);
+    align-content: start;
+    gap: 5px;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 10px 10px;
+    background: var(--surface);
+}
+
+.comparison-summary h3 {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.comparison-summary .summary-main {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: end;
+    gap: 8px;
+}
+
+.comparison-summary .summary-owner {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--teal-dark);
+    font-size: 1rem;
+    font-weight: 850;
+    line-height: 1.3;
+}
+
+.comparison-summary .summary-metric {
+    align-self: end;
+    justify-self: end;
+    overflow-wrap: normal;
+    color: var(--ink);
+    font-size: 0.86rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.comparison-table-wrap {
+    min-width: 0;
+    max-width: 100%;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--home-card-shadow);
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: auto;
+}
+
+.comparison-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+    text-align: right;
+}
+
+.comparison-table :where(th, td) {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 11px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.comparison-table :where(th, td):last-child {
+    border-right: 0;
+}
+
+.comparison-table tbody tr:last-child :where(th, td) {
+    border-bottom: 0;
+}
+
+.comparison-table thead th {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    background: var(--surface-strong);
+    color: var(--ink);
+    font-size: 0.86rem;
+    text-align: right;
+}
+
+.comparison-table :where(th, td):first-child {
+    position: sticky;
+    z-index: 1;
+    left: 0;
+    min-width: 156px;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--line);
+    text-align: left;
+}
+
+.comparison-table thead th:first-child {
+    z-index: 3;
+    background: var(--surface-strong);
+}
+
+.comparison-table tbody tr:nth-child(even) td {
+    background: var(--offer-accent-soft);
+}
+
+.comparison-table tbody tr:hover :where(th, td) {
+    background: var(--surface-strong);
+}
+
+.comparison-table .metric-best {
+    background: var(--offer-accent-soft);
+    color: var(--teal-dark);
+    font-weight: 800;
+    box-shadow: inset 0 -2px 0 var(--teal);
+}
+
+.metric-best {
+    color: var(--teal-dark);
+    font-weight: 800;
+}
+
+.assumption-panel {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.assumption-panel > summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.assumption-panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.assumption-panel > summary::after {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.assumption-panel[open] > summary {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-strong);
+}
+
+.assumption-panel[open] > summary::after {
+    transform: rotate(225deg);
+}
+
+.assumption-panel > :not(summary) {
+    margin-right: 16px;
+    margin-left: 16px;
+}
+
+.assumption-panel > summary + * {
+    margin-top: 14px;
+}
+
+.assumption-panel > :last-child {
+    margin-bottom: 16px;
+}
+
+.assumption-panel ul {
+    padding-left: 1.25rem;
+}
+
+.assumption-panel li + li {
+    margin-top: 7px;
+}
+
+.offer-empty {
+    display: grid;
+    min-height: 180px;
+    place-items: center;
+    grid-column: 1 / -1;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 28px;
+    background: var(--surface);
+    color: var(--muted);
+    text-align: center;
+}
+
+.offer-empty :where(h3, p) {
+    margin: 0;
+}
+
+.offer-empty h3 {
+    color: var(--ink);
+}
+
+.offer-empty p {
+    margin-top: 5px;
+}
+
+.secondary-button,
+.danger-button {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 13px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 800;
+    line-height: 1.2;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.secondary-button {
+    border-color: var(--teal);
+    color: var(--teal);
+}
+
+.secondary-button:hover {
+    background: var(--offer-accent-soft);
+    color: var(--teal-dark);
+}
+
+.danger-button {
+    border-color: var(--rose);
+    color: var(--rose);
+}
+
+.danger-button:hover {
+    background: var(--offer-danger-soft);
+}
+
+.secondary-button:disabled,
+.danger-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+@media (max-width: 760px) {
+    .offer-comparator {
+        gap: 18px;
+    }
+
+    .offer-settings .field-grid,
+    .offer-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .offer-card__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .comparison-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .offer-settings > summary {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .offer-settings > :not(summary) {
+        margin-right: 14px;
+        margin-left: 14px;
+    }
+
+    .offer-card {
+        padding: 12px;
+    }
+
+    .offer-card__header {
+        align-items: flex-start;
+        flex-direction: row;
+    }
+
+    .offer-card__grid > .field > :where(input, select) {
+        height: 42px;
+        min-height: 42px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+
+    .schedule-editor {
+        padding: 12px;
+    }
+
+    .comparison-table {
+        min-width: 940px;
+        font-size: 0.9rem;
+    }
+
+    .comparison-table :where(th, td) {
+        padding: 9px 10px;
+    }
+
+    .comparison-table :where(th, td):first-child {
+        min-width: 140px;
+    }
+}

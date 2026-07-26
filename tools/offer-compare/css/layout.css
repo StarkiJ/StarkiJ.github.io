@@ -1,0 +1,653 @@
+/* Offer comparator: page-specific structure */
+.offer-page {
+    --sticky-header-height: 63px;
+}
+
+.offer-page .tool-shell {
+    padding-top: 18px;
+}
+
+.offer-comparator > .tool-hero {
+    margin: 0 0 4px;
+}
+
+.offer-comparator > .result-panel {
+    margin-top: 0;
+    padding-top: 22px;
+}
+
+.offer-editor-panel {
+    min-width: 0;
+    padding: 0;
+}
+
+.offer-editor-panel > summary {
+    display: flex;
+    min-height: 66px;
+    align-items: center;
+    gap: 14px;
+    border-radius: inherit;
+    padding: 13px 20px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+}
+
+.offer-editor-panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.offer-editor-panel > summary::after {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-right: 2px solid var(--teal);
+    border-bottom: 2px solid var(--teal);
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.offer-editor-panel > summary:hover {
+    background: var(--offer-accent-soft);
+}
+
+.offer-editor-panel > summary h2 {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.3;
+}
+
+.offer-editor-summary__heading {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.offer-editor-summary__heading .eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+}
+
+.offer-editor-summary__meta {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.offer-count-badge {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: var(--surface-strong);
+    color: var(--teal-dark);
+    white-space: nowrap;
+}
+
+.data-source-badge {
+    display: inline-flex;
+    min-height: 26px;
+    align-items: center;
+    border-radius: 999px;
+    padding: 3px 8px;
+    background: var(--offer-accent-soft);
+    color: var(--teal-dark);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.data-source-badge[data-source="browser"] {
+    background: var(--surface-strong);
+    color: var(--muted);
+}
+
+.offer-editor-state::after {
+    content: "展开编辑";
+    white-space: nowrap;
+}
+
+.offer-editor-panel[open] > summary {
+    position: sticky;
+    z-index: 30;
+    top: var(--sticky-header-height);
+    border-bottom: 1px solid var(--line);
+    border-radius: 8px 8px 0 0;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 8px 18px rgba(22, 26, 23, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.offer-editor-panel[open] > summary::after {
+    transform: rotate(225deg);
+}
+
+.offer-editor-panel[open] .offer-editor-state::after {
+    content: "收起编辑区";
+}
+
+.offer-editor-content {
+    display: grid;
+    min-width: 0;
+    gap: 14px;
+    padding: 16px 22px 22px;
+}
+
+.offer-editor-intro {
+    max-width: none;
+    margin: 0;
+    color: var(--muted);
+}
+
+.offer-settings {
+    padding: 0;
+    overflow: visible;
+}
+
+.offer-settings > summary {
+    min-height: 66px;
+    gap: 14px;
+    padding: 13px 20px;
+    border-radius: inherit;
+    background: var(--surface);
+}
+
+.offer-settings > summary:hover {
+    background: var(--offer-accent-soft);
+}
+
+.offer-settings > summary h2 {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.3;
+}
+
+.settings-summary__heading {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.settings-summary__heading .eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+}
+
+.settings-summary__meta {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.offer-settings[open] > summary {
+    position: sticky;
+    z-index: 30;
+    top: var(--sticky-header-height);
+    border-radius: 8px 8px 0 0;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 8px 18px rgba(22, 26, 23, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.offer-settings > :not(summary) {
+    margin-top: 0;
+    margin-right: 0;
+    margin-left: 0;
+}
+
+.offer-settings > :last-child {
+    margin-bottom: 0;
+}
+
+.settings-content {
+    display: grid;
+    min-width: 0;
+    gap: 11px;
+    padding: 12px 22px 16px;
+}
+
+.settings-intro {
+    max-width: none;
+    margin: 0;
+    color: var(--muted);
+}
+
+.offer-settings .field-grid {
+    align-items: start;
+    gap: 10px 14px;
+}
+
+.offer-settings .field-grid > .field {
+    align-content: start;
+    grid-template-rows: minmax(22px, auto) 40px;
+    gap: 5px;
+}
+
+.offer-settings .field-label-row {
+    position: relative;
+}
+
+.offer-settings .field-help {
+    position: static;
+}
+
+.offer-settings .field:nth-child(4n + 1) .field-help::after {
+    right: auto;
+    left: 0;
+}
+
+.offer-settings .field-grid :where(input, select) {
+    height: 40px;
+    min-height: 40px;
+}
+
+.offer-settings .field-grid select {
+    padding-block: 0;
+    line-height: normal;
+}
+
+.assumption-panel > summary {
+    min-height: 42px;
+    padding: 8px 12px;
+}
+
+.assumption-panel > :not(summary) {
+    margin-right: 12px;
+    margin-left: 12px;
+}
+
+.assumption-panel > summary + * {
+    margin-top: 10px;
+}
+
+.assumption-panel > :last-child {
+    margin-bottom: 12px;
+}
+
+.offer-actions {
+    align-items: stretch;
+    margin: 0;
+}
+
+.offer-actions .button {
+    flex: 0 1 auto;
+}
+
+.save-status {
+    min-height: 1.5em;
+    margin: -4px 0 0;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.offer-result-summary {
+    min-width: 0;
+    margin: 0 0 16px;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--teal);
+    border-radius: 8px;
+    padding: 13px 15px;
+    background: var(--offer-accent-soft);
+    color: var(--ink);
+}
+
+.offer-result-summary.comparison-summary {
+    margin-bottom: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.offer-result-summary p {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.offer-result-summary strong {
+    color: var(--teal-dark);
+}
+
+.offer-result-summary > * + * {
+    margin-top: 7px;
+}
+
+.offer-result-summary.comparison-summary > * + * {
+    margin-top: 0;
+}
+
+.offer-comparator > .collapsible-tool-panel {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+    overflow: visible;
+}
+
+.collapsible-tool-summary {
+    display: flex;
+    min-height: 66px;
+    align-items: center;
+    gap: 14px;
+    border-radius: inherit;
+    padding: 13px 20px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+}
+
+.collapsible-tool-summary::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-tool-summary::after {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-right: 2px solid var(--teal);
+    border-bottom: 2px solid var(--teal);
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.collapsible-tool-summary:hover {
+    background: var(--offer-accent-soft);
+}
+
+.collapsible-tool-summary:focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.18);
+    outline-offset: -3px;
+}
+
+.collapsible-tool-summary h2 {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.3;
+}
+
+.collapsible-tool-summary__heading {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.collapsible-tool-summary__heading .eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+}
+
+.collapsible-tool-summary__meta {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.collapsible-tool-panel[open] > .collapsible-tool-summary {
+    border-bottom: 1px solid var(--line);
+    border-radius: 8px 8px 0 0;
+    background: var(--offer-accent-soft);
+}
+
+.collapsible-tool-panel[open] > .collapsible-tool-summary::after {
+    transform: rotate(225deg);
+}
+
+.collapsible-tool-content {
+    min-width: 0;
+    padding: 14px 20px 20px;
+}
+
+.result-content {
+    display: grid;
+    gap: 11px;
+}
+
+.result-toolbar {
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px 20px;
+}
+
+.result-toolbar .result-copy {
+    min-width: 0;
+    margin: 0;
+}
+
+.sort-controls {
+    display: grid;
+    width: min(100%, 520px);
+    flex: 0 1 520px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.sort-field {
+    width: auto;
+    min-width: 0;
+    flex: initial;
+    gap: 5px;
+}
+
+.sort-field label {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.sort-field select {
+    min-height: 38px;
+    padding: 6px 9px;
+}
+
+.method-grid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 0;
+}
+
+.method-grid > section {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 15px;
+    background: var(--surface);
+}
+
+.method-grid h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.method-grid p {
+    margin: 7px 0 0;
+    color: var(--muted);
+}
+
+.inline-notice {
+    min-width: 0;
+    margin: 10px 0 0;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--yellow);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--surface-strong);
+    color: var(--muted);
+}
+
+.inline-notice :where(h3, p) {
+    margin-top: 0;
+}
+
+.inline-notice h3 {
+    margin-bottom: 5px;
+    color: var(--ink);
+    font-size: 1rem;
+}
+
+.inline-notice p {
+    margin-bottom: 0;
+}
+
+.inline-notice .policy-links {
+    margin-top: 8px;
+    font-size: 0.9rem;
+}
+
+.inline-notice .policy-links a {
+    color: var(--teal-dark);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: rgba(15, 118, 110, 0.35);
+    text-underline-offset: 3px;
+}
+
+.inline-notice .policy-links a:hover {
+    text-decoration-color: currentColor;
+}
+
+@media (max-width: 1020px) and (min-width: 761px) {
+    .offer-settings .field-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .offer-settings .field:nth-child(n) .field-help::after {
+        right: 0;
+        left: auto;
+    }
+
+    .offer-settings .field:nth-child(odd) .field-help::after {
+        right: auto;
+        left: 0;
+    }
+}
+
+@media (max-width: 900px) {
+    .result-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sort-controls,
+    .sort-field {
+        width: 100%;
+        flex-basis: auto;
+    }
+}
+
+@media (max-width: 760px) {
+    .offer-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .offer-actions .button {
+        width: 100%;
+    }
+
+    .sort-controls,
+    .sort-field {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .result-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .collapsible-tool-summary {
+        min-height: 58px;
+        padding: 11px 15px;
+    }
+
+    .collapsible-tool-summary h2 {
+        gap: 10px;
+        font-size: 1.18rem;
+    }
+
+    .collapsible-tool-summary__meta {
+        font-size: 0.76rem;
+    }
+
+    .collapsible-tool-content {
+        padding: 12px 15px 16px;
+    }
+
+    .method-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .offer-editor-panel > summary {
+        min-height: 58px;
+        padding: 11px 15px;
+    }
+
+    .offer-settings > summary {
+        min-height: 58px;
+        padding: 11px 15px;
+    }
+
+    .offer-settings > summary h2,
+    .offer-editor-panel > summary h2 {
+        gap: 10px;
+        font-size: 1.18rem;
+    }
+
+    .settings-summary__meta {
+        max-width: none;
+        font-size: 0.76rem;
+        line-height: 1.3;
+        white-space: nowrap;
+    }
+
+    .offer-editor-summary__meta {
+        gap: 6px;
+        font-size: 0.76rem;
+    }
+
+    .offer-editor-summary__meta .data-source-badge {
+        font-size: 0.76rem;
+    }
+
+    .offer-editor-state {
+        display: none;
+    }
+
+    .settings-content,
+    .offer-editor-content {
+        padding: 14px 16px 18px;
+    }
+}

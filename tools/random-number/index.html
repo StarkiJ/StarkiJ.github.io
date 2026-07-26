@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="按范围、数量和重复规则生成随机数。">
+    <title>随机数生成器 | Starki</title>
+    <link rel="canonical" href="https://starkij.github.io/tools/random-number/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a class="is-active" href="../../index.html#tools" aria-current="location">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="tool-shell">
+        <a class="back-link" href="../../index.html#tools">返回工具</a>
+        <section class="tool-hero" aria-labelledby="tool-title">
+            <p class="eyebrow">Tool</p>
+            <h1 id="tool-title">随机数生成器</h1>
+            <p>输入最小值、最大值和生成个数，选择是否允许重复，结果会按小块排列出来。</p>
+        </section>
+
+        <section class="tool-panel" aria-label="随机数表单">
+            <form id="randomNumberForm" novalidate>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="minValue">最小值</label>
+                        <input type="number" id="minValue" value="1" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="maxValue">最大值</label>
+                        <input type="number" id="maxValue" value="100" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="count">生成个数</label>
+                        <input type="number" id="count" value="1" min="1" max="1000" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="allowDuplicates">允许重复</label>
+                        <select id="allowDuplicates">
+                            <option value="true">允许</option>
+                            <option value="false">不允许</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">生成随机数</button>
+                </div>
+            </form>
+
+            <section class="result-panel" id="resultPanel" hidden>
+                <h2 id="resultTitle">随机数</h2>
+                <p class="result-copy" id="resultCopy" role="status" aria-live="polite"></p>
+                <div class="chip-list" id="randomNumberContainer"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>
