@@ -67,52 +67,6 @@
     transform: translateY(0);
 }
 
-.offer-card__identity {
-    min-width: 0;
-}
-
-.offer-card__title-link {
-    display: inline;
-    max-width: 100%;
-    border: 0;
-    padding: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
-    font-size: 1.1rem;
-    font-weight: inherit;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-    text-align: left;
-    text-decoration: underline;
-    text-decoration-color: rgba(15, 118, 110, 0.38);
-    text-decoration-style: dotted;
-    text-underline-offset: 3px;
-}
-
-.offer-card__title-link:hover,
-.offer-card__title-link:focus-visible {
-    color: var(--teal-dark);
-    text-decoration-color: currentColor;
-    text-decoration-style: solid;
-}
-
-.offer-card__actions {
-    display: flex;
-    flex: 0 0 auto;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    gap: 4px;
-}
-
-.offer-card__actions :where(.secondary-button, .danger-button) {
-    min-height: 32px;
-    padding: 5px 8px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-}
-
 .schedule-details {
     min-width: 0;
     overflow: hidden;
@@ -291,11 +245,13 @@
     font-weight: 600;
     line-height: 1.35;
     white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .comparison-offer-link {
     display: block;
-    width: 100%;
+    width: max-content;
+    max-width: 220px;
     border: 0;
     padding: 10px 11px;
     background: transparent;
@@ -601,7 +557,7 @@
 
 .table-scroll-hint {
     display: none;
-    margin: -2px 0 8px;
+    margin: 0;
     color: var(--muted);
     font-size: 0.8rem;
     text-align: right;
@@ -614,16 +570,8 @@
     table-layout: auto;
 }
 
-.comparison-table :where(th, td):not(:first-child) {
+.comparison-table :where(th, td) {
     width: 1%;
-    min-width: 0;
-}
-
-.comparison-table :where(th, td):nth-child(2) {
-    min-width: 0;
-}
-
-.comparison-table :where(th, td):nth-child(3) {
     min-width: 0;
 }
 
@@ -638,9 +586,7 @@
     position: sticky;
     z-index: 1;
     left: 0;
-    width: auto;
-    min-width: 148px;
-    max-width: 220px;
+    min-width: 0;
     background: var(--surface);
     box-shadow: 1px 0 0 var(--line);
     text-align: left;
@@ -650,6 +596,7 @@
 .comparison-table thead th:first-child {
     z-index: 3;
     background: var(--surface-strong);
+    white-space: nowrap;
 }
 
 .comparison-table tbody th:first-child strong {
@@ -669,15 +616,11 @@
 .comparison-table tbody tr:hover th:first-child {
     background: var(--surface-strong);
 }
-
-.offer-card,
 .comparison-table tbody tr,
 .tax-explanation,
 .tax-cell {
     scroll-margin-top: calc(var(--sticky-header-height, 63px) + 92px);
 }
-
-.offer-card.is-jump-target,
 .tax-explanation.is-jump-target {
     position: relative;
     z-index: 1;
@@ -707,15 +650,6 @@
 @media (max-width: 760px) {
     .table-scroll-hint {
         display: block;
-    }
-
-    .offer-card__actions {
-        display: flex;
-        width: auto;
-    }
-
-    .offer-card__actions :where(.secondary-button, .danger-button) {
-        width: auto;
     }
 
     .offer-settings .field-grid {
@@ -780,10 +714,7 @@
         min-width: 100%;
     }
 
-    .comparison-table thead th:first-child,
-    .comparison-table tbody th:first-child {
-        width: auto;
-        min-width: 144px;
+    .comparison-offer-link {
         max-width: 180px;
     }
 
@@ -819,18 +750,6 @@
 
 }
 
-@media (min-width: 761px) {
-    .offer-card:not(.is-collapsed):has(> .offer-card__content > .schedule-details[open]) {
-        grid-column: 1 / -1;
-    }
-
-    .offer-card:not(.is-collapsed):has(> .offer-card__content > .schedule-details[open])
-        > .offer-card__content
-        > .offer-card__grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-}
-
 @media (min-width: 1000px) {
     .overtime-grid {
         grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -852,12 +771,6 @@
 
 }
 
-@media (max-width: 380px) {
-    .sort-controls {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
 @media (max-width: 360px) {
     .offer-settings .field-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -868,7 +781,6 @@
     }
 
     .offer-card__grid,
-    .sort-controls,
     .comparison-summary {
         grid-template-columns: minmax(0, 1fr);
     }

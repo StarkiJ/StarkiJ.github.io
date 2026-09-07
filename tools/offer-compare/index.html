@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="./css/base.css">
     <link rel="stylesheet" href="./css/layout.css">
     <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/editor.css">
+    <link rel="stylesheet" href="./css/comparison.css">
 </head>
 
 <body class="offer-page">
@@ -100,8 +102,8 @@
                             <div class="field-label-row">
                                 <label for="settingsPrimaryHoursBasis">工时口径</label>
                                 <button class="field-help" type="button"
-                                    data-tooltip="在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与对比结果中的同名选项同步。"
-                                    aria-label="工时口径说明：在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与对比结果中的同名选项同步。">?</button>
+                                    data-tooltip="在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与 Offer 列表中的同名选项同步。"
+                                    aria-label="工时口径说明：在岗时长按到岗至离岗计算；净时长扣除内置休息时间。与 Offer 列表中的同名选项同步。">?</button>
                             </div>
                             <select id="settingsPrimaryHoursBasis" name="settingsPrimaryHoursBasis"
                                 aria-describedby="settingsPrimaryHoursBasisHint" data-hours-basis-control
@@ -110,7 +112,7 @@
                                 <option value="net">净时长</option>
                             </select>
                             <p class="visually-hidden" id="settingsPrimaryHoursBasisHint">
-                                与对比结果中的工时口径同步。
+                                与 Offer 列表中的工时口径同步。
                             </p>
                         </div>
 
@@ -139,67 +141,48 @@
             </div>
         </details>
 
-        <details class="tool-panel offer-editor-panel" id="offerEditorPanel" aria-labelledby="offers-title"
-            data-testid="offer-editor">
-            <summary class="offer-editor-summary">
-                <h2 id="offers-title">
-                    <span class="offer-editor-summary__heading">
-                        <span class="eyebrow">Offers</span>
-                        <span>Offer 信息</span>
-                    </span>
-                    <span class="offer-editor-summary__meta">
-                        <span class="offer-count-badge" id="offerCountLabel">8 个 Offer</span>
-                        <span class="data-source-badge" id="dataSourceLabel">读取数据中</span>
-                        <span class="offer-editor-state" aria-hidden="true"></span>
-                    </span>
-                </h2>
-            </summary>
-
-            <div class="offer-editor-content">
-                <p class="offer-editor-intro" id="offerListHelp">
-                    卡片按来源或录入顺序排列；复制项紧随原项，新增项排在末尾。点击公司 / 部门名称可查看汇总。
-                </p>
-
-                <div class="form-actions offer-actions" aria-label="Offer 数据操作">
-                    <button class="button" type="button" id="addOfferButton" data-testid="add-offer">新增 Offer</button>
-                    <button class="button secondary" type="button" id="resetOffersButton"
-                        data-testid="reset-offers" disabled>正在载入数据</button>
-                    <button class="button secondary" type="button" id="importOffersButton"
-                        aria-controls="importOffersInput" data-testid="import-offers">导入 JSON</button>
-                    <button class="button secondary" type="button" id="exportOffersButton"
-                        data-testid="export-offers">导出 JSON</button>
-                    <input type="file" id="importOffersInput" name="importOffersInput" accept="application/json,.json"
-                        hidden data-testid="import-file">
-                </div>
-
-                <p class="save-status" id="saveStatus">
-                    正在读取本机私有数据或脱敏示例……
-                </p>
-
-                <div class="offer-list" id="offerList" role="list" aria-labelledby="offers-title"
-                    aria-describedby="offerListHelp" aria-live="off" data-testid="offer-list"></div>
-
-                <noscript>
-                    <p class="inline-notice">Offer 分析对比需要 JavaScript 才能计算，请启用后重新打开本页。</p>
-                </noscript>
-            </div>
-        </details>
-
-        <details class="tool-panel result-panel collapsible-tool-panel" id="resultPanel"
-            aria-labelledby="results-title" data-testid="comparison-results" open>
-            <summary class="collapsible-tool-summary">
+        <section class="tool-panel result-panel collapsible-tool-panel" id="resultPanel"
+            aria-labelledby="results-title" data-testid="comparison-results" data-expanded="true">
+            <header class="collapsible-tool-summary comparison-header">
                 <h2 id="results-title">
-                    <span class="collapsible-tool-summary__heading">
-                        <span class="eyebrow">Comparison</span>
-                        <span>对比结果</span>
-                    </span>
+                    <button class="comparison-toggle" id="toggleOfferList" type="button"
+                        aria-expanded="true" aria-controls="offerListContent">
+                        <span class="collapsible-tool-summary__heading">
+                            <span class="eyebrow">Offers</span>
+                            <span>Offer 列表</span>
+                        </span>
+                        <span class="collapsible-tool-summary__meta result-copy" id="resultStatus"
+                            role="status" aria-live="polite" aria-atomic="true"></span>
+                        <span class="comparison-collapse-icon" aria-hidden="true"></span>
+                    </button>
                 </h2>
-            </summary>
-
-            <div class="collapsible-tool-content result-content">
+                <div class="comparison-actions" role="group" aria-label="Offer 操作">
+                    <button class="button" type="button" id="addOfferButton" aria-label="新增 Offer" data-testid="add-offer">新增</button>
+                    <button class="button secondary" type="button" id="copyOfferButton">复制</button>
+                    <button class="button secondary" type="button" id="deleteOfferButton">删除</button>
+                    <button class="button secondary" type="button" id="reorderOffersButton">调整顺序</button>
+                    <details class="comparison-data-menu" id="dataMenu">
+                        <summary class="button secondary">数据</summary>
+                        <div class="comparison-data-options">
+                            <button type="button" id="importOffersButton" aria-controls="importOffersInput" data-testid="import-offers">导入 JSON</button>
+                            <button type="button" id="exportOffersButton" data-testid="export-offers">导出 JSON</button>
+                            <button type="button" id="resetOffersButton" data-testid="reset-offers" disabled>正在载入数据</button>
+                        </div>
+                    </details>
+                    <input type="file" id="importOffersInput" name="importOffersInput" accept="application/json,.json" hidden data-testid="import-file">
+                </div>
+            </header>
+            <div class="result-content" id="offerListContent">
+                <div class="comparison-mode-bar" id="offerModeBar" hidden>
+                    <p id="offerModeHint" role="status" aria-live="polite"></p>
+                    <div>
+                        <button class="button" type="button" id="finishOfferOrder" hidden>完成</button>
+                        <button class="button secondary" type="button" id="cancelOfferMode">取消</button>
+                    </div>
+                </div>
+                <p class="visually-hidden" id="orderStatus" role="status" aria-live="polite"></p>
+                <noscript><p class="inline-notice">请启用 JavaScript 以填写和比较 Offer。</p></noscript>
                 <div class="result-toolbar">
-                    <p class="result-copy" id="resultStatus" role="status" aria-live="polite"
-                        aria-atomic="true"></p>
                     <div class="sort-controls" role="group" aria-label="结果口径与排序">
                         <div class="field sort-field hours-basis-field">
                             <label for="primaryHoursBasis">工时口径</label>
@@ -214,26 +197,27 @@
                             </p>
                         </div>
                         <div class="field sort-field">
-                            <label for="sortMetric">排序属性</label>
+                            <label for="sortMetric">排序依据</label>
                             <select id="sortMetric" name="sortMetric" data-testid="sort-metric">
-                                <option value="companyDepartment">公司 / 部门</option>
+                                <option value="custom">自定义顺序</option>
+                                <option value="companyDepartment" selected>公司 / 部门</option>
                                 <option value="monthlySalary">税前月薪</option>
                                 <option value="salaryMonths">总薪数</option>
-                                <option value="weeklyHours">周工作时长</option>
                                 <option value="annualPretaxCash">税前年收入</option>
-                                <option value="annualTakeHomeCash">税后年收入</option>
-                                <option value="pretaxHourly">税前时薪</option>
-                                <option value="afterTaxHourly" selected>税后时薪</option>
-                                <option value="housingFundEquity">公积金</option>
-                                <option value="cashAndHousingFundEquity">年度综合权益</option>
                                 <option value="annualIncomeTax">个人所得税</option>
+                                <option value="annualTakeHomeCash">税后年收入</option>
+                                <option value="housingFundEquity">公积金</option>
+                                <option value="cashAndHousingFundEquity">综合年收入</option>
+                                <option value="weeklyHours">周工时</option>
+                                <option value="pretaxHourly">税前时薪</option>
+                                <option value="afterTaxHourly">税后时薪</option>
                             </select>
                         </div>
                         <div class="field sort-field sort-direction-field">
-                            <label for="sortDirection">顺序</label>
+                            <label for="sortDirection">排列方向</label>
                             <select id="sortDirection" name="sortDirection" data-testid="sort-direction">
-                                <option value="desc" selected>降序</option>
-                                <option value="asc">升序</option>
+                                <option value="desc">降序</option>
+                                <option value="asc" selected>升序</option>
                             </select>
                         </div>
                     </div>
@@ -253,14 +237,14 @@
                                 <th scope="col">公司 / 部门</th>
                                 <th scope="col">税前月薪</th>
                                 <th scope="col">总薪数</th>
-                                <th scope="col" id="hoursColumnHeading">周工作时长</th>
                                 <th scope="col">税前年收入</th>
+                                <th scope="col">个人所得税</th>
                                 <th scope="col">税后年收入</th>
+                                <th scope="col" title="全年个人与单位公积金缴存额之和">公积金</th>
+                                <th scope="col" aria-describedby="combinedIncomeHint" title="税后到手现金 + 全年个人与单位公积金；含受限资金">综合年收入</th>
+                                <th scope="col" id="hoursColumnHeading">周工时</th>
                                 <th scope="col">税前时薪</th>
                                 <th scope="col">税后时薪</th>
-                                <th scope="col">公积金</th>
-                                <th scope="col">年度综合权益</th>
-                                <th scope="col">个人所得税</th>
                             </tr>
                         </thead>
                         <tbody id="comparisonTableBody" data-testid="comparison-table-body">
@@ -271,6 +255,8 @@
                     </table>
                 </div>
 
+                <ol class="offer-order-list" id="offerOrderList" aria-label="调整 Offer 顺序" hidden></ol>
+
                 <section class="tax-explanations" id="taxExplanations"
                     aria-labelledby="tax-explanations-title" hidden data-testid="tax-explanations">
                     <div class="tax-explanations__heading">
@@ -279,8 +265,12 @@
                     </div>
                     <div class="tax-explanation-list" id="taxExplanationList"></div>
                 </section>
+                <footer class="comparison-status">
+                    <span class="data-source-badge" id="dataSourceLabel">读取数据中</span>
+                    <p class="save-status" id="saveStatus" role="status">正在读取本机私有数据或脱敏示例……</p>
+                </footer>
             </div>
-        </details>
+        </section>
 
         <details class="tool-panel method-panel collapsible-tool-panel" aria-labelledby="method-title"
             data-testid="calculation-method">
@@ -300,13 +290,13 @@
                         <h3 id="income-method-title">收入、权益与个税</h3>
                         <p>税前年现金为固定工资、目标奖金、加班费与现金补贴之和。税后到手再扣除个人社保、个人公积金和个人所得税。</p>
                         <p>个人社保优先使用 Offer 单独填写的比例；留空时继承“我的计算设置”中的默认比例。</p>
-                        <p>“公积金”表示个人与单位公积金缴存额之和。“年度综合权益”表示税后到手现金加公积金；它包含受限资金，因此不等同于税前年收入或可自由支配现金。</p>
+                        <p id="combinedIncomeHint">“公积金”表示全年个人与单位公积金缴存额之和。“综合年收入”表示税后到手现金加公积金；它包含受限资金，因此不等同于税前年收入或可自由支配现金。</p>
                     </section>
                     <section aria-labelledby="hours-method-title">
                         <h3 id="hours-method-title">工时与时薪</h3>
                         <p>大小周按两周周期取平均，月度额外班次按全年次数折算。等效时薪等于年收入除以“所选口径的周工作时长 × 固定 52 周”。</p>
                         <p>净时长使用该岗位统一的午休与晚休设置；岗位留空时继承全局默认值。</p>
-                        <p>在“我的计算设置”或“对比结果”中切换工时口径后，两处选项及周工作时长、排序、摘要和时薪都会同步更新。</p>
+                        <p>在“我的计算设置”或“Offer 列表”中切换工时口径后，两处选项及周工作时长、排序、摘要和时薪都会同步更新。</p>
                     </section>
                 </div>
 
@@ -325,6 +315,29 @@
                 </aside>
             </div>
         </details>
+        <dialog class="offer-edit-dialog" id="offerEditDialog" aria-labelledby="offerEditTitle"
+            aria-describedby="offerEditHint" data-testid="offer-edit-dialog">
+            <form id="offerEditForm" class="offer-edit-form" novalidate>
+                <header class="offer-edit-header">
+                    <div>
+                        <h2 id="offerEditTitle">编辑 Offer</h2>
+                        <p id="offerEditHint">修改在点击“保存”后生效。</p>
+                    </div>
+                    <button class="offer-edit-close" id="closeOfferEdit" type="button" aria-label="取消并关闭编辑">×</button>
+                </header>
+                <div class="offer-edit-body" id="offerEditFields"></div>
+                <footer class="offer-edit-footer">
+                    <div class="offer-edit-preview" id="offerEditPreview" aria-label="当前填写的参考结果"></div>
+                    <div class="offer-edit-bottom">
+                        <p id="offerEditStatus" role="status" aria-live="polite"></p>
+                        <div class="offer-edit-buttons">
+                            <button class="button secondary" id="cancelOfferEdit" type="button">取消</button>
+                            <button class="button" id="saveOfferEdit" type="submit">保存</button>
+                        </div>
+                    </div>
+                </footer>
+            </form>
+        </dialog>
     </main>
 
     <script src="./js/tax-policy.js"></script>
@@ -334,6 +347,8 @@
     <script src="./js/selectors.js"></script>
     <script src="./js/ui-helpers.js"></script>
     <script src="./js/tax-view.js"></script>
+    <script src="./js/offer-editor.js"></script>
+    <script src="./js/offer-order.js"></script>
     <script src="./js/app.js"></script>
 </body>
 

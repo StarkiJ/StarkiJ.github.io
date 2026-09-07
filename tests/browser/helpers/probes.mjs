@@ -2,25 +2,33 @@ function measureCollapsedPrimaryPanels() {
     const primaryPanels = [
         ["我的计算设置", document.querySelector("#settingsPanel")],
         ["Offer 信息", document.querySelector("#offerEditorPanel")],
-        ["对比结果", document.querySelector("#resultPanel")],
+        ["Offer 列表", document.querySelector("#resultPanel")],
         [
             "计算方法",
             document.querySelector('[data-testid="calculation-method"]')
         ]
     ];
-    const openStates = primaryPanels.map(([, panel]) => panel.open);
+    const openStates = primaryPanels.map(([, panel]) => panel.querySelector('#toggleOfferList')
+        ? panel.dataset.expanded === 'true' : panel.open);
+    function setExpanded(panel, expanded) {
+        const toggle = panel.querySelector('#toggleOfferList');
+        if (toggle) {
+            if ((toggle.getAttribute('aria-expanded') === 'true') !== expanded) { toggle.click(); }
+        } else { panel.open = expanded; }
+    }
 
     primaryPanels.forEach(([, panel]) => {
-        panel.open = false;
+        setExpanded(panel, false);
     });
     const measurements = primaryPanels.map(([name, panel]) => {
-        const summary = panel.querySelector(":scope > summary");
-        const heading = summary.querySelector("h2 > span:first-child");
+        const summary = panel.querySelector(":scope > summary, :scope > header");
+        const heading = summary.querySelector(".settings-summary__heading, .collapsible-tool-summary__heading");
         const eyebrow = heading.querySelector(".eyebrow");
         const panelRect = panel.getBoundingClientRect();
         const summaryRect = summary.getBoundingClientRect();
         const summaryStyle = getComputedStyle(summary);
-        const markerStyle = getComputedStyle(summary, "::after");
+        const marker = summary.querySelector('.comparison-collapse-icon');
+        const markerStyle = marker ? getComputedStyle(marker) : getComputedStyle(summary, "::after");
 
         return {
             name,
@@ -44,7 +52,7 @@ function measureCollapsedPrimaryPanels() {
     });
 
     primaryPanels.forEach(([, panel], index) => {
-        panel.open = openStates[index];
+        setExpanded(panel, openStates[index]);
     });
     return measurements;
 }

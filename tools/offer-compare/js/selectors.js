@@ -15,7 +15,7 @@
     : (typeof globalThis !== "undefined" ? globalThis : this), function () {
     "use strict";
 
-    var DEFAULT_SORT_KEY = "afterTaxHourly";
+    var DEFAULT_SORT_KEY = "companyDepartment";
     var SORT_FIELDS = {
         companyDepartment: null,
         monthlySalary: "monthlySalary",
@@ -154,6 +154,11 @@
 
     function sortViews(views, sortKey, direction) {
         var source = Array.isArray(views) ? views : [];
+        if (sortKey === "custom") {
+            return source.slice().sort(function (left, right) {
+                return left.sourceIndex - right.sourceIndex;
+            });
+        }
         var selectedKey = Object.prototype.hasOwnProperty.call(
             SORT_FIELDS,
             sortKey

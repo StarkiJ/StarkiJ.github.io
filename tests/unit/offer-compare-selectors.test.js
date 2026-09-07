@@ -239,4 +239,10 @@ assert.strictEqual(
 );
 assert.strictEqual(selectors.findResultByOfferId(null, "missing"), null);
 
+// Custom order follows the saved Offer sequence, even after a metric sort.
+var reversedViews = views.slice().reverse();
+assert.deepStrictEqual(selectors.sortViews(reversedViews, "custom", "desc"), views);
+assert.deepStrictEqual(selectors.sortViews(reversedViews, "custom", "asc"), views);
+assert.deepStrictEqual(reversedViews, views.slice().reverse());
+
 console.log("offer-compare selectors tests passed");

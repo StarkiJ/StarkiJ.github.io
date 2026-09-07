@@ -13,89 +13,8 @@
 
 .offer-comparator > .result-panel {
     margin-top: 0;
-    padding-top: 22px;
-}
-
-.offer-editor-panel {
-    min-width: 0;
     padding: 0;
-}
-
-.offer-editor-panel > summary {
-    display: flex;
-    min-height: 66px;
-    align-items: center;
-    gap: 14px;
-    border-radius: inherit;
-    padding: 13px 20px;
-    background: var(--surface);
-    color: var(--ink);
-    cursor: pointer;
-    list-style: none;
-}
-
-.offer-editor-panel > summary::-webkit-details-marker {
-    display: none;
-}
-
-.offer-editor-panel > summary::after {
-    width: 9px;
-    height: 9px;
-    flex: 0 0 auto;
-    border-right: 2px solid var(--teal);
-    border-bottom: 2px solid var(--teal);
-    content: "";
-    transform: rotate(45deg);
-    transition: transform 160ms ease;
-}
-
-.offer-editor-panel > summary:hover {
-    background: var(--offer-accent-soft);
-}
-
-.offer-editor-panel > summary h2 {
-    display: flex;
-    min-width: 0;
-    flex: 1 1 auto;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin: 0;
-    font-size: 1.3rem;
-    line-height: 1.3;
-}
-
-.offer-editor-summary__heading {
-    display: grid;
-    min-width: 0;
-    gap: 4px;
-}
-
-.offer-editor-summary__heading .eyebrow {
-    margin: 0;
-    font-size: 0.72rem;
-}
-
-.offer-editor-summary__meta {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 10px;
-    color: var(--muted);
-    font-size: 0.82rem;
-    font-weight: 700;
-}
-
-.offer-count-badge {
-    display: inline-flex;
-    min-height: 30px;
-    align-items: center;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 4px 10px;
-    background: var(--surface-strong);
-    color: var(--teal-dark);
-    white-space: nowrap;
+    overflow: visible;
 }
 
 .data-source-badge {
@@ -112,44 +31,6 @@
 
 .data-source-badge[data-source="browser"] {
     background: var(--surface-strong);
-    color: var(--muted);
-}
-
-.offer-editor-state::after {
-    content: "展开编辑";
-    white-space: nowrap;
-}
-
-.offer-editor-panel[open] > summary {
-    position: sticky;
-    z-index: 30;
-    top: var(--sticky-header-height);
-    border-bottom: 1px solid var(--line);
-    border-radius: 8px 8px 0 0;
-    background: rgba(255, 255, 255, 0.97);
-    box-shadow: 0 8px 18px rgba(22, 26, 23, 0.08);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-}
-
-.offer-editor-panel[open] > summary::after {
-    transform: rotate(225deg);
-}
-
-.offer-editor-panel[open] .offer-editor-state::after {
-    content: "收起编辑区";
-}
-
-.offer-editor-content {
-    display: grid;
-    min-width: 0;
-    gap: 14px;
-    padding: 16px 22px 22px;
-}
-
-.offer-editor-intro {
-    max-width: none;
-    margin: 0;
     color: var(--muted);
 }
 
@@ -362,7 +243,8 @@
     display: none;
 }
 
-.collapsible-tool-summary::after {
+.collapsible-tool-summary::after,
+.comparison-collapse-icon {
     width: 9px;
     height: 9px;
     flex: 0 0 auto;
@@ -412,13 +294,15 @@
     white-space: nowrap;
 }
 
-.collapsible-tool-panel[open] > .collapsible-tool-summary {
+.collapsible-tool-panel[open] > .collapsible-tool-summary,
+.result-panel[data-expanded="true"] > .comparison-header {
     border-bottom: 1px solid var(--line);
     border-radius: 8px 8px 0 0;
     background: var(--offer-accent-soft);
 }
 
-.collapsible-tool-panel[open] > .collapsible-tool-summary::after {
+.collapsible-tool-panel[open] > .collapsible-tool-summary::after,
+.result-panel[data-expanded="true"] .comparison-collapse-icon {
     transform: rotate(225deg);
 }
 
@@ -429,45 +313,42 @@
 
 .result-content {
     display: grid;
-    gap: 11px;
+    min-width: 0;
+    gap: 10px;
+    padding: 12px 20px 14px;
 }
 
 .result-toolbar {
     display: flex;
     min-width: 0;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 10px 20px;
-}
-
-.result-toolbar .result-copy {
-    min-width: 0;
-    margin: 0;
+    align-items: center;
 }
 
 .sort-controls {
-    display: grid;
-    width: min(100%, 520px);
-    flex: 0 1 520px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px 16px;
 }
 
 .sort-field {
-    width: auto;
+    display: flex;
     min-width: 0;
-    flex: initial;
-    gap: 5px;
+    align-items: center;
+    gap: 7px;
 }
 
 .sort-field label {
     color: var(--muted);
     font-size: 0.82rem;
+    white-space: nowrap;
 }
 
 .sort-field select {
-    min-height: 38px;
-    padding: 6px 9px;
+    width: 132px;
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 0.86rem;
 }
 
 .method-grid {
@@ -554,19 +435,6 @@
     }
 }
 
-@media (max-width: 900px) {
-    .result-toolbar {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .sort-controls,
-    .sort-field {
-        width: 100%;
-        flex-basis: auto;
-    }
-}
-
 @media (max-width: 760px) {
     .offer-actions {
         display: grid;
@@ -575,17 +443,6 @@
 
     .offer-actions .button {
         width: 100%;
-    }
-
-    .sort-controls,
-    .sort-field {
-        width: 100%;
-        flex-basis: auto;
-    }
-
-    .result-toolbar {
-        align-items: stretch;
-        flex-direction: column;
     }
 
     .collapsible-tool-summary {
@@ -610,18 +467,12 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .offer-editor-panel > summary {
-        min-height: 58px;
-        padding: 11px 15px;
-    }
-
     .offer-settings > summary {
         min-height: 58px;
         padding: 11px 15px;
     }
 
-    .offer-settings > summary h2,
-    .offer-editor-panel > summary h2 {
+    .offer-settings > summary h2 {
         gap: 10px;
         font-size: 1.18rem;
     }
@@ -633,21 +484,7 @@
         white-space: nowrap;
     }
 
-    .offer-editor-summary__meta {
-        gap: 6px;
-        font-size: 0.76rem;
-    }
-
-    .offer-editor-summary__meta .data-source-badge {
-        font-size: 0.76rem;
-    }
-
-    .offer-editor-state {
-        display: none;
-    }
-
-    .settings-content,
-    .offer-editor-content {
+    .settings-content {
         padding: 14px 16px 18px;
     }
 }

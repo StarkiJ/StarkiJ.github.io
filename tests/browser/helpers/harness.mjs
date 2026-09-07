@@ -368,6 +368,8 @@ async function startOfferCompareBrowser() {
         pageUrl =
             `http://127.0.0.1:${serverAddress.port}/tools/offer-compare/`;
         browserProcess = spawn(browserPath, [
+            // Keep the test browser attached when Edge's compatibility launcher is active.
+            "--edge-skip-compat-layer-relaunch",
             "--headless=new",
             // The harness only serves repository files from a loopback-only server.
             "--no-sandbox",

@@ -88,12 +88,12 @@
             : "";
     }
 
-    function formatHours(value) {
-        return numberFormatter.format(Number.isFinite(value) ? value : 0) + " 小时";
+    function formatHours(value, unit) {
+        return numberFormatter.format(Number.isFinite(value) ? value : 0) + " " + (unit || "小时");
     }
 
-    function formatHourly(value) {
-        return formatMoney(Number.isFinite(value) ? value : 0) + "/小时";
+    function formatHourly(value, unit) {
+        return formatMoney(Number.isFinite(value) ? value : 0) + "/" + (unit || "小时");
     }
 
     function weeklyHoursSummaryLabel(value) {
