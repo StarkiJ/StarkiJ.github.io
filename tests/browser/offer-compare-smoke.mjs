@@ -7,6 +7,7 @@ import {
 } from "./helpers/harness.mjs";
 import { checkEditorFlow, checkComparisonAndLayout } from "./offer-editor-flow.mjs";
 import { checkOfferActions } from "./offer-actions-flow.mjs";
+import { checkTaxDialog } from "./tax-dialog-flow.mjs";
 
 async function run() {
     const browser = await startOfferCompareBrowser();
@@ -106,6 +107,7 @@ async function run() {
         await checkEditorFlow(browser);
         await checkOfferActions(browser);
         await checkComparisonAndLayout(browser);
+        await checkTaxDialog(browser);
 
         const exportedJson = await evaluate(client, `(async () => {
             const originalCreateObjectUrl = URL.createObjectURL;
@@ -300,11 +302,11 @@ async function run() {
                 scheduleMatrices: document.querySelectorAll(
                     '#offerEditFields .schedule-matrix'
                 ).length,
-                taxExplanationCount: document.querySelectorAll(
-                    '#taxExplanationList .tax-explanation'
+                taxDialogCount: document.querySelectorAll(
+                    '#taxDetailDialog'
                 ).length,
                 taxBodyCount: document.querySelectorAll(
-                    '#taxExplanationList .tax-explanation__body'
+                    '#taxDetailBody .tax-explanation__body'
                 ).length,
                 totalDomNodes: document.querySelectorAll('*').length
             };
@@ -378,7 +380,7 @@ async function run() {
         assert.equal(scaleLimit.initial.offerCount, 100);
         assert.equal(scaleLimit.initial.mountedOfferControls, 0);
         assert.equal(scaleLimit.initial.scheduleMatrices, 0);
-        assert.equal(scaleLimit.initial.taxExplanationCount, 100);
+        assert.equal(scaleLimit.initial.taxDialogCount, 1);
         assert.equal(scaleLimit.initial.taxBodyCount, 0);
         assert.ok(scaleLimit.initial.totalDomNodes < 6500);
         assert.equal(scaleLimit.expanded.scheduleWeeks, 52);

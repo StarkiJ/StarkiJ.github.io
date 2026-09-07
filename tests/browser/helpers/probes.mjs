@@ -1,7 +1,6 @@
 function measureCollapsedPrimaryPanels() {
     const primaryPanels = [
         ["我的计算设置", document.querySelector("#settingsPanel")],
-        ["Offer 信息", document.querySelector("#offerEditorPanel")],
         ["Offer 列表", document.querySelector("#resultPanel")],
         [
             "计算方法",

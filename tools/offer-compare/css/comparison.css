@@ -33,7 +33,7 @@
 .result-panel:is([data-offer-mode="copy"], [data-offer-mode="delete"]) .tax-cell__trigger { pointer-events: none; }
 .result-panel[data-offer-mode="order"] .comparison-offer-link { opacity: 1; cursor: default; }
 .result-panel[data-offer-mode="order"] .comparison-offer-link strong { text-decoration: none; }
-.result-panel[data-offer-mode="order"] :is(.result-toolbar, .offer-result-summary, .tax-explanations) { display: none; }
+.result-panel[data-offer-mode="order"] :is(.result-toolbar, .offer-result-summary) { display: none; }
 .offer-order-controls { display: flex; gap: 6px; padding: 0 10px 8px; }
 .offer-order-controls button { display: inline-flex; justify-content: center; align-items: center; min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--teal-dark); font: inherit; font-size: 1.2rem; cursor: pointer; }
 .offer-order-controls button:disabled { opacity: 0.35; cursor: default; }

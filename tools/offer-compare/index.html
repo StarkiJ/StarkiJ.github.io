@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="./css/components.css">
     <link rel="stylesheet" href="./css/editor.css">
     <link rel="stylesheet" href="./css/comparison.css">
+    <link rel="stylesheet" href="./css/tax.css">
 </head>
 
 <body class="offer-page">
@@ -256,15 +257,6 @@
                 </div>
 
                 <ol class="offer-order-list" id="offerOrderList" aria-label="调整 Offer 顺序" hidden></ol>
-
-                <section class="tax-explanations" id="taxExplanations"
-                    aria-labelledby="tax-explanations-title" hidden data-testid="tax-explanations">
-                    <div class="tax-explanations__heading">
-                        <h3 id="tax-explanations-title">个人所得税计算说明</h3>
-                        <p>按年度汇算口径估算。点击汇总表中的个税金额可跳到对应说明；点击说明中的 Offer 名称可返回该金额。</p>
-                    </div>
-                    <div class="tax-explanation-list" id="taxExplanationList"></div>
-                </section>
                 <footer class="comparison-status">
                     <span class="data-source-badge" id="dataSourceLabel">读取数据中</span>
                     <p class="save-status" id="saveStatus" role="status">正在读取本机私有数据或脱敏示例……</p>
@@ -337,6 +329,22 @@
                     </div>
                 </footer>
             </form>
+        </dialog>
+        <dialog class="tax-detail-dialog" id="taxDetailDialog" aria-labelledby="taxDetailTitle"
+            aria-describedby="taxDetailIdentity" data-testid="tax-detail-dialog">
+            <div class="tax-detail-content">
+                <header class="tax-detail-header">
+                    <div>
+                        <h2 id="taxDetailTitle" tabindex="-1">个人所得税计算详情</h2>
+                        <p id="taxDetailIdentity"></p>
+                    </div>
+                    <button class="tax-detail-close" id="closeTaxDetail" type="button" aria-label="关闭个税详情">×</button>
+                </header>
+                <div class="tax-detail-scroll" id="taxDetailBody"></div>
+                <footer class="tax-detail-footer">
+                    <button class="button" id="dismissTaxDetail" type="button">关闭</button>
+                </footer>
+            </div>
         </dialog>
     </main>
 

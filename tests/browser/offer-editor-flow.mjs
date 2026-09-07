@@ -228,27 +228,6 @@ export async function checkComparisonAndLayout({ client }) {
     await change('#settingsPrimaryHoursBasis', 'presence');
     assert.equal(await read(`document.querySelector('#primaryHoursBasis').value`), 'presence');
 
-    // Tax explanations still mount on demand and preserve the return link and sort state.
-    await click('.tax-cell[data-offer-id="demo-a"] .tax-cell__trigger');
-    await waitFor(client, `document.querySelector('.tax-explanation[data-offer-id="demo-a"]')?.open`, 'Tax explanation did not open');
-    const tax = await read(`(() => {
-        const details = document.querySelector('.tax-explanation[data-offer-id="demo-a"]');
-        return { body: details.querySelector('.tax-explanation__body').textContent,
-            summaryFocused: document.activeElement === details.querySelector('summary'),
-            linkCount: details.querySelectorAll('.tax-explanation__summary-offer-link').length };
-    })()`);
-    assert.match(tax.body, /固定工资/);
-    assert.match(tax.body, /基本减除费用/);
-    assert.equal(tax.summaryFocused, true);
-    assert.equal(tax.linkCount, 1);
-    await change('#sortMetric', 'annualIncomeTax');
-    assert.equal(await read(`document.querySelector('.tax-explanation[data-offer-id="demo-a"]').open`), true);
-    await click('.tax-explanation[data-offer-id="demo-a"] .tax-explanation__summary-offer-link');
-    await waitFor(client, `document.activeElement.matches('.tax-cell__trigger')`, 'Return from tax explanation lost focus');
-    await read(`document.querySelector('.tax-explanation[data-offer-id="demo-a"]').open = false`);
-    await delay(30);
-    assert.equal(await read(`document.querySelector('.tax-explanation[data-offer-id="demo-a"] .tax-explanation__body') === null`), true);
-
     for (const width of [1440, 760, 390, 375, 320]) {
         await client.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: width < 800 });
         await read(`window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);

@@ -18,9 +18,7 @@
     var formatHours = ui.formatHours;
     var formatHourly = ui.formatHourly;
     var saveTimer = 0;
-    var jumpHighlightTimer = 0;
     var uiState = {
-        expandedTaxExplanationIds: Object.create(null),
         sortKey: "companyDepartment",
         sortDirection: "asc"
     };
@@ -71,9 +69,7 @@
         sortMetric: document.getElementById("sortMetric"),
         sortDirection: document.getElementById("sortDirection"),
         comparisonTableBody: document.getElementById("comparisonTableBody"),
-        hoursColumnHeading: document.getElementById("hoursColumnHeading"),
-        taxExplanations: document.getElementById("taxExplanations"),
-        taxExplanationList: document.getElementById("taxExplanationList")
+        hoursColumnHeading: document.getElementById("hoursColumnHeading")
     };
 
     elements.application.setAttribute("aria-busy", "true");
@@ -183,7 +179,6 @@
         elements.sortDirection.disabled = busy || uiState.sortKey === "custom";
         elements.settingsForm.inert = busy;
         elements.hoursBasisControls.forEach(function (control) { control.disabled = busy; });
-        elements.taxExplanations.inert = busy;
         elements.comparisonTableBody.querySelectorAll('.comparison-offer-link').forEach(function (button) {
             var offer = getOfferById(button.dataset.offerId);
             var action = offerMode === "copy" ? "复制" : offerMode === "delete" ? "删除" : "编辑";
@@ -445,18 +440,13 @@
     }
 
     var taxView = window.OfferCompareTaxView.create({
-        uiState: uiState,
-        elements: elements,
-        findOfferTarget: findOfferTarget,
-        sortViews: sortViews,
+        dialog: document.getElementById("taxDetailDialog"),
         getLatestCalculation: function () {
             return latestCalculation;
         }
     });
     var selectedTaxLabel = taxView.selectedTaxLabel;
     var createTaxCell = taxView.createTaxCell;
-    var syncTaxTriggerExpanded = taxView.syncTaxTriggerExpanded;
-    var renderTaxExplanations = taxView.renderTaxExplanations;
 
     function renderTable(views) {
         var sortedViews = sortViews(views);
@@ -718,7 +708,6 @@
             renderTable(views);
         }
         renderResultControls();
-        renderTaxExplanations(views);
         renderFieldValidation(latestCalculation);
 
         if (errors.length) {
@@ -747,78 +736,9 @@
         });
     }
 
-    function jumpScrollBehavior() {
-        return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-    }
-
-    function highlightJumpTarget(element, focusTarget) {
-        var target = focusTarget || element;
-
-        window.clearTimeout(jumpHighlightTimer);
-        document.querySelectorAll(".is-jump-target").forEach(function (target) {
-            target.classList.remove("is-jump-target");
-        });
-        element.classList.add("is-jump-target");
-        try {
-            target.focus({ preventScroll: true });
-        } catch (error) {
-            target.focus();
-        }
-        jumpHighlightTimer = window.setTimeout(function () {
-            element.classList.remove("is-jump-target");
-        }, 1800);
-    }
-
     function jumpToOffer(offerId, trigger) {
         var offer = getOfferById(offerId);
         if (offer) { editor.open(offer, { mode: "edit", trigger: trigger }); }
-    }
-
-    function jumpToTaxExplanation(offerId) {
-        elements.resultPanel.open = true;
-        window.setTimeout(function () {
-            var details = findOfferTarget(
-                elements.taxExplanationList,
-                ".tax-explanation[data-offer-id]",
-                offerId
-            );
-            var summary;
-
-            if (!details) {
-                return;
-            }
-            details.open = true;
-            if (typeof details.mountTaxBody === "function") {
-                details.mountTaxBody();
-            }
-            uiState.expandedTaxExplanationIds[offerId] = true;
-            syncTaxTriggerExpanded(offerId, true);
-            summary = details.querySelector("summary");
-            details.scrollIntoView({ behavior: jumpScrollBehavior(), block: "start" });
-            highlightJumpTarget(details, summary);
-        });
-    }
-
-    function jumpToTaxCell(offerId) {
-        elements.resultPanel.open = true;
-        window.setTimeout(function () {
-            var cell = findOfferTarget(
-                elements.comparisonTableBody,
-                ".tax-cell[data-offer-id]",
-                offerId
-            );
-            var trigger = cell ? cell.querySelector(".tax-cell__trigger") : null;
-
-            if (!cell || !trigger) {
-                return;
-            }
-            cell.scrollIntoView({
-                behavior: jumpScrollBehavior(),
-                block: "center",
-                inline: "center"
-            });
-            highlightJumpTarget(cell, trigger);
-        });
     }
 
     function handleSettingsInput(event) {
@@ -890,7 +810,6 @@
         }
         endOfferMode(false);
         state.offers = state.offers.filter(function (candidate) { return candidate.id !== offerId; });
-        delete uiState.expandedTaxExplanationIds[offerId];
         commitStateAndRefresh({ saveImmediately: true });
         var row = next && findOfferTarget(elements.comparisonTableBody, "tr[data-offer-id]", next.id);
         (row ? row.querySelector(".comparison-offer-link") : elements.addOfferButton).focus({ preventScroll: true });
@@ -920,7 +839,6 @@
         }
         state = clone(seedState);
         latestCalculation = null;
-        uiState.expandedTaxExplanationIds = Object.create(null);
         activeDataOrigin = "source";
         updateDataSourceLabel();
         renderSettings();
@@ -989,7 +907,6 @@
             }
             state = imported;
             latestCalculation = null;
-            uiState.expandedTaxExplanationIds = Object.create(null);
             renderSettings();
             commitStateAndRefresh({ saveImmediately: true });
             elements.saveStatus.textContent = "导入成功，已保存到当前浏览器。";
@@ -1022,18 +939,8 @@
         if (!trigger) { return; }
         if (trigger.dataset.action === "jump-to-offer") {
             jumpToOffer(trigger.dataset.offerId, trigger);
-        } else if (trigger.dataset.action === "jump-to-tax-explanation") {
-            jumpToTaxExplanation(trigger.dataset.offerId);
-        }
-    }));
-
-    elements.taxExplanationList.addEventListener("click", whenApplicationReady(function (event) {
-        var trigger = event.target.closest('[data-action="jump-to-tax-cell"]');
-
-        if (trigger) {
-            event.preventDefault();
-            event.stopPropagation();
-            jumpToTaxCell(trigger.dataset.offerId);
+        } else if (trigger.dataset.action === "show-tax-details") {
+            taxView.open(trigger.dataset.offerId, trigger);
         }
     }));
 
@@ -1052,7 +959,7 @@
         }
     });
     document.addEventListener("keydown", function (event) {
-        if (event.key !== "Escape" || document.getElementById("offerEditDialog").open) { return; }
+        if (event.key !== "Escape" || document.querySelector("dialog[open]")) { return; }
         if (offerMode) { event.preventDefault(); endOfferMode(true); }
         else if (elements.dataMenu.open) {
             elements.dataMenu.open = false;
