@@ -16,6 +16,7 @@ jobs:
         with:
           node-version: 22
       - run: npm run check
+      - run: npm run check:cpp
 
   browser-smoke:
     runs-on: windows-latest

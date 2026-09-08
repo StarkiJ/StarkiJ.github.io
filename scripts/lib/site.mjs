@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const workspace = fileURLToPath(new URL("../../", import.meta.url));
+export const workspace = path.resolve(fileURLToPath(new URL("../../", import.meta.url)));
 export const content = JSON.parse(await readFile(new URL("../../site-content.json", import.meta.url), "utf8"));
 export const notes = content.categories.flatMap(category => category.notes);
 const excludedGames = ["games/missile-game/", "games/t-rex-runner/", "games/cyber-woodenfish/"];

@@ -12,9 +12,10 @@ JavaScript，不需要安装运行时依赖或执行构建步骤。
 - `notes/notes.css`：文章排版、目录、概念表格和折叠示例的共享样式。
 - `tools/<kebab-case>/`：每个工具拥有自己的 `index.html`、脚本和可选资源。
 - `games/<kebab-case>/`：每个游戏拥有独立目录和入口页。
-- `tests/unit/`：Offer 对比的 Node 单元测试。
+- `tests/unit/`：Offer 对比、工具复制失败和检查脚本的 Node 回归测试。
+- `tests/cpp/examples.json`：可下载 C++ 示例的编译目标及故意错误示例的排除理由。
 - `tests/browser/`：Offer 对比的 Edge 浏览器冒烟测试。
-- `scripts/check-links.mjs`：本地链接和 sitemap 一致性检查。
+- `scripts/`：静态内容生成、链接与锚点、页面结构、源码和资源版本检查。
 
 工具和游戏统一使用小写 kebab-case 目录。站内链接、canonical 和 sitemap
 全部显式指向 `index.html`，以同时兼容 GitHub Pages 和通过 `file://`
@@ -36,13 +37,25 @@ python -m http.server 8000
 需要 Node.js 22 或更高版本：
 
 ```text
-npm test
-npm run check:links
+npm run check
+npm run check:cpp
 npm run test:browser
 npm run check:all
 ```
 
-其中浏览器冒烟测试仅支持已安装 Microsoft Edge 的 Windows 环境。
+`check` 包含 Node 回归、JavaScript 语法、生成内容、HTML 结构、笔记表格、
+无障碍引用、下载源码一致性、站内链接与锚点、sitemap 和资源版本检查。
+这些是静态检查，不替代浏览器中的布局与交互验证。
+
+`check:cpp` 另需支持 C++17 的 GCC 或 Clang；默认使用 `g++`，
+可通过 `CXX` 环境变量指定编译器可执行文件路径。编译产物写入临时目录并在完成后清理。
+带 `data-example` 的完整程序会自动提取、编译、运行，并与同一 figure 的 `note-output`
+输出对照；无输出块表示程序不应输出文字。下载示例按清单编译，执行其断言；
+布局输出和性能耗时不作跨平台固定值断言，故意触发 UB 的诊断示例不执行。
+新增下载源码时须登记编译目标或明确排除理由。自移动测试可能产生编译器警告，
+保留该测试以验证自赋值边界。CI 在 Linux 上运行 `check` 和 `check:cpp`。
+
+浏览器冒烟测试仅支持已安装 Microsoft Edge 的 Windows 环境，CI 单独运行该项。
 如果 PowerShell 策略阻止执行 `npm.ps1`，可将命令中的 `npm` 替换为
 `npm.cmd`。
 

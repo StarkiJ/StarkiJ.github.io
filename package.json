@@ -2,14 +2,17 @@
   "name": "starkij-github-pages",
   "private": true,
   "scripts": {
-    "test": "node --test tests/unit/*.test.js",
+    "test": "node scripts/test-unit.mjs",
     "test:browser": "node tests/browser/offer-compare-smoke.mjs",
     "generate": "node scripts/generate-site.mjs && npm run version:offer-assets",
     "check:generated": "node scripts/generate-site.mjs --check",
+    "check:pages": "node scripts/check-pages.mjs",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check:cpp": "node scripts/check-cpp.mjs",
     "check:links": "node scripts/check-links.mjs",
     "version:offer-assets": "node scripts/version-offer-assets.mjs",
     "check:assets": "node scripts/version-offer-assets.mjs --check",
-    "check": "npm run test && npm run check:generated && npm run check:links && npm run check:assets",
-    "check:all": "npm run check && npm run test:browser"
+    "check": "npm run test && npm run check:syntax && npm run check:generated && npm run check:pages && npm run check:links && npm run check:assets",
+    "check:all": "npm run check && npm run check:cpp && npm run test:browser"
   }
 }

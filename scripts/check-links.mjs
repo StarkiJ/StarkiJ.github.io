@@ -1,36 +1,24 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { workspace, content, walk, relative } from "./lib/site.mjs";
+import { parseHtml } from "./lib/html.mjs";
 
-const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skippedDirectories = new Set([".git", "node_modules"]);
-const siteOrigin = "https://starkij.github.io";
+const siteOrigin = content.origin;
 const failures = [];
+const documents = new Map();
+let fragmentCount = 0;
 
-async function walk(directory) {
-    const entries = await readdir(directory, { withFileTypes: true });
-    const files = [];
-
-    for (const entry of entries) {
-        if (entry.isDirectory() && skippedDirectories.has(entry.name)) {
-            continue;
-        }
-        const fullPath = path.join(directory, entry.name);
-        if (entry.isDirectory()) {
-            files.push(...await walk(fullPath));
-        } else if (entry.isFile()) {
-            files.push(fullPath);
-        }
-    }
-    return files;
+async function documentFor(file) {
+    if (!documents.has(file)) documents.set(file, parseHtml(await readFile(file, "utf8")));
+    return documents.get(file);
 }
 
 function localTarget(sourceFile, reference) {
     const withoutFragment = reference.split("#", 1)[0].split("?", 1)[0];
-    if (!withoutFragment ||
-            /^(?:[a-z]+:|\/\/)/i.test(withoutFragment)) {
+    if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(withoutFragment)) {
         return null;
     }
+    if (!withoutFragment) return sourceFile;
 
     let decoded;
     try {
@@ -54,35 +42,35 @@ function localTarget(sourceFile, reference) {
     return target;
 }
 
-async function targetExists(target, reference) {
+async function resolvedTarget(target) {
     try {
         const targetStats = await stat(target);
-        if (targetStats.isDirectory() || reference.endsWith("/")) {
-            await stat(path.join(target, "index.html"));
+        if (targetStats.isDirectory()) {
+            target = path.join(target, "index.html");
+            await stat(target);
         }
-        return true;
+        return target;
     } catch {
-        return false;
+        return null;
     }
 }
 
 async function checkReferences(files) {
     for (const file of files) {
         const extension = path.extname(file).toLowerCase();
-        if (extension !== ".html" && extension !== ".css") {
+        if (![".html", ".css", ".svg"].includes(extension)) {
             continue;
         }
         const source = await readFile(file, "utf8");
-        const expression = extension === ".html"
-            ? /(?:href|src)\s*=\s*["']([^"'#]+)["']/gi
-            : /url\(\s*["']?([^"'()]+)["']?\s*\)/gi;
-        let match;
-
-        while ((match = expression.exec(source))) {
-            const reference = match[1].trim();
+        const references = extension === ".css"
+            ? [...source.matchAll(/url\(\s*["']?([^"'()]+?)["']?\s*\)/gi)].map(match => ["url", match[1]])
+            : (await documentFor(file)).nodes.flatMap(node => Object.entries(node.attributes).filter(([key]) => ["href", "src", "xlink:href"].includes(key)));
+        for (const [attribute, value] of references) {
+            const reference = value.trim();
+            if (!reference) continue;
             const target = localTarget(file, reference);
             const isHtmlDirectoryLink = extension === ".html" &&
-                /^href/i.test(match[0]) &&
+                attribute === "href" &&
                 /\/(?:[?#].*)?$/.test(reference);
 
             if (target && isHtmlDirectoryLink) {
@@ -90,10 +78,23 @@ async function checkReferences(files) {
                     `${path.relative(workspace, file)}: use an explicit index.html link instead of ${reference}`
                 );
             }
-            if (target && !await targetExists(target, reference)) {
+            if (!target) continue;
+            const resolved = await resolvedTarget(target);
+            if (!resolved) {
                 failures.push(
                     `${path.relative(workspace, file)}: missing ${reference}`
                 );
+                continue;
+            }
+            if (!reference.includes("#") || !/\.(html|svg)$/i.test(resolved)) continue;
+            let fragment;
+            try { fragment = decodeURIComponent(reference.slice(reference.indexOf("#") + 1).split(":~:")[0]); }
+            catch { failures.push(`${relative(file)}: invalid fragment encoding: ${reference}`); continue; }
+            if (!fragment) continue;
+            fragmentCount++;
+            const { nodes } = await documentFor(resolved);
+            if (!nodes.some(node => node.attributes.id === fragment || (node.tag === "a" && node.attributes.name === fragment))) {
+                failures.push(`${relative(file)}: missing anchor ${reference}`);
             }
         }
     }
@@ -153,5 +154,5 @@ if (failures.length) {
     console.error(failures.join("\n"));
     process.exitCode = 1;
 } else {
-    console.log(`Link and sitemap checks passed (${files.length} files scanned)`);
+    console.log(`Link and sitemap checks passed (${files.length} files, ${fragmentCount} local fragments checked)`);
 }
