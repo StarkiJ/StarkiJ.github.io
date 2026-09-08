@@ -25,10 +25,11 @@
                 <span>Starki</span>
             </a>
             <nav class="site-nav" aria-label="站点导航">
-                <a href="../../index.html">主页</a>
+                <a href="../../index.html#about">关于</a>
                 <a href="../../index.html#tools">工具</a>
                 <a href="../../index.html#games">游戏</a>
-                <a class="is-active" href="../index.html">笔记</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
             </nav>
         </div>
     </header>
@@ -76,7 +77,7 @@ std::cout &lt;&lt; v[position]; // 扩容后重新定位；前提是位置语义
 <p>示例只存 int，使搬动与删除不会因用户类型抛异常。新增元素分配失败时会回滚新槽位。泛型版本还需约束 T 的移动/交换，或设计异常后的映射恢复。</p>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;cassert&gt;
 #include &lt;cstddef&gt;
 #include &lt;cstdint&gt;
 #include &lt;limits&gt;

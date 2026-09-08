@@ -4,10 +4,12 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.js",
     "test:browser": "node tests/browser/offer-compare-smoke.mjs",
+    "generate": "node scripts/generate-site.mjs && npm run version:offer-assets",
+    "check:generated": "node scripts/generate-site.mjs --check",
     "check:links": "node scripts/check-links.mjs",
     "version:offer-assets": "node scripts/version-offer-assets.mjs",
     "check:assets": "node scripts/version-offer-assets.mjs --check",
-    "check": "npm run test && npm run check:links && npm run check:assets",
+    "check": "npm run test && npm run check:generated && npm run check:links && npm run check:assets",
     "check:all": "npm run check && npm run test:browser"
   }
 }

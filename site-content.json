@@ -1,0 +1,163 @@
+{
+  "origin": "https://starkij.github.io",
+  "navigation": [
+    {
+      "id": "about",
+      "label": "关于",
+      "href": "index.html#about"
+    },
+    {
+      "id": "tools",
+      "label": "工具",
+      "href": "index.html#tools"
+    },
+    {
+      "id": "games",
+      "label": "游戏",
+      "href": "index.html#games"
+    },
+    {
+      "id": "notes",
+      "label": "笔记",
+      "href": "notes/index.html",
+      "homeHref": "#notes"
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "href": "https://github.com/StarkiJ"
+    }
+  ],
+  "featured": [
+    "cpp-interview-roadmap",
+    "cpp-shared-ptr",
+    "cpp-stable-handles",
+    "operating-systems",
+    "network-basics",
+    "linked-trees-graphs"
+  ],
+  "categories": [
+    {
+      "id": "cpp",
+      "title": "C++",
+      "notes": [
+        {
+          "slug": "cpp-interview-roadmap",
+          "title": "C++ 核心知识",
+          "summary": "语言基础、对象模型、资源管理、STL、模板与并发。",
+          "description": "C++ 核心概念与机制复习笔记，涵盖类型、生命周期、虚函数、智能指针、移动语义、STL、模板、并发和编译链接，附代码示例与经典问题。"
+        },
+        {
+          "slug": "cpp-shared-ptr",
+          "title": "简化 shared_ptr：计数与释放",
+          "cardTitle": "共享指针实现",
+          "summary": "从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。"
+        },
+        {
+          "slug": "cpp-stable-handles",
+          "title": "vector 与稳定句柄",
+          "summary": "区分地址、位置和身份，处理扩容、重排、删除与槽位复用。"
+        },
+        {
+          "slug": "cpp-cache-performance",
+          "title": "缓存局部性与性能测量",
+          "cardTitle": "缓存与性能测量",
+          "summary": "由二维数组的访问步长，理解缓存、基准测试和粒子数据布局。"
+        },
+        {
+          "slug": "cpp-memory-diagnostics",
+          "title": "C++ 内存问题定位",
+          "cardTitle": "内存问题定位",
+          "summary": "区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。"
+        }
+      ]
+    },
+    {
+      "id": "foundations",
+      "title": "计算机基础",
+      "notes": [
+        {
+          "slug": "operating-systems",
+          "title": "操作系统：进程、内存与同步",
+          "cardTitle": "操作系统基础",
+          "summary": "梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。"
+        },
+        {
+          "slug": "network-basics",
+          "title": "网络：TCP、UDP 与 socket",
+          "cardTitle": "网络基础",
+          "summary": "从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。"
+        },
+        {
+          "slug": "program-execution",
+          "title": "程序执行：寄存器、调用与链接",
+          "cardTitle": "程序执行机制",
+          "summary": "解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。"
+        },
+        {
+          "slug": "compiler-ir",
+          "title": "编译器：IR、SSA 与优化",
+          "cardTitle": "编译器基础",
+          "summary": "连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。"
+        }
+      ]
+    },
+    {
+      "id": "android",
+      "title": "Android / ART",
+      "notes": [
+        {
+          "slug": "art-memory-gc",
+          "title": "ART 内存与 GC",
+          "summary": "理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。"
+        },
+        {
+          "slug": "jni-references",
+          "title": "JNI：引用与生命周期",
+          "cardTitle": "JNI 引用管理",
+          "summary": "梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。"
+        },
+        {
+          "slug": "art-compilation-startup",
+          "title": "ART 编译与启动",
+          "summary": "区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。"
+        },
+        {
+          "slug": "android-mte",
+          "title": "MTE：标签与错误定位",
+          "cardTitle": "MTE 机制",
+          "summary": "理解内存标签检查、同步/异步报告、检测盲区和性能验证。"
+        }
+      ]
+    },
+    {
+      "id": "algorithms",
+      "title": "数据结构与算法",
+      "notes": [
+        {
+          "slug": "linked-trees-graphs",
+          "title": "链表、树与图",
+          "summary": "围绕指针不变量、层序边界和访问映射，整理常见实现题。"
+        },
+        {
+          "slug": "hash-sorting-arrays",
+          "title": "哈希、LRU、排序与数组",
+          "cardTitle": "哈希、排序与数组",
+          "summary": "整理数据结构不变量、复杂度，以及整数和字符串题的边界处理。"
+        }
+      ]
+    },
+    {
+      "id": "game",
+      "title": "游戏开发",
+      "notes": [
+        {
+          "slug": "game-foundations",
+          "title": "游戏基础：同步、寻路与旋转",
+          "cardTitle": "游戏开发基础",
+          "summary": "明确同步对象、搜索代价和坐标约定，再推导实现与边界。"
+        }
+      ]
+    }
+  ]
+}

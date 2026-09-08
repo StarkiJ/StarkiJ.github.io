@@ -25,10 +25,11 @@
                 <span>Starki</span>
             </a>
             <nav class="site-nav" aria-label="站点导航">
-                <a href="../../index.html">主页</a>
+                <a href="../../index.html#about">关于</a>
                 <a href="../../index.html#tools">工具</a>
                 <a href="../../index.html#games">游戏</a>
-                <a class="is-active" href="../index.html">笔记</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
             </nav>
         </div>
     </header>
@@ -66,7 +67,7 @@
 <p>错误程序填满容量后保存引用，再插入一个元素，保证这次成功插入触发重分配。此程序故意包含 UB，没有规定输出；应在支持 ASan 的环境中单独实验。</p>
 <p><a href="invalid-reference.cpp" download>下载源码（invalid-reference.cpp）</a>。使用 C++17 和支持的检测器编译运行。</p>
 <details class="note-example-details"><summary>错误复现：仅用于检测器实验</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;vector&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="invalid-reference.cpp">#include &lt;vector&gt;
 #include &lt;iostream&gt;
 int main() {
     std::vector&lt;int&gt; v{7};
@@ -87,7 +88,7 @@ int main() {
 <p>unique_ptr&lt;Base&gt; 的默认删除器仍执行 delete Base*，所以仅换智能指针并不能修复非虚析构。以下示例同时验证动态析构和扩容后重新访问。</p>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;cassert&gt;
 #include &lt;cstddef&gt;
 #include &lt;memory&gt;
 #include &lt;vector&gt;

@@ -50,6 +50,21 @@ npm run check:all
 `npm run version:offer-assets` 并提交更新的 HTML。资源 URL 使用内容版本，避免
 GitHub Pages 发布后混用浏览器缓存的旧脚本；`npm run check` 会检查版本是否同步。
 
+## 导航与笔记维护
+
+`site-content.json` 是导航、笔记分类、标题、简介和首页推荐的维护入口。
+修改后运行 `npm run generate`，将配置与生成后的页面一起提交；
+`npm run check:generated` 会阻止导航、目录、篇数、文章元信息或 sitemap 漏更新。
+`cardTitle` 只在卡片需要较短标题时填写，`description` 只在搜索摘要需要独立文案时填写。
+
+文章正文仍直接编辑各自的 HTML。带有 `data-source` 的代码块由对应的
+`.cpp` / `.hpp` 文件生成，请修改源码后运行生成命令；没有该属性的代码块直接在文章中维护。
+新增笔记时，同时添加文章页面和配置中的条目。生成区域用 `generated:…` 注释标出，
+站点导航及文章标题、摘要、canonical 等元信息也由生成脚本维护。
+
+生成仅在维护时执行，提交的仍是完整静态页面，浏览时不依赖 Node.js 或动态加载模板。
+第三方游戏目录（导弹游戏、小恐龙、电子木鱼）与音频不参与生成或重构。
+
 ## Offer 对比数据
 
 在 Offer 列表中点击公司 / 部门名称打开填写窗口，或使用“新增 Offer”。窗口内实时预览

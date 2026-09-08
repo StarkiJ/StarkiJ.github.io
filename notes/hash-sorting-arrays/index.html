@@ -25,10 +25,11 @@
                 <span>Starki</span>
             </a>
             <nav class="site-nav" aria-label="站点导航">
-                <a href="../../index.html">主页</a>
+                <a href="../../index.html#about">关于</a>
                 <a href="../../index.html#tools">工具</a>
                 <a href="../../index.html#games">游戏</a>
-                <a class="is-active" href="../index.html">笔记</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
             </nav>
         </div>
     </header>
@@ -109,7 +110,7 @@ list: 最近使用 → … → 最久未使用</code></pre>
 <section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">8. 实现与边界验证</h2>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;algorithm&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;algorithm&gt;
 #include &lt;cassert&gt;
 #include &lt;cstddef&gt;
 #include &lt;cstdint&gt;

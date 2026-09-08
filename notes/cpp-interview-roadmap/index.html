@@ -8,7 +8,7 @@
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
     <meta property="og:title" content="C++ 核心知识 · Starki 笔记">
-    <meta property="og:description" content="按知识点整理 C++ 概念、机制与易错点，附代码示例和经典问题。">
+    <meta property="og:description" content="C++ 核心概念与机制复习笔记，涵盖类型、生命周期、虚函数、智能指针、移动语义、STL、模板、并发和编译链接，附代码示例与经典问题。">
     <meta property="og:url" content="https://starkij.github.io/notes/cpp-interview-roadmap/index.html">
     <title>C++ 核心知识 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/cpp-interview-roadmap/index.html">
@@ -25,10 +25,11 @@
                 <span>Starki</span>
             </a>
             <nav class="site-nav" aria-label="站点导航">
-                <a href="../../index.html">主页</a>
+                <a href="../../index.html#about">关于</a>
                 <a href="../../index.html#tools">工具</a>
                 <a href="../../index.html#games">游戏</a>
-                <a class="is-active" href="../index.html">笔记</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
             </nav>
         </div>
     </header>
@@ -502,7 +503,7 @@ Derived
 <p><code>#pragma pack</code> 是编译器扩展，push/pop 用于限制影响范围。压紧布局不等于可安全地把任意网络字节流转换成对象；还需处理字节序、表示和生命周期。未对齐成员的地址不能当作天然满足 int 对齐的普通指针使用。</p>
 <p><a href="layout.cpp" download>下载源码（layout.cpp）</a>。使用 C++17 编译，输出当前目标的布局结果。</p>
 <details class="note-example-details"><summary>布局验证：sizeof、alignof 与 offsetof</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;cstddef&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="layout.cpp">#include &lt;cstddef&gt;
 #include &lt;iostream&gt;
 #include &lt;type_traits&gt;
 struct S { char c; int i; short s; };
@@ -917,7 +918,7 @@ int main() {
 <p>若 key == 0 表示无效数据，该调用把无效项移到末尾，保留有效项的原顺序，不删除元素。返回值是无效区间的起点。</p>
 <p><a href="stl-ordering.cpp" download>下载源码（stl-ordering.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>稳定分区与按 key 降序排列：含顺序断言</summary>
-<pre tabindex="0"><code class="language-cpp">#include &lt;algorithm&gt;
+<pre tabindex="0"><code class="language-cpp" data-source="stl-ordering.cpp">#include &lt;algorithm&gt;
 #include &lt;cassert&gt;
 #include &lt;vector&gt;
 struct KV { int key; char value; };
@@ -1306,18 +1307,18 @@ int main() {
 <p><strong>库：</strong>静态库通常在链接时提供所需目标代码；动态库通过加载或运行时的动态链接机制使用。两者均需考虑 ABI、版本和依赖，不能仅概括为性能优劣。</p>
 <details class="note-example-details"><summary>多文件示例：共享声明、唯一的定义与模板实例化</summary>
 <h4>counter.hpp</h4>
-<pre tabindex="0"><code class="language-cpp">#ifndef NOTE_COUNTER_HPP
+<pre tabindex="0"><code class="language-cpp" data-source="linking/counter.hpp">#ifndef NOTE_COUNTER_HPP
 #define NOTE_COUNTER_HPP
 extern int count;
 int tick();
 template&lt;class T&gt; T twice(T x) { return x + x; }
 #endif</code></pre>
 <h4>counter.cpp</h4>
-<pre tabindex="0"><code class="language-cpp">#include &quot;counter.hpp&quot;
+<pre tabindex="0"><code class="language-cpp" data-source="linking/counter.cpp">#include &quot;counter.hpp&quot;
 int count = 0;
 int tick() { return ++count; }</code></pre>
 <h4>main.cpp</h4>
-<pre tabindex="0"><code class="language-cpp">#include &quot;counter.hpp&quot;
+<pre tabindex="0"><code class="language-cpp" data-source="linking/main.cpp">#include &quot;counter.hpp&quot;
 #include &lt;cassert&gt;
 int main() {
     assert(tick() == 1);
