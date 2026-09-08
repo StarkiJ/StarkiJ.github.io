@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="围绕指针不变量、层序边界和访问映射，整理常见实现题。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="链表、树与图 · Starki 学习笔记">
+    <meta property="og:description" content="围绕指针不变量、层序边界和访问映射，整理常见实现题。">
+    <meta property="og:url" content="https://starkij.github.io/notes/linked-trees-graphs/index.html">
+    <title>链表、树与图 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/linked-trees-graphs/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">链表、树与图</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">数据结构与算法</p>
+                <h1 id="note-title">链表、树与图</h1>
+                <p class="note-deck">围绕指针不变量、层序边界和访问映射，整理常见实现题。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#reverse">1. 链表反转：迭代与递归</a></li><li><a href="#merge">2. 合并两条有序链表</a></li><li><a href="#groups">3. 每 k 个节点反转</a></li><li><a href="#cycle">4. 判环与环入口</a></li><li><a href="#tree">5. 二叉树最大层和</a></li><li><a href="#graph">6. 图的深拷贝</a></li><li><a href="#implementation">7. 实现与边界验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="reverse" aria-labelledby="reverse-title"><h2 id="reverse-title">1. 链表反转：迭代与递归</h2>
+<p>前提是单链表无环。迭代法维护两段：previous 指向已经反转的前缀，head 指向尚未处理的后缀。每轮先保存 next，再改当前 next，最后同时推进两段边界。</p>
+<pre tabindex="0"><code class="language-cpp">Node* next = head-&gt;next;
+head-&gt;next = previous;
+previous = head;
+head = next;</code></pre>
+<p>递归法先反转 head 后面的链表，再让原第二个节点指回 head，最后置 head→next 为空。空链表和单节点直接返回。两者时间均 O(n)；迭代额外空间 O(1)，递归调用栈 O(n)，长链表可能耗尽栈。</p>
+<details class="note-review-question"><summary>经典问题：递归版为什么必须把旧 head 的 next 设为空？</summary>
+<p>后缀已经反向连接回来，若旧 head 仍指向原第二个节点，就形成环。反转后的旧 head 应是尾节点。</p>
+</details>
+</section>
+<section id="merge" aria-labelledby="merge-title"><h2 id="merge-title">2. 合并两条有序链表</h2>
+<p>前提是两条升序、无环且节点互不重叠的链表。用哑节点保存统一入口，tail 指向已合并部分的末尾；每次连接两个表头中较小者，推进对应表头。一个表为空后直接接上另一个。</p>
+<p>返回值可能与原链表一的表头不同，调用者应接收新头指针。复用原节点，时间 O(n+m)、额外空间 O(1)。相等时先取第一条表可保持该选择下的稳定顺序。</p>
+<details class="note-review-question"><summary>经典问题：为什么要声明两条链表不能共享尾部？</summary>
+<p>算法会直接改 next；若两条表指向同一节点，可能重复连接并形成环。共享节点的输入需要先明确语义并单独处理，不能套用普通合并前提。</p>
+</details>
+</section>
+<section id="groups" aria-labelledby="groups-title"><h2 id="groups-title">3. 每 k 个节点反转</h2>
+<p>维护 before 指向当前组的前一节点。先向后检查是否有完整 k 个节点：不足就停止，保留剩余顺序。记录组后 after，把当前组反转时的 previous 初始化为 after，反转完成便已接回后缀。</p>
+<pre tabindex="0"><code class="language-text">输入：1 → 2 → 3 → 4 → 5 → 6 → 7 → 8，k=3
+结果：3 → 2 → 1 → 6 → 5 → 4 → 7 → 8</code></pre>
+<p>连接 before→新组头，再把 before 移到原组头（现在是组尾）。k 必须为正数；k=1 不改变顺序。检查和反转各使节点被访问常数次，时间 O(n)、额外空间 O(1)。</p>
+<details class="note-review-question"><summary>经典问题：能否先反转，发现不足 k 个再结束？</summary>
+<p>那会改变不足一组的后缀。要么先数够再反转，要么额外撤销未满一组的修改；先检查更容易维持题目要求。</p>
+</details>
+</section>
+<section id="cycle" aria-labelledby="cycle-title"><h2 id="cycle-title">4. 判环与环入口</h2>
+<p>快慢指针从头出发，慢指针每次一步、快指针每次两步。无环时快指针到空；有环时二者在环内的相对距离每轮变化一步，最终相遇。相遇后让一个指针回到头部，二者同速走，再次相遇处是入口。</p>
+<p>设到入口距离为 μ，相遇时慢指针走了 t 步，环长为 λ。两指针路程差也是 t，故 t 是 λ 的倍数；从相遇点再走 μ 步就回到入口对应位置，与从头走 μ 步的指针相遇。时间 O(n)、空间 O(1)。</p>
+<p>另一种方法用哈希集合保存访问过的节点地址，第一个重复节点即入口。平均时间 O(n)、空间 O(n)；键必须是节点身份，不能仅用节点值。</p>
+</section>
+<section id="tree" aria-labelledby="tree-title"><h2 id="tree-title">5. 二叉树最大层和</h2>
+<p>BFS 队列保存待处理节点，每轮开始记录 queue.size()，恰好弹出这么多个节点，得到当前层的和与从左到右的节点值。孩子入队供下一轮处理。</p>
+<p>最佳和初始化为最小值，才能处理全负数；示例使用 64 位累加，前提是每层总和可表示。和相同保留较浅层，空树返回空数组。时间 O(n)、辅助空间 O(w)，w 为最大层宽。若需要返回节点本身，可将结果类型改成指针列表并明确借用生命周期。</p>
+<details class="note-review-question"><summary>经典问题：为什么不能边弹队列边用变化中的 size 当层边界？</summary>
+<p>因为孩子也在入队，变化后的长度混入了下一层。必须先冻结本层节点数量，再处理该数量。</p>
+</details>
+</section>
+<section id="graph" aria-labelledby="graph-title"><h2 id="graph-title">6. 图的深拷贝</h2>
+<p>用哈希表记录 <code>旧节点地址 → 新节点地址</code>。第一次遇到旧节点就建立副本并写入映射，再遍历它的边；这样自环、环和重复边都不会导致无限复制。新边必须指向映射中的新节点。</p>
+<p>示例复制入口可达的子图，保留自环、重复边、相同值的不同节点和空边；全部新节点由独立 unique_ptr 集合拥有，邻接指针只作借用。平均时间 O(V+E)、空间 O(V+E)，其中邻接表属于输出。全图含不可达分量时，需对全部节点入口复用同一映射。</p>
+<details class="note-review-question"><summary>经典问题：为什么不能用 value 作为映射键？</summary>
+<p>不同节点可以有相同值，合并它们会改变图结构。深拷贝保留节点身份之间的关系，键应是原节点地址或可靠的唯一 ID。</p>
+</details>
+</section>
+<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">7. 实现与边界验证</h2>
+<p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>完整实现与断言测试</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdint&gt;
+#include &lt;initializer_list&gt;
+#include &lt;limits&gt;
+#include &lt;memory&gt;
+#include &lt;queue&gt;
+#include &lt;stdexcept&gt;
+#include &lt;unordered_map&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+struct Node { int value; Node* next=nullptr; };
+Node* reverse(Node* head) {
+    Node* previous=nullptr;
+    while (head) {
+        Node* next=head-&gt;next;
+        head-&gt;next=previous;
+        previous=head;
+        head=next;
+    }
+    return previous;
+}
+Node* reverse_recursive(Node* head) {
+    if (!head || !head-&gt;next) return head;
+    Node* new_head=reverse_recursive(head-&gt;next);
+    head-&gt;next-&gt;next=head;
+    head-&gt;next=nullptr;
+    return new_head;
+}
+Node* merge(Node* a, Node* b) { // 两条升序、无环且节点互不重叠的链表
+    Node dummy{0}; Node* tail=&amp;dummy;
+    while(a &amp;&amp; b) {
+        Node*&amp; smaller=(a-&gt;value&lt;=b-&gt;value ? a : b);
+        tail-&gt;next=smaller;
+        smaller=smaller-&gt;next;
+        tail=tail-&gt;next;
+    }
+    tail-&gt;next=a ? a : b;
+    return dummy.next;
+}
+Node* reverse_groups(Node* head, std::size_t k) {
+    if (k==0) throw std::invalid_argument(&quot;k must be positive&quot;);
+    Node dummy{0,head}; Node* before=&amp;dummy;
+    while (true) {
+        Node* kth=before;
+        for(std::size_t i=0; i&lt;k &amp;&amp; kth; ++i) kth=kth-&gt;next;
+        if (!kth) break;
+        Node* after=kth-&gt;next;
+        Node* old_first=before-&gt;next;
+        Node* current=old_first;
+        Node* previous=after;
+        while(current!=after) {
+            Node* next=current-&gt;next;
+            current-&gt;next=previous;
+            previous=current;
+            current=next;
+        }
+        before-&gt;next=kth;
+        before=old_first;
+    }
+    return dummy.next;
+}
+Node* cycle_entry(Node* head) {
+    Node* slow=head; Node* fast=head;
+    while(fast &amp;&amp; fast-&gt;next) {
+        slow=slow-&gt;next; fast=fast-&gt;next-&gt;next;
+        if (slow==fast) {
+            Node* entry=head;
+            while(entry!=slow) { entry=entry-&gt;next; slow=slow-&gt;next; }
+            return entry;
+        }
+    }
+    return nullptr;
+}
+struct Tree { int value; Tree* left=nullptr; Tree* right=nullptr; };
+std::vector&lt;int&gt; max_sum_level(Tree* root) {
+    if (!root) return {};
+    std::queue&lt;Tree*&gt; queue; queue.push(root);
+    std::int64_t best=std::numeric_limits&lt;std::int64_t&gt;::min();
+    std::vector&lt;int&gt; answer;
+    while(!queue.empty()) {
+        auto width=queue.size();
+        std::int64_t sum=0; std::vector&lt;int&gt; current;
+        while(width--) {
+            auto* node=queue.front(); queue.pop();
+            sum+=node-&gt;value; current.push_back(node-&gt;value);
+            if(node-&gt;left) queue.push(node-&gt;left);
+            if(node-&gt;right) queue.push(node-&gt;right);
+        }
+        if(sum&gt;best) { best=sum; answer=std::move(current); }
+    }
+    return answer;
+}
+struct GraphNode { int value; std::vector&lt;GraphNode*&gt; edges; };
+struct GraphCopy {
+    std::vector&lt;std::unique_ptr&lt;GraphNode&gt;&gt; storage;
+    GraphNode* root=nullptr;
+};
+GraphCopy clone_graph(const GraphNode* root) {
+    GraphCopy result;
+    if(!root) return result;
+    std::unordered_map&lt;const GraphNode*,GraphNode*&gt; copied;
+    auto create=[&amp;](const GraphNode* old) {
+        result.storage.push_back(std::make_unique&lt;GraphNode&gt;(GraphNode{old-&gt;value,{}}));
+        auto* fresh=result.storage.back().get();
+        copied.emplace(old,fresh);
+        return fresh;
+    };
+    result.root=create(root);
+    std::queue&lt;const GraphNode*&gt; queue; queue.push(root);
+    while(!queue.empty()) {
+        const auto* old=queue.front(); queue.pop();
+        auto* fresh=copied.at(old);
+        for(const auto* next : old-&gt;edges) {
+            if(!next) { fresh-&gt;edges.push_back(nullptr); continue; }
+            if(copied.find(next)==copied.end()) { create(next); queue.push(next); }
+            fresh-&gt;edges.push_back(copied.at(next));
+        }
+    }
+    return result;
+}
+
+struct Nodes { // 测试用独立所有权；next 是借用，不递归析构
+    std::vector&lt;std::unique_ptr&lt;Node&gt;&gt; storage;
+    Node* make(std::initializer_list&lt;int&gt; values) {
+        Node* head=nullptr; Node** tail=&amp;head;
+        for(int value : values) {
+            storage.push_back(std::make_unique&lt;Node&gt;(Node{value}));
+            *tail=storage.back().get(); tail=&amp;(*tail)-&gt;next;
+        }
+        return head;
+    }
+};
+std::vector&lt;int&gt; values(Node* head) {
+    assert(cycle_entry(head)==nullptr);
+    std::vector&lt;int&gt; out;
+    for(;head;head=head-&gt;next) out.push_back(head-&gt;value);
+    return out;
+}
+int main() {
+    Nodes nodes;
+    assert(reverse(nullptr)==nullptr &amp;&amp; reverse_recursive(nullptr)==nullptr);
+    auto* list=nodes.make({1,2,3});
+    list=reverse(list); assert((values(list)==std::vector&lt;int&gt;{3,2,1}));
+    list=reverse_recursive(list); assert((values(list)==std::vector&lt;int&gt;{1,2,3}));
+    auto* merged=merge(nodes.make({1,3,5}),nodes.make({1,2,6}));
+    assert((values(merged)==std::vector&lt;int&gt;{1,1,2,3,5,6}));
+    assert(merge(nullptr,nullptr)==nullptr);
+    auto* grouped=reverse_groups(nodes.make({1,2,3,4,5,6,7,8}),3);
+    assert((values(grouped)==std::vector&lt;int&gt;{3,2,1,6,5,4,7,8}));
+    assert((values(reverse_groups(nodes.make({1,2}),3))==std::vector&lt;int&gt;{1,2}));
+    assert((values(reverse_groups(nodes.make({1}),1))==std::vector&lt;int&gt;{1}));
+    bool rejected=false; try { reverse_groups(nullptr,0); }
+    catch(const std::invalid_argument&amp;) { rejected=true; } assert(rejected);
+    Node a{1},b{2},c{3}; a.next=&amp;b;b.next=&amp;c;c.next=&amp;b;
+    assert(cycle_entry(&amp;a)==&amp;b); c.next=nullptr; assert(!cycle_entry(&amp;a));
+    a.next=&amp;a; assert(cycle_entry(&amp;a)==&amp;a);
+    Tree left{-2},right{-3},root{-1,&amp;left,&amp;right};
+    assert((max_sum_level(&amp;root)==std::vector&lt;int&gt;{-1}));
+    root.value=-10; assert((max_sum_level(&amp;root)==std::vector&lt;int&gt;{-2,-3}));
+    root.value=-5; assert((max_sum_level(&amp;root)==std::vector&lt;int&gt;{-5}));
+    assert(max_sum_level(nullptr).empty());
+    GraphNode x{1,{}},y{1,{}}; x.edges={&amp;x,&amp;y,&amp;y,nullptr}; y.edges={&amp;x};
+    auto copy=clone_graph(&amp;x);
+    assert(copy.storage.size()==2 &amp;&amp; copy.root!=&amp;x);
+    assert(copy.root-&gt;edges[0]==copy.root);
+    auto* copy_y=copy.root-&gt;edges[1];
+    assert(copy_y!=&amp;y &amp;&amp; copy_y!=copy.root &amp;&amp; copy_y-&gt;edges[0]==copy.root);
+    assert(copy.root-&gt;edges[2]==copy_y &amp;&amp; copy.root-&gt;edges[3]==nullptr);
+    copy.root-&gt;value=9; assert(x.value==1);
+    assert(!clone_graph(nullptr).root);
+}</code></pre>
+</details>
+<p>断言覆盖空表、反转还原、有序合并、k 组尾部保留、非法 k、无环/自环/中部入口、全负树、层和相同，以及图中的环、重复值、重复边与副本独立性。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../hash-sorting-arrays/index.html">哈希、LRU、排序与数组</a></li><li><a href="../game-foundations/index.html#pathfinding">寻路与图搜索</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

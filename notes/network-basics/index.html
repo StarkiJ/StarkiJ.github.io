@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="网络：TCP、UDP 与 socket · Starki 学习笔记">
+    <meta property="og:description" content="从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。">
+    <meta property="og:url" content="https://starkij.github.io/notes/network-basics/index.html">
+    <title>网络：TCP、UDP 与 socket · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/network-basics/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">网络：TCP、UDP 与 socket</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">计算机基础</p>
+                <h1 id="note-title">网络：TCP、UDP 与 socket</h1>
+                <p class="note-deck">从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#layers">1. 分层与 socket</a></li><li><a href="#tcp">2. TCP 的可靠传输</a></li><li><a href="#framing">3. 字节流与消息边界</a></li><li><a href="#udp">4. UDP 与传输选择</a></li><li><a href="#http">5. HTTP 与 HTTPS</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="layers" aria-labelledby="layers-title"><h2 id="layers-title">1. 分层与 socket</h2>
+<p><strong>IP</strong>负责跨网络寻址与转发；<strong>TCP/UDP</strong>在主机间提供传输服务；<strong>HTTP</strong>规定请求与响应语义。socket 是操作系统暴露的通信端点接口，不是某个单独的网络协议。</p>
+<p>TCP 连接通常由协议、两端 IP 和端口区分。同一监听端口可以接收许多连接：accept 返回每条连接对应的新描述符，监听描述符继续负责接入。</p>
+<pre tabindex="0"><code class="language-text">TCP 服务端：socket → bind → listen → accept → recv/send → close
+TCP 客户端：socket → connect → send/recv → close
+UDP：socket → 按需要 bind → sendto/recvfrom → close</code></pre>
+<p>阻塞调用可等待数据/缓冲空间；非阻塞调用可能返回 EAGAIN/EWOULDBLOCK，需要结合 poll/epoll 等就绪通知重试。就绪表示某类操作可推进，不等于整个业务消息已到齐。</p>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man7/socket.7.html" target="_blank" rel="noreferrer">Linux socket 接口</a>。</p>
+</section>
+<section id="tcp" aria-labelledby="tcp-title"><h2 id="tcp-title">2. TCP 的可靠传输</h2>
+<p><strong>TCP</strong>提供有序、可靠的双向字节流。发送数据按字节编号，接收方确认已连续接收的范围；发送方保留未确认数据，通过超时或丢包反馈等机制重传。接收方按序号重排并去重。校验和用于发现传输损坏，不提供密码学认证。</p>
+<div class="note-table-wrap" role="region" aria-label="几个容易混淆的机制" tabindex="0"><table><caption>几个容易混淆的机制</caption><thead><tr><th scope="col">机制</th><th scope="col">解决的问题</th></tr></thead><tbody><tr><td>序号、ACK、重传</td><td>丢失、重复与乱序</td></tr><tr><td>接收窗口 rwnd</td><td>接收方缓冲容量：流量控制</td></tr><tr><td>拥塞窗口 cwnd</td><td>网络承载能力：拥塞控制</td></tr><tr><td>发送限制</td><td>受 rwnd、cwnd、在途数据和实际缓冲等共同约束</td></tr></tbody></table></div>
+<p>典型三次握手交换 SYN、SYN+ACK、ACK，建立双向序号与连接状态。关闭的两个方向独立完成 FIN/ACK，因此常说“四次挥手”，但报文可以合并，也有同时关闭等情况。TIME_WAIT 用于应对旧报文和关闭阶段的重传，不等于服务端必然进入的状态。</p>
+<details class="note-review-question"><summary>经典问题：TCP 可靠，是否说明对方业务一定处理成功？</summary>
+<p>不说明。ACK 通常只说明对端 TCP 收到数据，不能证明应用已读取、写库或完成事务。需要应用层响应、请求 ID、幂等或去重；连接断开时“请求未执行”与“执行了但响应丢失”可能无法直接区分。</p>
+</details>
+<p class="note-source">参考：<a href="https://www.rfc-editor.org/rfc/rfc9293.html" target="_blank" rel="noreferrer">TCP 规范 RFC 9293</a> · <a href="https://man7.org/linux/man-pages/man7/tcp.7.html" target="_blank" rel="noreferrer">Linux TCP</a>。</p>
+</section>
+<section id="framing" aria-labelledby="framing-title"><h2 id="framing-title">3. 字节流与消息边界</h2>
+<p><strong>一次 send 不对应一次 recv。</strong>TCP 不保留应用写入的消息边界；读取可能只有一部分，也可能包含多条消息。所谓“粘包/拆包”应通过应用协议处理，而不是假设调整缓冲大小即可消失。</p>
+<pre tabindex="0"><code class="language-text">发送协议：[4 字节网络序长度 N][N 字节正文]
+接收状态：
+  1. 累积到 4 字节头部；读到 EOF 时区分正常结束与半包。
+  2. 解码 N，检查 N &lt;= 协议上限，再分配或扩展缓冲。
+  3. 累积到 N 字节，交给业务处理。
+  4. 缓冲中剩余字节继续作为下一帧解析。</code></pre>
+<ul><li>send 返回值可能小于请求长度，要循环发送剩余部分；EINTR、非阻塞暂不可写和永久错误分别处理。</li><li>流 socket 请求读取非零字节时，recv 返回 0 表示对端有序关闭发送方向；仍需判断是否恰在一条消息的边界。请求长度本身为 0 也可能返回 0；UDP 收到空数据报同样可以返回 0，不能套用这一判断。</li><li>长度字段要明确字节序、最大值、空消息、超时和错误策略，避免无限缓存或溢出。</li></ul>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man2/recv.2.html" target="_blank" rel="noreferrer">recv 返回值与边界情况</a>。</p>
+<details class="note-review-question"><summary>经典问题：如何验证接收器真的处理了边界？</summary>
+<p>把同一条编码消息按每种切分位置分段喂给解析器；再一次喂多条、喂半个头、半个正文、零长度和超限长度。正确结果应与网络如何分段无关。</p>
+</details>
+</section>
+<section id="udp" aria-labelledby="udp-title"><h2 id="udp-title">4. UDP 与传输选择</h2>
+<p><strong>UDP</strong>保留数据报边界，协议本身不提供重传、排序或连接握手。一份数据报一次接收；缓冲太小可能截断，具体报告方式依接口。大数据报还可能触发 IP 分片，增加丢失风险。</p>
+<div class="note-table-wrap" role="region" aria-label="TCP 与 UDP" tabindex="0"><table><caption>TCP 与 UDP</caption><thead><tr><th scope="col">维度</th><th scope="col">TCP</th><th scope="col">UDP</th></tr></thead><tbody><tr><td>数据单位</td><td>字节流</td><td>数据报</td></tr><tr><td>可靠性与顺序</td><td>协议提供</td><td>应用按需要实现</td></tr><tr><td>延迟来源</td><td>重传和有序交付可造成等待</td><td>可丢弃过时数据，但不天然更快</td></tr><tr><td>应用责任</td><td>业务确认、消息分帧、超时</td><td>还需按需增加丢包/乱序处理与拥塞控制</td></tr></tbody></table></div>
+<p>实时状态更新可偏好较新的数据而丢弃旧数据；文件传输通常需要完整性。QUIC 在 UDP 上实现可靠流与拥塞控制，说明应用使用 UDP 不等于最终传输服务“不可靠”。</p>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man7/udp.7.html" target="_blank" rel="noreferrer">UDP 语义</a>。</p>
+</section>
+<section id="http" aria-labelledby="http-title"><h2 id="http-title">5. HTTP 与 HTTPS</h2>
+<p><strong>HTTP</strong>定义方法、目标、状态码、字段和消息体语义。GET 通常用于读取；POST 常用于提交处理。幂等表示重复同一请求的预期效果与一次相同，不表示每次响应内容必须相同。</p>
+<p><strong>HTTPS</strong>在 HTTP 通信中使用 TLS 等安全传输机制。TLS 的握手完成版本/算法协商、密钥建立与通常的服务端身份认证；后续用对称加密与完整性保护传输数据。证书链校验还要匹配目标主机名，不能只检查“有证书”。</p>
+<div class="note-table-wrap" role="region" aria-label="协议版本与常见承载" tabindex="0"><table><caption>协议版本与常见承载</caption><thead><tr><th scope="col">版本</th><th scope="col">机制</th></tr></thead><tbody><tr><td>HTTP/1.1</td><td>通常运行于 TCP；持久连接复用</td></tr><tr><td>HTTP/2</td><td>通常运行于 TLS/TCP；多路复用流仍受 TCP 丢包的有序交付影响</td></tr><tr><td>HTTP/3</td><td>运行于 QUIC/UDP；不同流的传输不必等待另一流的丢失数据</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>经典问题：HTTPS 是否只是“把内容用公钥加密”？</summary>
+<p>不是。现代 TLS 通常通过密钥交换建立会话密钥，用证书与签名认证身份，再使用对称加密保护数据；不是把全部 HTTP 正文直接交给证书公钥加密。</p>
+</details>
+<p class="note-source">参考：<a href="https://www.rfc-editor.org/rfc/rfc9110.html" target="_blank" rel="noreferrer">HTTP 语义 RFC 9110</a> · <a href="https://www.rfc-editor.org/rfc/rfc8446.html" target="_blank" rel="noreferrer">TLS 1.3 RFC 8446</a> · <a href="https://www.rfc-editor.org/rfc/rfc9114.html" target="_blank" rel="noreferrer">HTTP/3 RFC 9114</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../operating-systems/index.html#ipc">操作系统：IPC</a></li><li><a href="../game-foundations/index.html">游戏中的同步与寻路</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

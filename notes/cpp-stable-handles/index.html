@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="区分地址、位置和身份，处理扩容、重排、删除与槽位复用。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="vector 与稳定句柄 · Starki 学习笔记">
+    <meta property="og:description" content="区分地址、位置和身份，处理扩容、重排、删除与槽位复用。">
+    <meta property="og:url" content="https://starkij.github.io/notes/cpp-stable-handles/index.html">
+    <title>vector 与稳定句柄 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/cpp-stable-handles/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">vector 与稳定句柄</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">C++ 实践</p>
+                <h1 id="note-title">vector 与稳定句柄</h1>
+                <p class="note-deck">区分地址、位置和身份，处理扩容、重排、删除与槽位复用。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#invalidation">1. 引用失效与修复</a></li><li><a href="#mapping">2. 句柄与双向映射</a></li><li><a href="#implementation">3. 实现与验证</a></li><li><a href="#boundaries">4. 生命周期与并发边界</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="invalidation" aria-labelledby="invalidation-title"><h2 id="invalidation-title">1. 引用失效与修复</h2>
+<p>vector 元素连续存储。增长导致重新分配时，原存储中的指针、引用与迭代器全部失效；没有重分配的尾部插入不使已有元素引用失效。不能根据“第几次 push_back”猜容量。</p>
+<pre tabindex="0"><code class="language-cpp">std::vector&lt;int&gt; v{1, 2, 3};
+const auto position = std::size_t{0};
+v.push_back(4);
+std::cout &lt;&lt; v[position]; // 扩容后重新定位；前提是位置语义没变</code></pre>
+<div class="note-table-wrap" role="region" aria-label="可选方案" tabindex="0"><table><caption>可选方案</caption><thead><tr><th scope="col">方案</th><th scope="col">适用前提</th><th scope="col">代价与边界</th></tr></thead><tbody><tr><td>先 reserve，再取得引用</td><td>有可靠容量上界，期间不超限、不做使引用失效的操作</td><td>提前占用空间；reserve 自身也可能重分配</td></tr><tr><td>保存下标，每次重新访问</td><td>只追加，原位置始终代表同一业务对象</td><td>删除、插入和排序会改变位置语义</td></tr><tr><td>vector&lt;unique_ptr&lt;T&gt;&gt;</td><td>需要独立堆对象的稳定地址</td><td>额外分配与间接访问；对象删除后借用指针仍悬垂</td></tr><tr><td>槽位 + generation 句柄</td><td>连续数据需要增长、重排与删除</td><td>额外映射和校验；不对外长期暴露地址</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>经典问题：如何稳定复现扩容失效，而不依赖某个实现的增长倍数？</summary>
+<p>先记录 capacity，填满到 size == capacity，再取得引用；下一次成功 push_back 必须扩容。错误版仅作为检测器样例运行；修复版在增长后重新查找，并断言对象值。不要把失效后的读值当作可预测输出。</p>
+</details>
+<p class="note-source">参考：<a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 失效规则</a>。</p>
+</section>
+<section id="mapping" aria-labelledby="mapping-title"><h2 id="mapping-title">2. 句柄与双向映射</h2>
+<p><strong>句柄</strong>保存稳定槽位编号和版本号 generation；槽位表映射到当前密集数组下标；密集元素记录自己的槽位号，以便搬动后更新反向映射。</p>
+<pre tabindex="0"><code class="language-text">Handle { slot=7, generation=3 }
+    → slots[7] { dense=2, generation=3 }
+    → dense[2] { value, slot=7 }</code></pre>
+<ol><li>查询：检查槽位存在、未删除、版本一致，再返回当前元素。</li><li>删除：用末尾元素覆盖被删位置，更新被搬元素的槽位映射，再弹出末尾。</li><li>失效：删除槽位的 generation 加一，并加入空闲链表。</li><li>复用：新对象取得该槽位的新版本；旧句柄因版本不符而失败。</li></ol>
+<p>查询与删除 O(1)，插入摊还 O(1)。删除采用 swap-and-pop，不保留密集数组的顺序；排序或重排必须同步维护映射。槽位表通常随历史同时存活对象数的峰值增长；达到版本上限后退役的槽位仍占空间，也会增加表长。</p>
+<details class="note-review-question"><summary>经典问题：为什么只有下标还不够？</summary>
+<p>删除后下标可能被另一个对象占用，旧 ID 会误认新对象。generation 区分“同一槽位的不同生命期”。计数器若回绕仍可能误认，因此示例到上限就退役槽位。</p>
+</details>
+</section>
+<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">3. 实现与验证</h2>
+<p>示例只存 int，使搬动与删除不会因用户类型抛异常。新增元素分配失败时会回滚新槽位。泛型版本还需约束 T 的移动/交换，或设计异常后的映射恢复。</p>
+<p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>完整实现与断言测试</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdint&gt;
+#include &lt;limits&gt;
+#include &lt;stdexcept&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+// Handle 只属于创建它的 Pool，不能跨 Pool 或跨 Pool 生命周期使用。
+class Pool {
+    static constexpr std::size_t none = std::numeric_limits&lt;std::size_t&gt;::max();
+    struct Slot { std::size_t dense = none; std::uint64_t generation = 1;
+                  std::size_t next = none; };
+    struct Entry { int value; std::size_t slot; };
+    std::vector&lt;Slot&gt; slots_;
+    std::vector&lt;Entry&gt; dense_;
+    std::size_t free_ = none;
+public:
+    struct Handle { std::size_t slot; std::uint64_t generation; };
+    Pool() = default;
+    Pool(const Pool&amp;) = delete;
+    Pool&amp; operator=(const Pool&amp;) = delete;
+    Pool(Pool&amp;&amp;) = delete;
+    Pool&amp; operator=(Pool&amp;&amp;) = delete;
+    Handle add(int value) {
+        const bool fresh = free_ == none;
+        const auto id = fresh ? slots_.size() : free_;
+        if (fresh) slots_.push_back(Slot{});
+        try { dense_.push_back(Entry{value, id}); }
+        catch (...) { if (fresh) slots_.pop_back(); throw; }
+        auto&amp; slot = slots_[id];
+        if (!fresh) free_ = slot.next;
+        slot.dense = dense_.size() - 1;
+        slot.next = none;
+        return {id, slot.generation};
+    }
+    int* get(Handle h) noexcept {
+        if (h.slot &gt;= slots_.size()) return nullptr;
+        const auto&amp; s = slots_[h.slot];
+        if (s.dense == none || s.generation != h.generation) return nullptr;
+        return &amp;dense_[s.dense].value;
+    }
+    bool erase(Handle h) noexcept {
+        if (!get(h)) return false;
+        auto&amp; s = slots_[h.slot];
+        const auto pos = s.dense;
+        const auto last = dense_.size() - 1;
+        if (pos != last) {
+            dense_[pos] = dense_[last];
+            slots_[dense_[pos].slot].dense = pos;
+        }
+        dense_.pop_back();
+        s.dense = none;
+        if (s.generation != std::numeric_limits&lt;std::uint64_t&gt;::max()) {
+            ++s.generation;
+            s.next = free_;
+            free_ = h.slot;
+        } // generation 达到上限后退役槽位，禁止回绕复用
+        return true;
+    }
+    void swap_positions(std::size_t a, std::size_t b) {
+        if (a &gt;= dense_.size() || b &gt;= dense_.size()) throw std::out_of_range(&quot;position&quot;);
+        std::swap(dense_[a], dense_[b]);
+        slots_[dense_[a].slot].dense = a;
+        slots_[dense_[b].slot].dense = b;
+    }
+    std::size_t size() const noexcept { return dense_.size(); }
+};
+int main() {
+    Pool pool;
+    auto a = pool.add(10);
+    auto b = pool.add(20);
+    auto c = pool.add(30);
+    for (int i=0; i&lt;2000; ++i) pool.add(i);
+    assert(*pool.get(a)==10 &amp;&amp; *pool.get(b)==20 &amp;&amp; *pool.get(c)==30);
+    pool.swap_positions(0, 2);
+    assert(*pool.get(a)==10 &amp;&amp; *pool.get(c)==30);
+    assert(pool.erase(b));
+    assert(!pool.get(b) &amp;&amp; !pool.erase(b));
+    auto replacement = pool.add(99);
+    assert(replacement.slot==b.slot &amp;&amp; replacement.generation!=b.generation);
+    assert(!pool.get(b) &amp;&amp; *pool.get(replacement)==99);
+    assert(pool.erase(a) &amp;&amp; pool.erase(c));
+    assert(!pool.get(a) &amp;&amp; !pool.get(c));
+    Pool one;
+    auto only = one.add(1);
+    assert(one.erase(only) &amp;&amp; one.size()==0 &amp;&amp; !one.get(only));
+    assert(!pool.get({999999, 1}));
+}</code></pre>
+</details>
+<p>断言覆盖大量增长、显式重排、中间删除、末尾删除、重复删除、槽位复用和越界句柄。</p>
+</section>
+<section id="boundaries" aria-labelledby="boundaries-title"><h2 id="boundaries-title">4. 生命周期与并发边界</h2>
+<ul><li>get 返回的是短期借用指针；下一次可能扩容、重排或删除的操作前必须停止使用。需要长期保存的是 Handle。</li><li>句柄只在所属 Pool 的生命周期内有效。跨容器、存档或网络传输需要额外的容器身份与持久 ID。</li><li>版本校验不解决并发：校验后另一线程仍可删除。须在同一把锁内完成查询与使用，或另行设计延迟回收。</li><li>对象重排后应按句柄确认身份；仅检查地址是否相同不能证明指向同一个业务对象。</li></ul>
+<details class="note-review-question"><summary>经典问题：稳定句柄是否让 T* 永远稳定？</summary>
+<p>没有。稳定的是访问对象的身份入口。每次通过句柄重新定位，并在受保护的访问期间使用临时指针，才避免持有旧地址。</p>
+</details>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../cpp-interview-roadmap/index.html#q28">核心知识：vector 失效</a></li><li><a href="../cpp-cache-performance/index.html">缓存局部性与性能测量</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="简化 shared_ptr：计数与释放 · Starki 学习笔记">
+    <meta property="og:description" content="从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。">
+    <meta property="og:url" content="https://starkij.github.io/notes/cpp-shared-ptr/index.html">
+    <title>简化 shared_ptr：计数与释放 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/cpp-shared-ptr/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">简化 shared_ptr：计数与释放</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">C++ 实践</p>
+                <h1 id="note-title">简化 shared_ptr：计数与释放</h1>
+                <p class="note-deck">从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#ownership">1. 控制块与所有权</a></li><li><a href="#operations">2. 拷贝、移动与赋值</a></li><li><a href="#implementation">3. 实现与异常安全</a></li><li><a href="#standard">4. 标准 shared_ptr 的扩展</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="ownership" aria-labelledby="ownership-title"><h2 id="ownership-title">1. 控制块与所有权</h2>
+<p><strong>共享所有权</strong>允许多个管理对象共同负责同一个资源；最后一个拥有者离开时释放资源。控制块保存被管理指针和强引用计数，各个 Shared 只保存控制块地址。</p>
+<pre tabindex="0"><code class="language-text">a ─┐
+   ├─→ Control { ptr, strong = 2 } ─→ Item
+b ─┘</code></pre>
+<ul><li>空指针没有控制块，计数为 0。</li><li>非空时 strong 等于共享该控制块的 Shared 数量。</li><li>一次成功接管只产生一个控制块；对象和控制块都恰好释放一次。</li></ul>
+<p>下面的类型只用于理解机制：单线程、单对象、同类型拷贝，不提供数组、定制删除器、别名构造或 weak_ptr。被管理类型必须完整、可用 delete 销毁，析构不抛异常；不处理计数器达到极限的情况。</p>
+<p class="note-source">参考：<a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">标准共享所有权语义</a>。</p>
+</section>
+<section id="operations" aria-labelledby="operations-title"><h2 id="operations-title">2. 拷贝、移动与赋值</h2>
+<div class="note-table-wrap" role="region" aria-label="操作怎样改变拥有者数量" tabindex="0"><table><caption>操作怎样改变拥有者数量</caption><thead><tr><th scope="col">操作</th><th scope="col">控制块变化</th><th scope="col">资源变化</th></tr></thead><tbody><tr><td>从裸指针接管</td><td>创建控制块，strong = 1</td><td>接管独占释放责任</td></tr><tr><td>拷贝</td><td>共享控制块，strong + 1</td><td>不复制 Item</td></tr><tr><td>移动</td><td>转移控制块指针，源置空</td><td>不增加 strong</td></tr><tr><td>reset / 析构</td><td>strong - 1；降到 0 时销毁控制块</td><td>最后一个拥有者删除 Item</td></tr><tr><td>赋值</td><td>先取得新所有权，再释放旧所有权</td><td>旧资源可能在此刻销毁</td></tr></tbody></table></div>
+<p><strong>赋值采用按值传参与 swap：</strong>构造临时参数取得新所有权，交换后临时参数持有旧资源，离开时自动释放。这样统一处理拷贝赋值、移动赋值和自赋值。</p>
+<details class="note-review-question"><summary>经典问题：为什么不能先删除旧指针，再复制新指针？</summary>
+<p>自赋值或双方本就共享资源时，可能提前销毁仍要使用的对象。先建立新所有权再交接，才能保持计数与资源有效性。仅复制裸地址还会造成两份“独占释放责任”。</p>
+</details>
+</section>
+<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">3. 实现与异常安全</h2>
+<p><strong>两次分配：</strong>调用者先创建 Item，Shared 再分配 Control。第二次分配失败时，局部 unique_ptr 会删除 Item；控制块成功建立后才 release 这份临时保护。</p>
+<p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>完整实现与断言测试</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+#include &lt;cstddef&gt;
+#include &lt;memory&gt;
+#include &lt;utility&gt;
+
+// 教学版本：单线程、单对象、同类型共享；不支持数组和 weak_ptr。
+template&lt;class T&gt;
+class Shared {
+    struct Control { T* ptr; std::size_t strong; };
+    Control* control_ = nullptr;
+    void release() noexcept {
+        if (control_ &amp;&amp; --control_-&gt;strong == 0) {
+            delete control_-&gt;ptr;
+            delete control_;
+        }
+    }
+public:
+    Shared() noexcept = default;
+    explicit Shared(T* ptr) {
+        if (ptr) {
+            std::unique_ptr&lt;T&gt; guard(ptr);
+            control_ = new Control{ptr, 1};
+            guard.release();
+        }
+    }
+    Shared(const Shared&amp; other) noexcept : control_(other.control_) {
+        if (control_) ++control_-&gt;strong;
+    }
+    Shared(Shared&amp;&amp; other) noexcept
+        : control_(std::exchange(other.control_, nullptr)) {}
+    Shared&amp; operator=(Shared other) noexcept {
+        swap(other);
+        return *this;
+    }
+    ~Shared() { release(); }
+    void swap(Shared&amp; other) noexcept { std::swap(control_, other.control_); }
+    void reset() noexcept { Shared{}.swap(*this); }
+    T* get() const noexcept { return control_ ? control_-&gt;ptr : nullptr; }
+    T&amp; operator*() const { return *get(); }  // 前提：非空
+    T* operator-&gt;() const noexcept { return get(); }
+    explicit operator bool() const noexcept { return get() != nullptr; }
+    std::size_t use_count() const noexcept {
+        return control_ ? control_-&gt;strong : 0;
+    }
+};
+struct Item {
+    inline static int live = 0;
+    int value;
+    explicit Item(int v) : value(v) { ++live; }
+    ~Item() { --live; }
+};
+int main() {
+    Shared&lt;Item&gt; empty;
+    assert(!empty &amp;&amp; empty.use_count() == 0);
+    {
+        Shared&lt;Item&gt; a(new Item(7));
+        Shared&lt;Item&gt; b = a;
+        assert(a.get() == b.get() &amp;&amp; a.use_count() == 2);
+        a = a;  // 自拷贝
+        assert(a.use_count() == 2);
+        Shared&lt;Item&gt; c = std::move(b);
+        assert(!b &amp;&amp; c.use_count() == 2);
+        c = std::move(c);  // 本实现的自移动保持原值
+        assert(c &amp;&amp; c.use_count() == 2);
+        Shared&lt;Item&gt; d(new Item(9));
+        d = a;  // 原来的 Item(9) 必须释放
+        assert(Item::live == 1 &amp;&amp; d.use_count() == 3);
+        a.reset();
+        c.reset();
+        assert(d.use_count() == 1 &amp;&amp; d-&gt;value == 7);
+        d = empty;
+        assert(Item::live == 0);
+    }
+    assert(Item::live == 0);
+}</code></pre>
+</details>
+<p>编译运行：<code>g++ -std=c++17 -Wall -Wextra -pedantic examples.cpp -o shared-test</code>。正常运行不输出内容，断言失败会终止。测试覆盖空值、共享计数、自赋值、自移动、替换旧资源、最后一个拥有者退出。自移动一行刻意覆盖边界，部分编译器会给出相应告警。</p>
+<details class="note-review-question"><summary>经典问题：能否用同一个裸指针构造两次 Shared？</summary>
+<p>不能。两个独立控制块会分别删除同一对象，产生重复释放。应复制已有 Shared。这个约束无法仅靠 get() 地址自动解决；生产接口优先使用标准库的 make_shared。</p>
+</details>
+</section>
+<section id="standard" aria-labelledby="standard-title"><h2 id="standard-title">4. 标准 shared_ptr 的扩展</h2>
+<div class="note-table-wrap" role="region" aria-label="进一步需要解决的机制" tabindex="0"><table><caption>进一步需要解决的机制</caption><thead><tr><th scope="col">能力</th><th scope="col">设计要求</th></tr></thead><tbody><tr><td>weak_ptr</td><td>对象在强计数归零时销毁；控制块要保留到弱观察也结束。lock 需原子地“非零才增加”。</td></tr><tr><td>跨线程所有权</td><td>不同 shared_ptr 实例共享控制块时，引用计数需同步；同一 shared_ptr 变量的读写与 Item 数据读写分别处理。</td></tr><tr><td>定制删除器 / 跨类型</td><td>控制块保存正确的销毁操作，不依赖当前观察指针类型来猜。</td></tr><tr><td>别名构造</td><td>被观察指针可指向子对象，被管理对象与返回的 get() 不一定相同。</td></tr><tr><td>make_shared</td><td>常将对象与控制块放在一次分配中；弱引用残留时，对象已析构但合并分配的存储可能仍保留。</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>经典问题：把 strong 改成 atomic，是否就等价于 shared_ptr？</summary>
+<p>没有。还需证明最后一次释放、对象析构和控制块销毁的同步顺序；若支持 weak_ptr，还要解决 lock 与最后一次强释放之间的竞争。原子计数也不保护对象的数据。</p>
+</details>
+<p class="note-source">参考：<a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-smartptr" target="_blank" rel="noreferrer">C++ Core Guidelines：智能指针</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../cpp-interview-roadmap/index.html#q19">核心知识：智能指针</a></li><li><a href="../cpp-memory-diagnostics/index.html">内存问题定位</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

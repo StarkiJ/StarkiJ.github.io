@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="JNI：引用与生命周期 · Starki 学习笔记">
+    <meta property="og:description" content="梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。">
+    <meta property="og:url" content="https://starkij.github.io/notes/jni-references/index.html">
+    <title>JNI：引用与生命周期 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/jni-references/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">JNI：引用与生命周期</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">Android / ART</p>
+                <h1 id="note-title">JNI：引用与生命周期</h1>
+                <p class="note-deck">梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#interface">1. 调用边界与线程</a></li><li><a href="#references">2. Local、Global 与 Weak Global</a></li><li><a href="#access">3. 创建对象与访问成员</a></li><li><a href="#gc">4. GC 与 native 缓冲</a></li><li><a href="#boundaries">5. 边界设计</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="interface" aria-labelledby="interface-title"><h2 id="interface-title">1. 调用边界与线程</h2>
+<p><strong>JNI</strong>是托管代码与 native 代码交互的接口。Java/Kotlin 声明 native 方法并加载相应库；运行时通过名称匹配或 RegisterNatives 找到 native 实现。普通实例 native 方法接收 JNIEnv* 和 jobject，普通静态方法接收 JNIEnv* 和 jclass，再接收显式参数。特殊优化调用约定另有约束。</p>
+<p><strong>JavaVM</strong>用于取得线程的运行时接口；<strong>JNIEnv</strong>与当前线程关联，不能从一个线程缓存后交给另一线程使用。native 创建的线程需要先附加到 VM，使用自己的 JNIEnv，并在自己负责附加的线程退出前 detach。</p>
+<details class="note-review-question"><summary>经典问题：把主线程的 JNIEnv 放进全局变量，工作线程继续使用可以吗？</summary>
+<p>不可以。缓存 JavaVM，在工作线程调用 GetEnv；若尚未附加再 AttachCurrentThread。JNIEnv 和 local reference 都不能因此跨线程复用。</p>
+</details>
+<p class="note-source">参考：<a href="https://developer.android.com/ndk/guides/jni-tips" target="_blank" rel="noreferrer">Android JNI：线程与接口</a>。</p>
+<p class="note-source">接口规范：<a href="https://docs.oracle.com/en/java/javase/17/docs/specs/jni/intro.html" target="_blank" rel="noreferrer">JNI 概述</a> · <a href="https://docs.oracle.com/en/java/javase/17/docs/specs/jni/invocation.html" target="_blank" rel="noreferrer">线程附加与 Invocation API</a>。</p>
+</section>
+<section id="references" aria-labelledby="references-title"><h2 id="references-title">2. Local、Global 与 Weak Global</h2>
+<div class="note-table-wrap" role="region" aria-label="引用种类" tabindex="0"><table><caption>引用种类</caption><thead><tr><th scope="col">引用</th><th scope="col">有效期 / 回收影响</th><th scope="col">释放</th></tr></thead><tbody><tr><td>local reference</td><td>属于线程与本地引用帧；普通 native 调用返回时自动清理，存在期间保持相应强可达性</td><td>可提前 DeleteLocalRef；循环中可配合 Push/PopLocalFrame</td></tr><tr><td>global reference</td><td>跨调用有效并强持有对象；跨线程使用时仍需当前线程的 JNIEnv 和业务同步</td><td>DeleteGlobalRef</td></tr><tr><td>weak global reference</td><td>句柄存在不阻止目标被 GC；使用前须提升并检查</td><td>DeleteWeakGlobalRef</td></tr></tbody></table></div>
+<p>jobject 是运行时管理的引用句柄，不应作为普通 C++ 对象地址解引用。两个句柄可能指向同一个 Java 对象却有不同值，判断对象身份用 IsSameObject。jmethodID/jfieldID 是成员标识，不是 local/global 对象引用。</p>
+<pre tabindex="0"><code class="language-cpp">jobject strong = env-&gt;NewLocalRef(weak);
+if (strong != nullptr) {
+    // 使用 strong；不能先检查 weak 未空，再直接依赖 weak
+    env-&gt;DeleteLocalRef(strong);
+} else {
+    // 目标可能已回收；还需按接口规则检查是否存在待处理异常
+}</code></pre>
+<details class="note-review-question"><summary>经典问题：native 线程一直运行，local reference 会自动很快回收吗？</summary>
+<p>不能这样假设。附加的 native 线程若没有不断返回的 Java→native 调用帧，局部引用可能持续保留到显式删除、弹出本地帧或线程 detach。循环创建对象应主动控制局部引用数量。</p>
+</details>
+</section>
+<section id="access" aria-labelledby="access-title"><h2 id="access-title">3. 创建对象与访问成员</h2>
+<p class="note-source">设计规范：<a href="https://docs.oracle.com/en/java/javase/17/docs/specs/jni/design.html" target="_blank" rel="noreferrer">引用、方法绑定与对象访问</a>。</p>
+<ol><li>取得目标类：由参数传入、GetObjectClass，或在正确类加载器上下文中 FindClass。</li><li>按名字与签名取得构造器/方法/字段 ID，区分 static 与实例接口。</li><li>用 NewObject 分配并调用指定构造器；访问字段用 Get/Set&lt;Type&gt;Field，调用方法用匹配的 Call&lt;Type&gt;Method。</li><li>检查空返回和待处理 Java 异常；清理自己持有的引用与缓冲，再返回或按约定处理错误。</li></ol>
+<details class="note-example-details"><summary>示例：从 native 构造一个 Integer</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;jni.h&gt;
+// 对应 Java: package demo; class Native { static native Integer box(int n); }
+extern &quot;C&quot; JNIEXPORT jobject JNICALL
+Java_demo_Native_box(JNIEnv* env, jclass, jint value) {
+    jclass type = env-&gt;FindClass(&quot;java/lang/Integer&quot;);
+    if (!type) return nullptr; // 保留待处理的 Java 异常
+    jmethodID ctor = env-&gt;GetMethodID(type, &quot;&lt;init&gt;&quot;, &quot;(I)V&quot;);
+    if (!ctor) { env-&gt;DeleteLocalRef(type); return nullptr; }
+    jobject result = env-&gt;NewObject(type, ctor, value);
+    env-&gt;DeleteLocalRef(type);
+    return result; // 允许把有效 local ref 作为此次 native 调用结果返回
+}</code></pre>
+</details>
+<p>这是需接入 Android/JNI 工程的函数示例，不是独立 main 程序。NewObject 得到 local reference；返回给 Java 是合法路径。AllocObject 则不调用普通构造器，不能无条件代替 NewObject。调用实例、静态或显式非虚方法要选择对应 API。</p>
+<details class="note-review-question"><summary>经典问题：有待处理 Java 异常时，还能继续任意调用 JNI 吗？</summary>
+<p>不能。许多 JNI 操作此时不允许调用；应检查异常，执行允许的清理操作并返回，或明确清除并处理。也不要让未处理的 C++ 异常穿过 JNI 边界。</p>
+</details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html" target="_blank" rel="noreferrer">JNI 函数规范</a>。</p>
+</section>
+<section id="gc" aria-labelledby="gc-title"><h2 id="gc-title">4. GC 与 native 缓冲</h2>
+<p>GC 追踪有效 JNI 强引用，并通过运行时引用机制维持对象移动后的可访问性。native 保存的任意裸地址不因此成为 GC Root。GetStringUTFChars、Get&lt;PrimitiveType&gt;ArrayElements 等接口可能提供副本或受约束的直接访问，必须与对应 Release 配对。</p>
+<p>数组 Release 的 mode 决定是否回写和是否释放副本；JNI_COMMIT 不是最终释放，仍需完成对应释放。Critical 接口期间应尽快结束，遵守不能任意阻塞或执行其他 JNI 调用等约束。GetStringUTFChars 使用 Modified UTF-8，不能把所有 JNI 字符串接口都当作普通 UTF-8。</p>
+<div class="note-table-wrap" role="region" aria-label="常见泄漏或持有问题" tabindex="0"><table><caption>常见泄漏或持有问题</caption><thead><tr><th scope="col">原因</th><th scope="col">修复方向</th></tr></thead><tbody><tr><td>NewGlobalRef 无匹配删除</td><td>为持有者定义明确关闭时机；用当前有效 JNIEnv 清理</td></tr><tr><td>local reference 在长循环积累</td><td>及时删除或使用本地帧</td></tr><tr><td>字符/数组缓冲未 Release</td><td>建立成对作用域清理，覆盖异常与提前返回</td></tr><tr><td>native 自己 new/malloc 后未释放</td><td>由 C++ 所有权与 RAII 负责，Java GC 不自动接管</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>经典问题：Java 对象已经没有 Java 变量引用，为什么还活着？</summary>
+<p>可能仍被 JNI global reference、线程、静态字段、回调或其他根路径持有。查看引用链和 JNI heap 视图；不要仅根据某个方法已经返回判断可回收。</p>
+</details>
+</section>
+<section id="boundaries" aria-labelledby="boundaries-title"><h2 id="boundaries-title">5. 边界设计</h2>
+<p>减少细粒度跨 JNI 调用，批量传递必要数据；异步任务要同时管理 Java 引用、native 对象和线程生命周期。缓存类时需要有效 global reference，并考虑类加载器；线程附加本身不会自动获得应用所需的类加载器上下文。</p>
+<p>Java 的 StringBuffer 为常见方法提供同步，而 StringBuilder 不提供这层同步；即使单个方法受保护，“先检查再修改”这样的多步业务操作也可能需要外部同步。这与 C++ string 的线程安全规则需分别理解。</p>
+<p class="note-source">参考：<a href="https://developer.android.com/ndk/guides/jni-tips" target="_blank" rel="noreferrer">JNI 最佳实践与检查</a> · <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/StringBuffer.html" target="_blank" rel="noreferrer">StringBuffer API</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../art-memory-gc/index.html">ART 内存与 GC</a></li><li><a href="../cpp-interview-roadmap/index.html#q11">C++ 所有权与 RAII</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

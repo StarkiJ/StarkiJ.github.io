@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="操作系统：进程、内存与同步 · Starki 学习笔记">
+    <meta property="og:description" content="梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。">
+    <meta property="og:url" content="https://starkij.github.io/notes/operating-systems/index.html">
+    <title>操作系统：进程、内存与同步 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/operating-systems/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">操作系统：进程、内存与同步</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">计算机基础</p>
+                <h1 id="note-title">操作系统：进程、内存与同步</h1>
+                <p class="note-deck">梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#process-thread">1. 进程、线程与调度</a></li><li><a href="#virtual-memory">2. 虚拟地址与物理内存</a></li><li><a href="#allocation">3. 堆、栈与 fork</a></li><li><a href="#ipc">4. 进程间通信</a></li><li><a href="#locks">5. 锁、futex 与死锁</a></li><li><a href="#signals">6. 异常、信号与故障</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="process-thread" aria-labelledby="process-thread-title"><h2 id="process-thread-title">1. 进程、线程与调度</h2>
+<p><strong>进程</strong>是资源与地址空间的组织单位；<strong>线程</strong>是进程内的一条执行流。Linux 将可调度实体表示为任务，同一进程中的线程可在不同 CPU 上同时运行。用户态协程是否被内核单独调度，取决于它如何映射到内核线程。</p>
+<div class="note-table-wrap" role="region" aria-label="同一进程内的常见共享关系" tabindex="0"><table><caption>同一进程内的常见共享关系</caption><thead><tr><th scope="col">共享</th><th scope="col">各线程独立</th></tr></thead><tbody><tr><td>虚拟地址空间：代码、全局数据、堆、映射</td><td>寄存器上下文、执行位置、线程栈、线程局部存储</td></tr><tr><td>文件描述符表等进程资源</td><td>线程 ID、信号屏蔽字、调度相关属性</td></tr></tbody></table></div>
+<p>“每个线程有自己的栈”是分配与执行习惯，不是隔离边界：只要得到地址，其他线程也可能访问该栈中的对象，仍须满足生命周期与同步规则。</p>
+<p><strong>上下文切换</strong>保存当前任务的寄存器与调度状态，恢复另一个任务。切换进程还可能涉及地址空间切换；成本也受缓存/TLB、内核实现和硬件影响。阻塞任务不持续占用 CPU；就绪任务等待调度。</p>
+<details class="note-review-question"><summary>经典问题：加一个监控线程是否没有成本？</summary>
+<p>有栈和管理结构的内存成本，也有唤醒、调度、采样和锁竞争成本。周期较长且工作很少时可能较低，但需测量 CPU、延迟和内存，而不能仅根据线程数量判断。</p>
+</details>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man7/pthreads.7.html" target="_blank" rel="noreferrer">POSIX 线程共享属性</a>。</p>
+</section>
+<section id="virtual-memory" aria-labelledby="virtual-memory-title"><h2 id="virtual-memory-title">2. 虚拟地址与物理内存</h2>
+<p><strong>虚拟地址</strong>是进程使用的地址；页表记录虚拟页到物理页或其他状态的映射与权限，MMU 执行地址转换，TLB 缓存常用转换。虚拟地址空间中可有代码、数据、堆、栈、共享库、文件映射和未映射空洞。</p>
+<p>保留一段地址、建立映射、分配物理页、成为驻留页是不同事件。匿名映射可以按需触页；文件映射可从文件恢复内容；相同物理页也可能被多个进程映射。因此虚拟空间大小、已分配对象大小和 RSS 不相等。</p>
+<div class="note-table-wrap" role="region" aria-label="访问时的常见情况" tabindex="0"><table><caption>访问时的常见情况</caption><thead><tr><th scope="col">页或访问状态</th><th scope="col">可能处理</th></tr></thead><tbody><tr><td>有效且驻留、权限满足</td><td>正常读写</td></tr><tr><td>合法映射但尚未准备物理页</td><td>缺页异常后分配页、装入文件页或处理交换等，再重试</td></tr><tr><td>写入写时复制页</td><td>复制需要私有化的页并更新映射，再继续</td></tr><tr><td>未映射或权限不允许</td><td>内核通常向线程送 SIGSEGV；部分映射错误可能是 SIGBUS</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>经典问题：没有物理页就一定崩溃吗？</summary>
+<p>不一定。合法的按需分配、文件页装入或写时复制都可通过缺页处理完成。只有访问无法按映射与权限规则满足时才进入故障路径；“缺页”本身不是错误结论。</p>
+</details>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man2/mmap.2.html" target="_blank" rel="noreferrer">mmap 与页映射</a>。</p>
+</section>
+<section id="allocation" aria-labelledby="allocation-title"><h2 id="allocation-title">3. 堆、栈与 fork</h2>
+<p><strong>线程栈</strong>通常承担调用帧和未被优化消除的局部存储；<strong>动态分配器</strong>管理可复用内存块，并按需向系统申请映射或扩展相关区域。new 一般先申请存储再构造对象，不等于每次都调用内核。free/delete 释放到分配器后，页可能暂时仍保留。</p>
+<p><strong>fork</strong>为子进程建立独立地址空间。Linux 通常用写时复制共享父子原有私有页，写入时再私有化；只读数据无需立即复制。MAP_SHARED 映射另按共享语义处理。多线程进程 fork 后子进程只有调用者线程，却可能继承其他线程持有的锁状态，后续操作有严格限制。</p>
+<details class="note-review-question"><summary>经典问题：扩堆是否一定减少 OOM，而且没有副作用？</summary>
+<p>它可能延后容量上限，但不能消除泄漏或全系统压力。更大堆可能增加活对象量、扫描/复制工作和驻留内存；虚拟预留、分配器上限、GC 目标和物理资源必须分别分析。</p>
+</details>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man2/fork.2.html" target="_blank" rel="noreferrer">fork 与写时复制</a> · <a href="https://docs.kernel.org/filesystems/proc.html" target="_blank" rel="noreferrer">内存统计</a>。</p>
+</section>
+<section id="ipc" aria-labelledby="ipc-title"><h2 id="ipc-title">4. 进程间通信</h2>
+<div class="note-table-wrap" role="region" aria-label="IPC 机制" tabindex="0"><table><caption>IPC 机制</caption><thead><tr><th scope="col">方式</th><th scope="col">数据如何传递</th><th scope="col">适用与边界</th></tr></thead><tbody><tr><td>管道 / FIFO</td><td>内核缓冲区中的字节流</td><td>常用于流式连接；消息边界需协议</td></tr><tr><td>共享内存</td><td>进程映射同一存储</td><td>避免每次传输的数据复制，但必须另做同步与生命周期管理</td></tr><tr><td>Unix domain socket</td><td>本机通信端点</td><td>支持流或数据报，还可传递文件描述符</td></tr><tr><td>TCP / UDP socket</td><td>经网络协议栈传输</td><td>可跨机器，需处理连接、边界与失败</td></tr><tr><td>消息队列</td><td>由内核/服务管理离散消息</td><td>有容量限制和拥塞处理</td></tr><tr><td>信号</td><td>异步事件通知</td><td>信息量有限，不适合大块业务数据</td></tr></tbody></table></div>
+<p>Android Binder 还提供对象引用、服务调用及调用者身份等语义，属于平台 IPC；共享内存可配合它传输大块数据。<a href="../network-basics/index.html">socket 与协议细节</a>另见网络笔记。</p>
+</section>
+<section id="locks" aria-labelledby="locks-title"><h2 id="locks-title">5. 锁、futex 与死锁</h2>
+<p><strong>互斥锁</strong>让同一时刻只有一个执行流进入受保护区；它还建立必要的同步关系。Linux 上常见实现先在用户态用原子操作竞争，竞争严重时通过 futex 等待/唤醒，避免一直忙等。futex 是基于用户内存字的等待机制，不直接等于完整 mutex。</p>
+<p>等待操作需要将“值仍符合等待条件”的检查与进入睡眠协调起来，避免在检查和睡眠之间错过唤醒。条件变量的业务条件仍要在锁内用循环检查。</p>
+<p><strong>死锁四条件：</strong>互斥、占有并等待、不可抢占、循环等待。工程中常用全局加锁顺序、一次协调获取多个锁、缩小持锁范围；超时只提供失败出口，不能自动保证状态正确。自旋锁适合极短且持有者能很快运行的临界区，长等待更适合阻塞。</p>
+<details class="note-review-question"><summary>经典问题：两个线程分别先锁 A/B，再锁 B/A，为什么会卡住？</summary>
+<p>它们可能各持有一把锁并等待对方形成环。统一先 A 后 B，或使用适用的多锁协调接口破坏循环等待；不要在持锁时等待必须由另一持锁线程推进的任务。</p>
+</details>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man2/futex.2.html" target="_blank" rel="noreferrer">futex 机制</a>。</p>
+</section>
+<section id="signals" aria-labelledby="signals-title"><h2 id="signals-title">6. 异常、信号与故障</h2>
+<p>CPU 异常先进入内核处理；无法恢复的用户访问错误可转为信号。信号也可由进程显式发送或由定时器等事件产生。处理方式包括默认动作、忽略或安装处理器；SIGKILL/SIGSTOP 不能捕获或忽略。</p>
+<p>信号处理器会打断正常执行，只能使用适用的异步信号安全操作；随意分配内存、获取普通锁或调用复杂日志接口可能再次出错。C++ 异常与 Linux 信号是不同机制，不能指望普通 try/catch 捕获所有段错误。</p>
+<details class="note-review-question"><summary>经典问题：空指针调用没有崩溃，是否说明合法？</summary>
+<p>语言规则先于系统表现。空指针上的非静态成员调用可能已经是 C++ 未定义行为；编译器生成的代码是否真的触发页访问，只影响这次是否出现信号，不改变合法性。</p>
+</details>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man7/signal.7.html" target="_blank" rel="noreferrer">Linux 信号</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../program-execution/index.html">程序执行：寄存器与调用</a></li><li><a href="../cpp-interview-roadmap/index.html#concurrency">C++ 并发与同步</a></li><li><a href="../art-memory-gc/index.html">ART 内存与 GC</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="编译器：IR、SSA 与优化 · Starki 学习笔记">
+    <meta property="og:description" content="连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。">
+    <meta property="og:url" content="https://starkij.github.io/notes/compiler-ir/index.html">
+    <title>编译器：IR、SSA 与优化 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/compiler-ir/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">编译器：IR、SSA 与优化</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">计算机基础</p>
+                <h1 id="note-title">编译器：IR、SSA 与优化</h1>
+                <p class="note-deck">连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#pipeline">1. 编译阶段与中间表示</a></li><li><a href="#cfg">2. 基本块与控制流图</a></li><li><a href="#ssa">3. SSA 与 phi</a></li><li><a href="#lowering">4. phi 消除与寄存器分配</a></li><li><a href="#optimization">5. 优化的前提与代价</a></li><li><a href="#jit">6. AOT、JIT 与热点统计</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="pipeline" aria-labelledby="pipeline-title"><h2 id="pipeline-title">1. 编译阶段与中间表示</h2>
+<div class="note-table-wrap" role="region" aria-label="从源码到机器码" tabindex="0"><table><caption>从源码到机器码</caption><thead><tr><th scope="col">阶段</th><th scope="col">输入 → 输出</th><th scope="col">主要任务</th></tr></thead><tbody><tr><td>词法分析</td><td>字符 → token</td><td>识别标识符、关键字、字面量等</td></tr><tr><td>语法分析</td><td>token → AST</td><td>按文法建立结构，报告语法错误</td></tr><tr><td>语义分析</td><td>AST → 带类型/绑定信息的表示</td><td>名字查找、类型检查、作用域与转换</td></tr><tr><td>IR 生成与优化</td><td>高层结构 → 中间表示</td><td>显式表达控制流、数据依赖与内存操作</td></tr><tr><td>代码生成</td><td>IR → 目标指令</td><td>指令选择、寄存器分配、调度与目标约束</td></tr><tr><td>汇编与链接</td><td>汇编/目标文件 → 可执行程序或库</td><td>编码指令、解析符号与重定位</td></tr></tbody></table></div>
+<p><strong>AST</strong>保留源程序语法结构；<strong>IR</strong>为分析和变换提供规则更统一的表示。同一编译器可以有多层 IR，从接近语言语义逐步降低到机器指令。汇编器主要完成目标指令编码；解释器直接执行某种表示的语义，不必先生成本机代码。</p>
+<p>record/结构体需要字段类型、偏移、大小与对齐规则；类继承还涉及基类子对象、访问与动态分派。先确定语言语义，再按 ABI 降低到布局和地址操作，不能仅把每个字段按字节相加。</p>
+</section>
+<section id="cfg" aria-labelledby="cfg-title"><h2 id="cfg-title">2. 基本块与控制流图</h2>
+<p><strong>基本块</strong>是一段从入口顺序执行到结尾转移的指令序列；中间没有控制流跳入。<strong>CFG</strong>以基本块为节点，以可能的控制流转移为边。</p>
+<ol><li>在线性三地址码中，把第一条指令、跳转目标和转移指令后的新指令标为块首。</li><li>相邻块首之间构成基本块；以跳转、条件分支、返回等确定终结。</li><li>按各终结指令建立后继边，构造前驱列表；异常控制流也要按 IR 模型纳入。</li></ol>
+<p>条件分支通常有两个后继，返回没有普通后继。不能仅按花括号切块：短路逻辑、循环与异常处理都可能产生额外边。</p>
+</section>
+<section id="ssa" aria-labelledby="ssa-title"><h2 id="ssa-title">3. SSA 与 phi</h2>
+<p><strong>SSA（静态单赋值）</strong>要求每个 SSA 值只有一个定义。源变量反复赋值时使用不同版本；控制流合并处用 phi 根据实际前驱选择对应版本。它不是同时执行所有分支，也不是求平均。</p>
+<pre tabindex="0"><code class="language-llvm">define i32 @choose(i1 %cond, i32 %x) {
+entry:
+  br i1 %cond, label %yes, label %no
+yes:
+  %a = add i32 %x, 1
+  br label %merge
+no:
+  %b = sub i32 %x, 1
+  br label %merge
+merge:
+  %result = phi i32 [ %a, %yes ], [ %b, %no ]
+  ret i32 %result
+}</code></pre>
+<p><strong>支配：</strong>从入口到 B 的每条路径都经过 A，则 A 支配 B。支配边界描述某定义可能与其他路径定义相遇的合并位置。经典 SSA 构建先计算支配关系，在迭代支配边界放置 phi，再沿支配树用版本栈重命名定义与使用；可结合活跃性省掉无用 phi。</p>
+<details class="note-review-question"><summary>经典问题：SSA 是否表示内存永远只写一次？</summary>
+<p>不是。SSA 约束 IR 值名的定义；store 仍可反复修改内存。对内存的依赖分析需别名分析或 MemorySSA 等额外表示，不能把不同 load 的结果直接视为恒等。</p>
+</details>
+<p class="note-source">参考：<a href="https://llvm.org/docs/LangRef.html#phi-instruction" target="_blank" rel="noreferrer">LLVM phi 语义</a> · <a href="https://llvm.org/docs/MemorySSA.html" target="_blank" rel="noreferrer">LLVM MemorySSA</a>。</p>
+</section>
+<section id="lowering" aria-labelledby="lowering-title"><h2 id="lowering-title">4. phi 消除与寄存器分配</h2>
+<p>降低 SSA 时，可把 <code>v = phi(a from A, b from B)</code> 变成在边 A→合并块上执行 v←a、边 B→合并块上执行 v←b。若前驱有多个后继而目标有多个前驱，直接把复制放任一块可能在错误路径执行，应按需要拆分临界边。</p>
+<p>同一条边上的多项复制具有并行语义。交换 a、b 不能依次执行 a←b、b←a，否则第二步读到已覆盖值；可用临时 t：t←a、a←b、b←t。寄存器合并可以消掉一部分复制。</p>
+<p><strong>虚拟寄存器</strong>是编译器表示中的值位置，不受硬件寄存器数量直接限制。分配器按活跃区间与干涉关系映射到物理寄存器；位置不足时 spill 到栈并插入 load/store。调用约定、寄存器类别和保存成本也属于约束。</p>
+<details class="note-review-question"><summary>经典问题：把所有 phi 换成合并块开头的普通 move 可以吗？</summary>
+<p>不可以。合并块必须知道来自哪个前驱才能选择输入；无条件顺序执行所有 move 会取错值。复制必须放到对应路径，并处理并行复制冲突。</p>
+</details>
+<p class="note-source">参考：<a href="https://llvm.org/docs/CodeGenerator.html" target="_blank" rel="noreferrer">LLVM 代码生成</a>。</p>
+</section>
+<section id="optimization" aria-labelledby="optimization-title"><h2 id="optimization-title">5. 优化的前提与代价</h2>
+<div class="note-table-wrap" role="region" aria-label="常见优化" tabindex="0"><table><caption>常见优化</caption><thead><tr><th scope="col">优化</th><th scope="col">变换</th><th scope="col">必须确认的前提</th></tr></thead><tbody><tr><td>常量传播 / 折叠</td><td>用已知值替代计算</td><td>值确实确定，遵守目标语义与溢出规则</td></tr><tr><td>死代码删除</td><td>删除不影响可观察行为的计算</td><td>无需要保留的副作用、异常或 volatile 访问</td></tr><tr><td>公共子表达式消除</td><td>复用已有计算结果</td><td>操作数相同，相关内存未被可能的别名写入改变</td></tr><tr><td>循环不变量外提</td><td>把不随迭代变化的计算移到循环外</td><td>依赖、异常与执行条件允许移动</td></tr><tr><td>内联 / 去虚拟化</td><td>展开调用或确定调用目标</td><td>目标可确定，收益超过代码膨胀与编译成本</td></tr><tr><td>向量化</td><td>一次处理多个数据元素</td><td>依赖、别名、对齐与浮点语义允许</td></tr></tbody></table></div>
+<p>优化后的快慢需结合真实输入与热点衡量。浮点结合律通常不能像实数一样任意重排；C++ UB 也会影响编译器可以采用的推理，不能用“硬件会回绕”代替语言规则。</p>
+</section>
+<section id="jit" aria-labelledby="jit-title"><h2 id="jit-title">6. AOT、JIT 与热点统计</h2>
+<p><strong>AOT</strong>在目标程序本次执行前生成机器码；<strong>JIT</strong>在运行过程中按需编译，可使用运行时类型和热点信息。解释执行、低成本编译、优化编译可组成不同层级，平衡启动、峰值性能与编译资源。C1/C2 是 HotSpot 的特定分层术语，不是所有 JIT 的统一级别。</p>
+<p>一种热点设计是在方法元数据中保存饱和调用计数、回边计数和编译状态；达到阈值后入队，避免重复编译。采样或线程本地计数可降低竞争；计数合并、过期、代码缓存容量和反优化也要纳入。无需每次调用都建立字符串键哈希表。</p>
+<details class="note-review-question"><summary>经典问题：调低 JIT 阈值一定让启动更快吗？</summary>
+<p>不一定。较早生成机器码可减少热点解释成本，也会提前占用 CPU、内存和编译队列，可能与启动关键线程争抢资源。按冷/热启动、编译时间、执行节省和代码缓存占用做对照，不能只比较单个函数执行速度。</p>
+</details>
+<p>ART 的实际编译与 profile 流程见 <a href="../art-compilation-startup/index.html">ART 编译与启动</a>。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/17/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot：分层编译与代码缓存</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../program-execution/index.html">程序执行：ABI 与链接</a></li><li><a href="../art-compilation-startup/index.html">ART 编译与启动</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

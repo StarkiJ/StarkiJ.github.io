@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="C++ 内存问题定位 · Starki 学习笔记">
+    <meta property="og:description" content="区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。">
+    <meta property="og:url" content="https://starkij.github.io/notes/cpp-memory-diagnostics/index.html">
+    <title>C++ 内存问题定位 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/cpp-memory-diagnostics/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">C++ 内存问题定位</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">C++ 实践</p>
+                <h1 id="note-title">C++ 内存问题定位</h1>
+                <p class="note-deck">区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#classification">1. 先确定问题类型</a></li><li><a href="#workflow">2. 定位流程与检测工具</a></li><li><a href="#asan">3. 扩容后的释放后使用</a></li><li><a href="#destructor">4. 非虚析构与工程防线</a></li><li><a href="#monitoring">5. 长期增长与监控开销</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="classification" aria-labelledby="classification-title"><h2 id="classification-title">1. 先确定问题类型</h2>
+<div class="note-table-wrap" role="region" aria-label="现象、机制与证据" tabindex="0"><table><caption>现象、机制与证据</caption><thead><tr><th scope="col">类型</th><th scope="col">常见原因</th><th scope="col">重点证据</th></tr></thead><tbody><tr><td>泄漏</td><td>丢失释放责任、强引用环</td><td>未释放分配的调用栈与拥有关系</td></tr><tr><td>长期持有</td><td>无界缓存、队列、回调捕获</td><td>对象仍可达；数量随业务次数持续增长</td></tr><tr><td>占用未回落</td><td>vector 容量、分配器缓存、碎片</td><td>活对象已减少，但保留存储或驻留页仍较多</td></tr><tr><td>非法访问</td><td>越界、释放后使用、重复释放</td><td>首次非法访问及分配/释放调用栈</td></tr><tr><td>并发问题</td><td>释放与访问竞争、缺少同步</td><td>访问发生在哪些线程，保护协议是否一致</td></tr></tbody></table></div>
+<p>RSS 是驻留物理内存统计，PSS 对共享页按共享比例分摊；虚拟地址空间大小不等于物理占用。统计同一进程时还要区分托管堆、native 堆、映射、线程栈与图形资源。</p>
+<details class="note-review-question"><summary>经典问题：智能指针能解决所有内存增长吗？</summary>
+<p>不能。它能表达并执行所有权规则，但强引用环、缓存无上限、任务积压和过长的生命周期仍需业务策略。正确释放后，分配器也不一定立即把页归还内核。</p>
+</details>
+<p class="note-source">参考：<a href="https://docs.kernel.org/filesystems/proc.html" target="_blank" rel="noreferrer">Linux /proc 内存统计</a>。</p>
+</section>
+<section id="workflow" aria-labelledby="workflow-title"><h2 id="workflow-title">2. 定位流程与检测工具</h2>
+<ol><li>固定版本、输入、操作次数与线程条件，保存带符号构建；先拿到稳定复现。</li><li>根据问题类别选择证据：非法访问看检测器与崩溃栈；增长问题比较多轮操作前后的分配与存活对象。</li><li>找到首次错误及拥有关系，区分根因和之后的连锁崩溃。</li><li>修改释放责任、容器访问或同步协议，用原复现、边界和重复运行验证。</li></ol>
+<div class="note-table-wrap" role="region" aria-label="工具覆盖范围" tabindex="0"><table><caption>工具覆盖范围</caption><thead><tr><th scope="col">工具</th><th scope="col">适合检查</th><th scope="col">限制</th></tr></thead><tbody><tr><td>ASan</td><td>堆/栈越界、use-after-free 等</td><td>依赖插桩和实际执行路径；不能证明无 UB</td></tr><tr><td>LSan</td><td>部分未释放分配</td><td>仍可达的无界缓存可能不报告</td></tr><tr><td>UBSan</td><td>对齐、有符号溢出等部分 UB</td><td>检查项和平台支持不同</td></tr><tr><td>TSan</td><td>数据竞争</td><td>单独构建运行，通常不能与 ASan 合用</td></tr><tr><td>采样 / heap profiler</td><td>分配热点、存活量与增长趋势</td><td>采样有误差；观察窗口和开销需说明</td></tr></tbody></table></div>
+<p class="note-source">参考：<a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">ASan</a> · <a href="https://clang.llvm.org/docs/LeakSanitizer.html" target="_blank" rel="noreferrer">LSan</a> · <a href="https://clang.llvm.org/docs/ThreadSanitizer.html" target="_blank" rel="noreferrer">TSan</a>。</p>
+</section>
+<section id="asan" aria-labelledby="asan-title"><h2 id="asan-title">3. 扩容后的释放后使用</h2>
+<p>错误程序填满容量后保存引用，再插入一个元素，保证这次成功插入触发重分配。此程序故意包含 UB，没有规定输出；应在支持 ASan 的环境中单独实验。</p>
+<p><a href="invalid-reference.cpp" download>下载源码（invalid-reference.cpp）</a>。使用 C++17 和支持的检测器编译运行。</p>
+<details class="note-example-details"><summary>错误复现：仅用于检测器实验</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;vector&gt;
+#include &lt;iostream&gt;
+int main() {
+    std::vector&lt;int&gt; v{7};
+    const auto capacity=v.capacity();
+    while(v.size()&lt;capacity) v.push_back(0);
+    const int&amp; ref=v[0];
+    v.push_back(9);
+    std::cout &lt;&lt; ref &lt;&lt; &#x27;\n&#x27;; // 故意的 UB：只用于检测器实验
+}</code></pre>
+</details>
+<pre tabindex="0"><code class="language-text">clang++ -std=c++17 -O1 -g -fsanitize=address,undefined \
+  -fno-omit-frame-pointer invalid-reference.cpp -o invalid-reference
+./invalid-reference</code></pre>
+<p>以上为 Linux/Clang 示例命令，不是本地 Windows 的实测报告。典型报告应关注三组栈：非法读取处、vector 扩容释放处、原缓冲分配处。真正的修复是恢复有效访问关系；给引用“重新赋值”只会访问它已经绑定的目标，不能重新绑定。</p>
+</section>
+<section id="destructor" aria-labelledby="destructor-title"><h2 id="destructor-title">4. 非虚析构与工程防线</h2>
+<p><code>Base* p = new Derived; delete p;</code> 若基类析构非虚，在这里的 C++17 场景中属于 UB，不是保证只调用 Base 析构。允许通过 Base 销毁时，把析构声明为 public virtual；修复后执行 Derived 析构，再执行 Base 析构。若禁止这种销毁，可设计 protected 非虚析构。</p>
+<p>unique_ptr&lt;Base&gt; 的默认删除器仍执行 delete Base*，所以仅换智能指针并不能修复非虚析构。以下示例同时验证动态析构和扩容后重新访问。</p>
+<p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>完整实现与断言测试</summary>
+<pre tabindex="0"><code class="language-cpp">#include &lt;cassert&gt;
+#include &lt;cstddef&gt;
+#include &lt;memory&gt;
+#include &lt;vector&gt;
+class Base {
+public:
+    virtual ~Base() = default;
+};
+class Derived final : public Base {
+public:
+    inline static int destroyed=0;
+    ~Derived() override { ++destroyed; }
+};
+int main() {
+    { std::unique_ptr&lt;Base&gt; p=std::make_unique&lt;Derived&gt;(); }
+    assert(Derived::destroyed==1);
+    std::vector&lt;int&gt; v{7};
+    const auto capacity=v.capacity();
+    while(v.size()&lt;capacity) v.push_back(0);
+    const auto index=std::size_t{0};
+    v.push_back(9); // 必须扩容，随后通过下标重新访问
+    assert(v[ index ]==7 &amp;&amp; v.capacity()&gt;capacity);
+}</code></pre>
+</details>
+<p>编译告警可启用 <code>-Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor</code>，再结合 clang-tidy 的 cppcoreguidelines-virtual-class-destructor。相关告警/检查主要针对多态类；原例若根本没有虚函数，不能假定工具一定诊断。代码评审仍需确认基类是否承担销毁接口。</p>
+<details class="note-review-question"><summary>经典问题：CI 中没有告警、ASan 没报告，就证明安全吗？</summary>
+<p>不能。静态检查有适用模式，动态检查只覆盖执行路径。应同时保留明确的接口约束、触发故障的回归用例，以及分配和释放次数等不变量断言。</p>
+</details>
+<p class="note-source">参考：<a href="https://clang.llvm.org/extra/clang-tidy/checks/cppcoreguidelines/virtual-class-destructor.html" target="_blank" rel="noreferrer">clang-tidy：虚析构检查</a>。</p>
+</section>
+<section id="monitoring" aria-labelledby="monitoring-title"><h2 id="monitoring-title">5. 长期增长与监控开销</h2>
+<p>设计固定业务循环：基线 → 执行 N 次 → 等待任务结束 → 清理可清理缓存 → 再采样。比较多轮同阶段的存活量与引用链，不用单次峰值直接判泄漏。短期可达但业务上不再需要的对象，也可能是需要修复的长期持有。</p>
+<ul><li>监控线程会占用栈、调度时间和 CPU；高频采集调用栈、扫描映射或争用分配器锁都会增加开销。</li><li>对照启用/关闭监控的吞吐、延迟分位数、CPU 和内存；固定采样频率并记录丢样，避免监控改变原故障时序。</li><li>堆转储用来查对象与引用关系；native 分配采样用来查分配热点。Android 的 Java heap dump / HPROF 不能替代所有 native 或图形内存的诊断。</li></ul>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../cpp-interview-roadmap/index.html#ownership">核心知识：资源管理</a></li><li><a href="../android-mte/index.html">MTE：标签与错误定位</a></li><li><a href="../art-memory-gc/index.html">ART 内存与 GC</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

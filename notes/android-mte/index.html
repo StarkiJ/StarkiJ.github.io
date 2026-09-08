@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="理解内存标签检查、同步/异步报告、检测盲区和性能验证。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="MTE：标签与错误定位 · Starki 学习笔记">
+    <meta property="og:description" content="理解内存标签检查、同步/异步报告、检测盲区和性能验证。">
+    <meta property="og:url" content="https://starkij.github.io/notes/android-mte/index.html">
+    <title>MTE：标签与错误定位 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/android-mte/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">MTE：标签与错误定位</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">Android / ART</p>
+                <h1 id="note-title">MTE：标签与错误定位</h1>
+                <p class="note-deck">理解内存标签检查、同步/异步报告、检测盲区和性能验证。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#tags">1. 逻辑标签与分配标签</a></li><li><a href="#coverage">2. 能发现什么，不能发现什么</a></li><li><a href="#modes">3. SYNC 与 ASYNC</a></li><li><a href="#validation">4. 覆盖与性能实验</a></li><li><a href="#hooks">5. Hook 与诊断边界</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="tags" aria-labelledby="tags-title"><h2 id="tags-title">1. 逻辑标签与分配标签</h2>
+<p><strong>MTE（Memory Tagging Extension）</strong>是 Arm 的内存标记机制。在支持并启用检查的内存访问中，CPU 比较指针中的逻辑标签与目标内存颗粒的分配标签；不一致时产生标签检查故障。</p>
+<p>经典 MTE 使用 4 位标签，每个 16 字节对齐的颗粒对应一个分配标签。逻辑标签位于地址表示中的指定高位，分配标签由硬件支持的标签存储维护，不是简单往每个对象结构体末尾加一个成员。地址转换与标签检查各有职责。</p>
+<pre tabindex="0"><code class="language-text">带标签指针：地址 A + 逻辑标签 5
+内存颗粒 A：分配标签 5  → 标签匹配
+内存颗粒 B：分配标签 9  → 用标签 5 的指针访问时不匹配</code></pre>
+<ol><li>分配器选择标签，为相关颗粒设置分配标签，并返回带逻辑标签的指针。</li><li>程序通过该指针访问，硬件在适用条件下校验标签。</li><li>释放或复用存储时按策略改变标签，使旧指针更可能与新存储不匹配。</li></ol>
+<p class="note-source">参考：<a href="https://docs.kernel.org/arch/arm64/memory-tagging-extension.html" target="_blank" rel="noreferrer">Linux AArch64 MTE</a>。</p>
+</section>
+<section id="coverage" aria-labelledby="coverage-title"><h2 id="coverage-title">2. 能发现什么，不能发现什么</h2>
+<div class="note-table-wrap" role="region" aria-label="检测范围取决于实际启用范围与标签差异" tabindex="0"><table><caption>检测范围取决于实际启用范围与标签差异</caption><thead><tr><th scope="col">情况</th><th scope="col">判断</th></tr></thead><tbody><tr><td>越界跨到不同标签颗粒</td><td>可触发不匹配</td></tr><tr><td>释放后使用，原颗粒已换成不同标签</td><td>可触发不匹配</td></tr><tr><td>同一 16 字节颗粒内的小越界</td><td>标签可能仍一致，无法按真实对象边界识别</td></tr><tr><td>不同对象或复用后碰巧标签相同</td><td>可能漏检；标签数量有限</td></tr><tr><td>未标记的分配/映射、未启用检查</td><td>不应假定被保护</td></tr><tr><td>内存泄漏、业务状态错误、一般数据竞争</td><td>不由 MTE 完整检测</td></tr></tbody></table></div>
+<p>随机标签的检出概率依标签集合和分配策略而变，不能把某个概率当作全部错误的覆盖率。堆、栈、全局对象是否标记也取决于分配器、编译插桩和平台配置。</p>
+<details class="note-review-question"><summary>经典问题：启用 MTE 之后，是否就没有悬垂指针？</summary>
+<p>悬垂指针仍可能产生。MTE 增加发现不匹配访问的能力，不会自动修正对象生命周期，也不能保证每次复用都得到不同标签。仍需所有权与边界设计。</p>
+</details>
+<p class="note-source">参考：<a href="https://source.android.com/docs/security/test/memory-safety/arm-mte" target="_blank" rel="noreferrer">Android MTE 与分配策略</a>。</p>
+</section>
+<section id="modes" aria-labelledby="modes-title"><h2 id="modes-title">3. SYNC 与 ASYNC</h2>
+<div class="note-table-wrap" role="region" aria-label="故障报告模式" tabindex="0"><table><caption>故障报告模式</caption><thead><tr><th scope="col">模式</th><th scope="col">报告位置与信息</th><th scope="col">取舍</th></tr></thead><tbody><tr><td>SYNC</td><td>在触发访问处同步报告，适合定位故障指令</td><td>定位精度较高，运行开销依硬件/实现</td></tr><tr><td>ASYNC</td><td>先记录故障状态，在之后的适当时机报告</td><td>通常有较低开销，但报告时 PC 不一定是首次错误指令</td></tr></tbody></table></div>
+<p>Linux 同步标签故障使用 SIGSEGV 的 SEGV_MTESERR，异步使用 SEGV_MTEAERR；同步可提供出错地址，异步报告的地址/时序信息有限。Android tombstone 中是否包含分配、释放栈还取决于模式与分配器记录，不能承诺所有报告都有三条完整栈。</p>
+<details class="note-review-question"><summary>经典问题：拿到 ASYNC 崩溃栈，是否直接修改栈顶函数？</summary>
+<p>不能直接归因。先确认故障模式与信号代码，用相同场景尝试 SYNC、保留符号并结合分配/释放记录定位。异步报告处可能只是系统发现待报告故障的位置。</p>
+</details>
+<p class="note-source">参考：<a href="https://docs.kernel.org/arch/arm64/memory-tagging-extension.html" target="_blank" rel="noreferrer">Linux 标签故障报告</a>。</p>
+</section>
+<section id="validation" aria-labelledby="validation-title"><h2 id="validation-title">4. 覆盖与性能实验</h2>
+<ol><li>确认硬件、系统、进程、分配器和目标内存类别均支持并启用 MTE；应用可按官方指南配置 manifest 的 memtagMode。</li><li>分别构造跨标签颗粒的越界和释放后访问作为故意错误样例，同时准备无错误对照。错误样例不能按普通 C++ 输出断言。</li><li>保留一组预期盲区：颗粒内越界、未覆盖区域；统计多次运行，不把一次未报错当作配置正确的证据。</li><li>对照关闭、SYNC、ASYNC 下相同业务负载的吞吐、延迟分位数、启动时间、RSS 与 CPU；记录设备与系统版本。</li></ol>
+<p>定位记录应包含模式、故障地址、读写类型、访问大小、PC/模块、匹配符号，以及可取得的分配释放栈。修复后用原触发路径验证，再做压力与边界检查；检测器配置不是修复本身。</p>
+<p class="note-source">参考：<a href="https://developer.android.com/ndk/guides/arm-mte" target="_blank" rel="noreferrer">Android 应用启用 MTE</a>。</p>
+</section>
+<section id="hooks" aria-labelledby="hooks-title"><h2 id="hooks-title">5. Hook 与诊断边界</h2>
+<p><strong>Hook</strong>在调用或执行路径中插入观察/替换逻辑，例如拦截分配接口采集调用栈。符号级 hook 只能覆盖经过该符号的路径；直接调用、内联、自定义分配器等可能绕过它，不能据此宣称全覆盖。</p>
+<p>监测代码要处理重入、线程安全、递归分配与自身开销，并保存原调用语义。判断价值看能否定位实际错误、覆盖哪些路径和增加多少成本；MTE 的硬件访问检查与 hook 的软件观察点是不同层次。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../cpp-memory-diagnostics/index.html">C++ 内存问题定位</a></li><li><a href="../program-execution/index.html#backtrace">程序执行：调用栈回溯</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

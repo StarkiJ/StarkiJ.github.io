@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="程序执行：寄存器、调用与链接 · Starki 学习笔记">
+    <meta property="og:description" content="解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。">
+    <meta property="og:url" content="https://starkij.github.io/notes/program-execution/index.html">
+    <title>程序执行：寄存器、调用与链接 · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/program-execution/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">程序执行：寄存器、调用与链接</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">计算机基础</p>
+                <h1 id="note-title">程序执行：寄存器、调用与链接</h1>
+                <p class="note-deck">解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#cpu">1. 指令、寄存器与内存</a></li><li><a href="#abi">2. AArch64 寄存器与调用约定</a></li><li><a href="#call">3. 一次非叶函数调用</a></li><li><a href="#endian">4. 大小端与数据表示</a></li><li><a href="#elf">5. ELF、链接与装载</a></li><li><a href="#backtrace">6. 调用栈回溯与 LLDB</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="cpu" aria-labelledby="cpu-title"><h2 id="cpu-title">1. 指令、寄存器与内存</h2>
+<p><strong>指令集 ISA</strong>规定可执行指令及其可见效果；<strong>微架构</strong>决定这些指令如何流水执行、预测和访问缓存。同为 AArch64 的不同处理器也可有不同流水线，不能把“五级流水线”当成所有 ARM/RISC-V 的固定实现。</p>
+<p>CPU 执行 load 时按指令计算有效地址，经过地址转换与权限检查，从缓存或更低层存储取得数据，再写入寄存器。TLB 与缓存访问可能并行或重叠；它们不一定是严格串行的一条流程。</p>
+<p>C++ 指针值用于定位目标；引用是语言层别名，可能被实现为地址，也可能被优化掉。解引用次数要看生成代码：成员偏移可直接合入寻址，而被优化成常量的对象可能没有实际访存。</p>
+<details class="note-review-question"><summary>经典问题：CPU 是直接从“引用变量”找到数据的吗？</summary>
+<p>CPU 不认识 C++ 引用语法，只执行生成的地址运算与加载指令。先解释引用绑定哪个对象，再看目标 ABI 和优化后的机器代码如何访问。</p>
+</details>
+</section>
+<section id="abi" aria-labelledby="abi-title"><h2 id="abi-title">2. AArch64 寄存器与调用约定</h2>
+<p><strong>ABI</strong>约定参数、返回值、寄存器保存责任、栈对齐和对象布局，使独立编译的代码能协作。以下采用 AAPCS64 的普通整数调用场景；AArch32、Windows x64、System V AMD64 等有各自规则。</p>
+<div class="note-table-wrap" role="region" aria-label="AAPCS64 的常用寄存器角色" tabindex="0"><table><caption>AAPCS64 的常用寄存器角色</caption><thead><tr><th scope="col">寄存器</th><th scope="col">用途</th></tr></thead><tbody><tr><td>x0–x7 / w0–w7</td><td>常用整数/指针参数及结果寄存器；w 是对应寄存器的低 32 位视图</td></tr><tr><td>x8</td><td>间接结果地址的特殊用途</td></tr><tr><td>x9–x15</td><td>常用临时寄存器，调用者不能依赖调用后保留</td></tr><tr><td>x16–x17</td><td>过程调用临时寄存器，可供链接桩使用</td></tr><tr><td>x18</td><td>平台寄存器，使用约束依平台</td></tr><tr><td>x19–x28</td><td>被调用者需要保存的通用寄存器</td></tr><tr><td>x29 / x30</td><td>常作为 FP / LR；x29 按 ABI 保存，x30 保存返回地址</td></tr><tr><td>SP</td><td>栈指针；接口处满足 16 字节对齐等约束</td></tr><tr><td>v0–v31</td><td>浮点/SIMD 寄存器，传参与保存规则另行规定</td></tr></tbody></table></div>
+<p>AArch64 的 PC 不是可像 x0 那样直接使用的通用寄存器。BL 将返回位置记到 LR 并转移控制；BLR 经寄存器间接调用；RET 通常使用 LR 返回。条件分支、间接跳转、异常进入和异常返回也会改变控制流。</p>
+<p class="note-source">参考：<a href="https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst" target="_blank" rel="noreferrer">Arm AAPCS64</a>。</p>
+</section>
+<section id="call" aria-labelledby="call-title"><h2 id="call-title">3. 一次非叶函数调用</h2>
+<p>假设 <code>int foo(int n) { return add(n, 1) + 1; }</code>，add 未被内联。n 通过 w0 传入，第二个整数参数放 w1，整数结果从 w0 取得。下面是示意性汇编，不是编译器必须生成的固定序列。</p>
+<pre tabindex="0"><code class="language-asm">foo:
+    stp x29, x30, [sp, #-16]!  // 保存旧 FP/LR，SP 下移
+    mov x29, sp
+    mov w1, #1
+    bl add                    // 覆盖 LR，跳到 add
+    add w0, w0, #1           // 使用返回值
+    ldp x29, x30, [sp], #16  // 恢复 FP/LR，SP 上移
+    ret</code></pre>
+<p><strong>栈帧</strong>可保存返回信息、需保留寄存器、局部对象、溢出到栈的值和栈上传参。并非所有参数都压栈，也不是每个局部变量都占一格栈内存。叶函数可不建立传统栈帧，内联和尾调用还可能消除一次调用层级。</p>
+<p>普通非静态成员函数需要传递 this。在简单无特殊返回参数的场景，this 常占用首个指针参数位置；复杂返回值、thunk 和平台 ABI 可能改变细节。虚调用在无法去虚拟化时通常先读取虚表中的目标，再进行间接调用；虚表规则见 <a href="../cpp-interview-roadmap/index.html#q15">C++ 对象模型</a>。</p>
+<details class="note-review-question"><summary>经典问题：为什么非叶函数常要保存 LR？</summary>
+<p>它调用别的函数时，BL 会改写 LR。若后续还要返回自己的调用者，就必须把原返回地址保存到合适位置；示例放在栈中。具体保存方式由编译器和 ABI 决定。</p>
+</details>
+</section>
+<section id="endian" aria-labelledby="endian-title"><h2 id="endian-title">4. 大小端与数据表示</h2>
+<p>大小端描述多字节对象的字节顺序。以值 0x12345678 的 32 位整数为例，地址从低到高，小端为 78 56 34 12，大端为 12 34 56 78；它不改变数值本身，也不描述位在字符里的书写方向。</p>
+<p>网络长度字段与磁盘格式应指定字节序，并使用显式编解码。不能把任意输入缓冲直接强转为结构体：还可能存在未对齐、填充、生命周期和类型访问问题。32/64 位也不能单独决定端序、long 大小或结构布局。</p>
+</section>
+<section id="elf" aria-labelledby="elf-title"><h2 id="elf-title">5. ELF、链接与装载</h2>
+<p><strong>ELF</strong>可表示可重定位目标、可执行文件和共享库。除机器指令外，还可能包含只读/可写数据、符号、重定位、动态链接信息与调试信息。调试信息可被剥离或单独保存；并非每个文件都有全部内容。</p>
+<div class="note-table-wrap" role="region" aria-label="两种组织视角" tabindex="0"><table><caption>两种组织视角</caption><thead><tr><th scope="col">结构</th><th scope="col">主要用途</th></tr></thead><tbody><tr><td>Section：.text、.data、.bss 等</td><td>链接与分析；.bss 表示需零初始化的存储，通常不占等量文件内容</td></tr><tr><td>Segment：由程序头描述</td><td>装载器映射文件范围与设置内存权限；一段可包含多个 section</td></tr></tbody></table></div>
+<p>静态链接从目标和库中组合所需代码、处理符号与重定位。动态装载映射依赖库，由动态链接器处理相应符号和重定位；某些调用可通过 PLT/GOT 等结构间接解析。装载地址还可能受 ASLR 影响。</p>
+<pre tabindex="0"><code class="language-text">readelf -h -l -S app
+readelf -Ws app
+readelf -r app
+nm -C app
+objdump -d -C app</code></pre>
+<p>这些是 Linux/ELF 工具示例；Windows 常见 PE/COFF、macOS 常见 Mach-O，不能直接套用 ELF 文件结构。</p>
+<p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man5/elf.5.html" target="_blank" rel="noreferrer">ELF 格式</a>。</p>
+</section>
+<section id="backtrace" aria-labelledby="backtrace-title"><h2 id="backtrace-title">6. 调用栈回溯与 LLDB</h2>
+<p><strong>回溯</strong>从当前 PC/SP 等寄存器出发，根据展开信息或有效帧链恢复上一层寄存器与返回地址，逐层重复。它不是简单把栈内“看起来像代码地址”的数字全部打印出来。</p>
+<ol><li>取得故障线程寄存器，确认 PC 所属模块和构建 ID。</li><li>用 DWARF CFI 等展开信息或目标平台机制恢复上一帧；符合约定时也可沿帧指针链回溯。</li><li>结合模块装载偏移和匹配的符号文件，把代码地址映射到函数、源码行和可能的内联帧。</li><li>若栈损坏、缺少符号或展开信息，检查寄存器和原始栈；不要把截断回溯当作完整调用关系。</li></ol>
+<pre tabindex="0"><code class="language-text">thread backtrace all
+register read pc sp fp lr
+disassemble --frame
+memory read --size 8 --format x --count 16 $sp
+image lookup --address $pc</code></pre>
+<p>以上寄存器别名按 AArch64 LLDB 场景书写；其他目标需调整。读取内存前确认地址映射和可读范围，八字节显示也不意味着其中每一项都是指针。</p>
+<details class="note-review-question"><summary>经典问题：为什么优化后栈里少了某个函数？</summary>
+<p>可能被内联、尾调用消除，或缺少展开/调试信息。保留符号、核对同一构建，必要时用调试构建复现；不能只因回溯没有显示就断定没有执行。</p>
+</details>
+<p class="note-source">参考：<a href="https://lldb.llvm.org/use/map.html" target="_blank" rel="noreferrer">LLDB 命令参考</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../compiler-ir/index.html">编译器：IR、SSA 与优化</a></li><li><a href="../operating-systems/index.html#virtual-memory">操作系统：虚拟内存</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

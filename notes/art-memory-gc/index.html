@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="ART 内存与 GC · Starki 学习笔记">
+    <meta property="og:description" content="理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。">
+    <meta property="og:url" content="https://starkij.github.io/notes/art-memory-gc/index.html">
+    <title>ART 内存与 GC · Starki 学习笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/art-memory-gc/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html">主页</a>
+                <a class="is-active" href="../index.html">学习笔记</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航">
+            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
+            <a href="../index.html">学习笔记</a><span aria-hidden="true">/</span>
+            <span aria-current="page">ART 内存与 GC</span>
+        </nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">Android / ART</p>
+                <h1 id="note-title">ART 内存与 GC</h1>
+                <p class="note-deck">理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-08">2026.09.08</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#roots">1. 可达性与 GC Roots</a></li><li><a href="#collectors">2. 回收算法与并发复制</a></li><li><a href="#generations">3. Young、Full 与卡表</a></li><li><a href="#spaces">4. 堆空间与引用表示</a></li><li><a href="#oom">5. OOM 与应用侧排查</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="roots" aria-labelledby="roots-title"><h2 id="roots-title">1. 可达性与 GC Roots</h2>
+<p><strong>追踪式 GC</strong>从根集合沿对象引用寻找可达对象，再处理不可达对象。它依据可达关系，不依据“变量名还在不在”，也不要求对象引用图没有环。GC 线程之外执行应用代码的线程常称为 mutator。</p>
+<div class="note-table-wrap" role="region" aria-label="根或根访问路径" tabindex="0"><table><caption>根或根访问路径</caption><thead><tr><th scope="col">场景</th><th scope="col">为什么必须保留</th></tr></thead><tbody><tr><td>线程当前栈帧、寄存器中的活引用</td><td>方法后续还可能使用该对象</td></tr><tr><td>JNI local / global 强引用</td><td>native 代码仍可能通过有效引用访问对象</td></tr><tr><td>运行时持有的类、线程和其他内部根</td><td>运行时自身仍需要这些对象</td></tr><tr><td>已加载且可达的类的静态字段</td><td>通过类对象和相关运行时根可继续到达字段指向的对象</td></tr></tbody></table></div>
+<p>具体根集合由运行时实现与线程状态决定；弱引用需要特殊处理，不等价于普通强根。移动 GC 还需识别并修正引用，不能简单扫描任意整数并把“像地址”的值都移动。</p>
+<details class="note-review-question"><summary>经典问题：两个对象互相引用，GC 是否一定回收不了？</summary>
+<p>追踪式 GC 可以回收整个不可达环。只要没有从根到达这个环的强可达路径，就不因互相引用而保留；引用计数系统中的强引用环是另一种机制的问题。</p>
+</details>
+</section>
+<section id="collectors" aria-labelledby="collectors-title"><h2 id="collectors-title">2. 回收算法与并发复制</h2>
+<div class="note-table-wrap" role="region" aria-label="算法侧重点" tabindex="0"><table><caption>算法侧重点</caption><thead><tr><th scope="col">方式</th><th scope="col">机制</th><th scope="col">典型代价</th></tr></thead><tbody><tr><td>标记清扫</td><td>标记活对象，回收未标记对象</td><td>可能留下外部碎片</td></tr><tr><td>标记整理</td><td>标记后移动活对象并更新引用</td><td>整理与引用更新成本</td></tr><tr><td>复制</td><td>将选定区域的活对象搬到目标区域，回收旧区域</td><td>需目标空间；成本与活对象量相关</td></tr><tr><td>分代</td><td>按对象存活特征划分收集范围</td><td>维护跨代引用；不能漏掉老对象指向年轻对象的边</td></tr></tbody></table></div>
+<p>以 <strong>AOSP android-14.0.0_r1 的 ConcurrentCopying</strong> 为具体例子，RunPhases 的主线如下。不同配置会选择不同分支，不能把 CC 概括成“全程暂停复制”。</p>
+<ol><li>InitializePhase 准备本轮状态；特定分代全堆场景先执行 MarkingPhase，计算存活情况。</li><li>启用相应读屏障入口、处理需要的卡信息，再通过 FlipThreadRoots 协调线程根与空间状态切换。</li><li>CopyingPhase 与应用并发推进：复制需迁移的活对象，扫描引用、处理标记工作；读屏障帮助访问获得正确对象。</li><li>ReclaimPhase 回收可释放区域，FinishPhase 收尾并更新统计。验证选项可能额外引入暂停。</li></ol>
+<p><strong>读屏障</strong>是在读取对象引用时执行的附加逻辑。并发移动期间，应用可能读到旧地址；屏障根据对象/空间状态找到、复制或标记目标并提供正确引用。它不是操作系统的内存屏障，也不等于 C++ atomic 的内存序。</p>
+<details class="note-review-question"><summary>经典问题：并发复制时为什么仍可能暂停？</summary>
+<p>切换线程根、同步关键状态等步骤需要与应用线程协调。大量复制可并发执行，但这不意味着无暂停；区分 GC 总耗时、暂停时长和应用受到的 CPU/屏障开销。</p>
+</details>
+<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/collector/concurrent_copying.cc" target="_blank" rel="noreferrer">Android 14 CC 源码</a> · <a href="https://source.android.com/docs/core/runtime/gc-debug" target="_blank" rel="noreferrer">ART GC 调试文档</a>。</p>
+</section>
+<section id="generations" aria-labelledby="generations-title"><h2 id="generations-title">3. Young、Full 与卡表</h2>
+<p><strong>卡表</strong>把一段堆划成较粗粒度的 card；写屏障在相关引用写入后标记卡，后续只扫描受影响范围。它记录的是“这片区域需要检查”，通常不是每条精确引用。</p>
+<p>Young GC 只回收选定的年轻范围，但老对象可能指向年轻对象，因此仍需根和跨代引用信息。Full GC 涉及更广收集范围；某实现仍会利用卡表扫描免收集空间或并发修改，不应简单说“Full 一定不用卡表”。</p>
+<p>GC 可因分配压力、目标堆占用、显式请求或运行时策略触发。是否转为更全面收集取决于版本、分配结果和回收收益。最耗时阶段可能是根/卡扫描、对象扫描、复制等，要读阶段计时；Young 与 Full 不存在固定耗时倍数。</p>
+<details class="note-review-question"><summary>经典问题：扩大堆后，GC 必然更少且更快吗？</summary>
+<p>频率可能下降，但一次收集的活对象和扫描范围可能变大，物理压力也可能增加。应一起比较每秒 GC 次数、暂停分位数、总 CPU、复制字节、回收收益和 RSS/PSS。</p>
+</details>
+</section>
+<section id="spaces" aria-labelledby="spaces-title"><h2 id="spaces-title">4. 堆空间与引用表示</h2>
+<div class="note-table-wrap" role="region" aria-label="常见空间角色，具体配置依版本" tabindex="0"><table><caption>常见空间角色，具体配置依版本</caption><thead><tr><th scope="col">空间</th><th scope="col">用途与机制</th></tr></thead><tbody><tr><td>RegionSpace</td><td>按区域管理对象，支持 TLAB 分配与选定区域的迁移；区域还可表达大对象及其尾部区域</td></tr><tr><td>LargeObjectSpace</td><td>专门管理符合条件的大对象；通常避免搬动大块对象，分配和回收策略不同</td></tr><tr><td>NonMovingSpace</td><td>承担要求或选择不移动的分配；不移动不等于不做可达性判断和回收</td></tr><tr><td>Image / Zygote 等空间</td><td>启动映像、预加载与共享相关，收集中的处理方式依空间属性</td></tr></tbody></table></div>
+<p>在 Android 14 上述 tag 中，<code>ShouldAllocLargeObject</code> 同时检查大小阈值，以及对象是否为原始类型数组或 String。因此“任意超过 4 KB 的对象都进入 LOS”不成立；阈值也不是所有设备固定常量。降低阈值可能减少其他空间压力，却增加独立大块分配、碎片和映射管理成本。</p>
+<p><strong>复制预留空间</strong>用于容纳迁移中的活对象。逻辑堆上限、RegionSpace 映射容量、疏散预留和实际物理占用不能互相替代；经典半空间模型的二倍存储直觉不能直接当作所有 ART 配置的固定比例。</p>
+<p>该版本 HeapReference 内部保存 <code>Atomic&lt;uint32_t&gt;</code>，PtrCompression 负责与实际对象指针转换，并可处理引用 poisoning。它不是普通 native 指针大小，也不是 JNI jobject；扩大可寻址对象范围可能涉及引用编码、空间布局和访问路径，不能只改一个容量数字。</p>
+<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/heap-inl.h" target="_blank" rel="noreferrer">Android 14 分配判断</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/mirror/object_reference.h" target="_blank" rel="noreferrer">HeapReference 与转换</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/space/region_space.cc" target="_blank" rel="noreferrer">RegionSpace</a>。</p>
+</section>
+<section id="oom" aria-labelledby="oom-title"><h2 id="oom-title">5. OOM 与应用侧排查</h2>
+<p><strong>Java OutOfMemoryError</strong>是运行时无法满足相应分配请求的错误；Linux/Android 因全局或进程内存压力终止进程，是另一条路径。抛 OOM 不等于在该指令处必定立刻被系统杀死，但捕获异常也不自动恢复可用内存或业务状态。</p>
+<ol><li>先确认是 Java 堆分配失败、native 分配失败、地址空间/碎片问题，还是系统杀进程；保留日志和构建信息。</li><li>记录失败申请大小、存活量、堆目标/上限、GC 前后变化及进程内存分类。</li><li>对比多轮相同业务的 heap dump，沿 GC Roots 引用链查不必要的持有；native 增长另查分配调用栈。</li><li>应用侧减少峰值同时存活数据、按需加载、缩小图片/缓存、及时取消任务；修复引用链后用同负载复测。</li></ol>
+<p>HPROF 是堆转储格式之一，可用于分析托管对象和引用。dump 本身有开销，且不覆盖所有 native、映射或图形资源；“Java 堆不涨”不能排除进程内存问题。</p>
+<details class="note-review-question"><summary>经典问题：具体扩堆上限和 ART 统计函数能否背一个通用答案？</summary>
+<p>不能。要核对目标分支、指针/引用表示、配置、空间约束和实际改动。平台项目可沿 JNI 注册、native 实现到 Heap/collector 统计接口追踪；应用公开 API 与内部函数不是同一接口合同。</p>
+</details>
+<p class="note-source">参考：<a href="https://developer.android.com/topic/performance/memory-overview" target="_blank" rel="noreferrer">Android 内存概览</a> · <a href="https://developer.android.com/studio/profile/capture-heap-dump" target="_blank" rel="noreferrer">捕获 heap dump</a>。</p>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../jni-references/index.html">JNI：引用与生命周期</a></li><li><a href="../art-compilation-startup/index.html">ART 编译与启动</a></li><li><a href="../cpp-memory-diagnostics/index.html">C++ 内存问题定位</a></li></ul>
+</section>
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回学习笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>
