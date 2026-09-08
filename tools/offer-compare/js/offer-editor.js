@@ -14,6 +14,7 @@
         var weeklyHoursSummaryLabel = ui.weeklyHoursSummaryLabel;
         var dialog = options.dialog;
         var form = dialog.querySelector("form");
+        var fieldValidation = ui.createFieldValidation(form);
         var fields = dialog.querySelector("#offerEditFields");
         var preview = dialog.querySelector("#offerEditPreview");
         var status = dialog.querySelector("#offerEditStatus");
@@ -355,61 +356,6 @@
             return section;
         }
 
-        function clearFieldValidation() {
-            form.querySelectorAll(
-                "[data-field-validation-error]"
-            ).forEach(function (message) {
-                message.remove();
-            });
-            form.querySelectorAll(
-                "[data-validation-marked]"
-            ).forEach(function (control) {
-                var originalDescription =
-                    control.dataset.validationOriginalDescription;
-
-                control.removeAttribute("aria-invalid");
-                control.removeAttribute("data-validation-marked");
-                delete control.dataset.validationErrorId;
-                delete control.dataset.validationOriginalDescription;
-                if (originalDescription) {
-                    control.setAttribute("aria-describedby", originalDescription);
-                } else {
-                    control.removeAttribute("aria-describedby");
-                }
-            });
-        }
-
-        function markControlInvalid(control, message) {
-            var errorId;
-            var error;
-            var describedBy;
-
-            if (!control || control.dataset.validationMarked === "true") {
-                return;
-            }
-            errorId = createId("validation-error", control.id || (
-                control.dataset.offerId + "-" +
-                (control.dataset.path || control.dataset.dayField || "field") + "-" +
-                (control.dataset.week || "global") + "-" +
-                (control.dataset.weekday || "global")
-            ));
-            describedBy = control.getAttribute("aria-describedby") || "";
-            error = createElement("span", "field-error", message);
-            error.id = errorId;
-            error.dataset.fieldValidationError = "true";
-
-            control.dataset.validationMarked = "true";
-            control.dataset.validationErrorId = errorId;
-            control.dataset.validationOriginalDescription = describedBy;
-            control.setAttribute("aria-invalid", "true");
-            control.setAttribute(
-                "aria-describedby",
-                (describedBy ? describedBy + " " : "") + errorId
-            );
-            control.insertAdjacentElement("afterend", error);
-        }
-
-
         function calculate() {
             calculation = core.calculateAll({ version: core.VERSION, settings: settings, offers: [draft] });
             return calculation;
@@ -558,18 +504,18 @@
 
         function refresh() {
             calculate();
-            clearFieldValidation();
+            fieldValidation.clear();
             fields.querySelectorAll("input, select").forEach(function (control) {
                 if (control.dataset.path === "company") {
                     control.setCustomValidity(control.value.trim() ? "" : "请填写公司名称。");
                 }
                 if (!control.disabled && !control.validity.valid) {
-                    markControlInvalid(control, control.validity.valueMissing
+                    fieldValidation.mark(control, control.validity.valueMissing
                         ? "请填写此项。" : "请输入允许范围内的有效值。");
                 }
             });
             calculation.validation.errors.forEach(function (issue) {
-                controlsForIssue(issue).forEach(function (control) { markControlInvalid(control, issue.message); });
+                controlsForIssue(issue).forEach(function (control) { fieldValidation.mark(control, issue.message); });
             });
             var invalid = fields.querySelector('[aria-invalid="true"]');
             var hasErrors = Boolean(invalid) || calculation.validation.errors.length > 0;

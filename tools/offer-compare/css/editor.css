@@ -1,87 +1,399 @@
-/* The editor owns its scroll area; the comparison stays in place behind it. */
-html.offer-editor-open { overflow: hidden; }
-.comparison-offer-identity { display: flex; align-items: center; gap: 8px; }
-
-.offer-edit-dialog {
-    width: min(980px, calc(100vw - 48px));
-    max-width: calc(100vw - 48px);
-    max-height: min(920px, calc(100dvh - 48px));
-    padding: 0;
-    border: 1px solid var(--line);
-    border-radius: 16px;
+/* Offer editor styles. */
+.schedule-matrix :where(input, select) {
     background: var(--surface);
-    color: var(--ink);
-    box-shadow: 0 24px 80px rgba(22, 26, 23, 0.25);
-    overflow: hidden;
 }
-.offer-edit-dialog::backdrop { background: rgba(22, 26, 23, 0.48); }
-.offer-edit-form {
-    display: flex;
-    flex-direction: column;
+
+.offer-card__grid {
+    display: grid;
     min-width: 0;
-    max-height: min(918px, calc(100dvh - 50px));
-    margin: 0;
-}
-.offer-edit-header {
-    display: flex;
-    flex: 0 0 auto;
-    justify-content: space-between;
     align-items: start;
-    gap: 16px;
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--line);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 9px;
 }
-.offer-edit-header h2 { margin: 0; font-size: 1.4rem; overflow-wrap: anywhere; }
-.offer-edit-header p { margin: 4px 0 0; color: var(--muted); font-size: 0.86rem; }
-.offer-edit-close {
-    flex: 0 0 40px;
-    width: 40px;
-    height: 40px;
-    padding: 0;
+
+.offer-card__grid > .field {
+    align-content: start;
+    grid-auto-rows: max-content;
+}
+
+.offer-card__grid > .field > .field-label-row {
+    min-height: 1.4em;
+}
+
+.offer-card__grid > .field > :where(input, select) {
+    height: 38px;
+    min-height: 38px;
+    padding: 5px 9px;
+}
+
+@media (max-width: 760px) {
+    .offer-card__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .offer-card__grid > .field > :where(input, select) {
+        height: 42px;
+        min-height: 42px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+
+}
+.offer-card__grid > .field:nth-child(3n + 1) .field-help::after {
+    right: auto;
+    left: 0;
+}
+
+.schedule-details {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.schedule-details > summary {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 12px;
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.schedule-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.schedule-details > summary::after {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-right: 2px solid var(--teal);
+    border-bottom: 2px solid var(--teal);
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+}
+
+.schedule-details[open] > summary {
+    border-bottom: 1px solid var(--line);
+    background: var(--offer-accent-soft);
+}
+
+.schedule-details[open] > summary::after {
+    transform: rotate(225deg);
+}
+
+.schedule-details__content {
+    display: grid;
+    min-width: 0;
+    gap: 10px;
+    padding: 10px;
+}
+
+.schedule-primary-controls {
+    grid-template-columns: repeat(4, minmax(140px, 220px));
+    justify-content: start;
+}
+
+.schedule-primary-controls > .field:nth-child(n) .field-help::after {
+    right: 0;
+    left: auto;
+}
+
+.schedule-primary-controls > .field:nth-child(4n + 1) .field-help::after {
+    right: auto;
+    left: 0;
+}
+
+.schedule-matrix-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface);
-    color: var(--muted);
-    font-size: 1.65rem;
-    cursor: pointer;
+    -webkit-overflow-scrolling: touch;
 }
-.offer-edit-body {
+
+.schedule-matrix-wrap:focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.18);
+    outline-offset: 2px;
+}
+
+.schedule-matrix {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-variant-numeric: tabular-nums;
+}
+
+.schedule-matrix__labels {
+    width: 72px;
+}
+
+.schedule-matrix :is(th, td) {
     min-width: 0;
-    min-height: 0;
-    overflow: auto;
-    overscroll-behavior: contain;
-    padding: 20px 24px 24px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 5px 6px;
+    text-align: center;
+}
+
+.schedule-matrix :is(th, td):last-child {
+    border-right: 0;
+}
+
+.schedule-matrix tbody:last-child tr:last-child :is(th, td) {
+    border-bottom: 0;
+}
+
+.schedule-matrix thead th,
+.schedule-matrix__row-label {
+    background: var(--surface-strong);
+    color: var(--ink);
+    font-size: 0.8rem;
+}
+
+.schedule-matrix__corner,
+.schedule-matrix__row-label {
+    position: sticky;
+    z-index: 2;
+    left: 0;
+    min-width: 72px;
+    box-shadow: 1px 0 0 var(--line);
+    text-align: left !important;
+}
+
+.schedule-matrix__corner {
+    z-index: 3;
+}
+
+.schedule-matrix__week-heading th {
+    padding: 5px 8px;
+    background: var(--offer-accent-soft);
+    color: var(--teal-dark);
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.schedule-matrix input[type="time"] {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 4px 5px;
+}
+
+.schedule-matrix input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.schedule-details .field-help::after {
+    top: calc(100% + 8px);
+    bottom: auto;
+}
+
+@media (max-width: 760px) {
+    .schedule-primary-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .schedule-matrix {
+        min-width: 680px;
+        font-size: 0.85rem;
+    }
+
+    .schedule-matrix input[type="time"] {
+        height: 40px;
+        min-height: 40px;
+    }
+
+    .schedule-matrix__labels,
+    .schedule-matrix__corner,
+    .schedule-matrix__row-label {
+        width: 68px;
+        min-width: 68px;
+    }
+
+    .offer-card__grid > .field:nth-child(n) .field-help::after {
+        right: 0;
+        left: auto;
+    }
+
+    .offer-card__grid > .field:nth-child(odd) .field-help::after {
+        right: auto;
+        left: 0;
+    }
+
+    .schedule-details__content {
+        padding: 12px;
+    }
+
+}
+@media (min-width: 1000px) {
+    .overtime-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+}
+@media (max-width: 360px) {
+    .offer-card__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .offer-card__grid > .field:nth-child(n) .field-help::after {
+        right: auto;
+        left: 0;
+    }
+
+}
+html.offer-editor-open {
+    overflow: hidden;
+}
+
+.offer-edit-dialog {
+    width: min(980px, calc(100vw - 48px));
+}
+
+.offer-edit-form {
+    margin: 0;
+}
+
+.offer-edit-header p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.offer-edit-body {
     display: grid;
     gap: 22px;
 }
-.offer-edit-section { min-width: 0; }
-.offer-edit-section h3 { margin: 0 0 12px; font-size: 1rem; }
-.offer-edit-section .schedule-summary { margin: -6px 0 12px; color: var(--muted); font-size: 0.85rem; }
-.offer-edit-section .offer-card__grid { gap: 12px 16px; }
-.offer-edit-dialog .schedule-primary-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.offer-edit-dialog .schedule-details { margin-top: 14px; }
-.offer-edit-dialog .schedule-matrix-wrap { position: relative; margin-top: 14px; }
-.offer-edit-dialog .overtime-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.offer-edit-dialog .field-label-row { position: relative; min-height: 24px; }
-.offer-edit-dialog .field-help { position: static; }
-.offer-edit-dialog .field-help::after { bottom: calc(100% + 4px); }
-.offer-edit-dialog .schedule-primary-controls > .field:nth-child(odd) .field-help::after { left: 0; right: auto; }
-.offer-edit-footer {
-    flex: 0 0 auto;
-    border-top: 1px solid var(--line);
-    background: var(--surface-strong);
-    padding: 14px 24px 18px;
+
+.offer-edit-section {
+    min-width: 0;
 }
-.offer-edit-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.offer-edit-preview > div { min-width: 0; }
-.offer-edit-preview span { display: block; font-size: 0.78rem; color: var(--muted); }
-.offer-edit-preview strong { font-size: 1.12rem; color: var(--teal-dark); font-variant-numeric: tabular-nums; }
-.offer-edit-bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }
-#offerEditStatus { flex: 1; margin: 0; font-size: 0.82rem; color: var(--muted); }
-#offerEditStatus.is-error { color: var(--rose); }
-.offer-edit-buttons { display: flex; gap: 10px; flex: 0 0 auto; }
-.offer-edit-buttons .button { min-width: 88px; }
-.offer-edit-body .field-error { font-size: 0.8rem; }
+
+.offer-edit-section h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+}
+
+.offer-edit-section .schedule-summary {
+    margin: -6px 0 12px;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.offer-edit-section .offer-card__grid {
+    gap: 12px 16px;
+}
+
+.offer-edit-dialog .schedule-primary-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.offer-edit-dialog .schedule-details {
+    margin-top: 14px;
+}
+
+.offer-edit-dialog .schedule-matrix-wrap {
+    position: relative;
+    margin-top: 14px;
+}
+
+.offer-edit-dialog .overtime-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.offer-edit-dialog .field-label-row {
+    position: relative;
+    min-height: 24px;
+}
+
+.offer-edit-dialog .field-help {
+    position: static;
+}
+
+.offer-edit-dialog .field-help::after {
+    bottom: calc(100% + 4px);
+}
+
+.offer-edit-dialog .schedule-primary-controls > .field:nth-child(odd) .field-help::after {
+    left: 0;
+    right: auto;
+}
+
+.offer-edit-footer {
+    --dialog-footer-padding: 14px 24px 18px;
+}
+
+.offer-edit-preview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.offer-edit-preview > div {
+    min-width: 0;
+}
+
+.offer-edit-preview span {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+.offer-edit-preview strong {
+    font-size: 1.12rem;
+    color: var(--teal-dark);
+    font-variant-numeric: tabular-nums;
+}
+
+.offer-edit-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+#offerEditStatus {
+    flex: 1;
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+#offerEditStatus.is-error {
+    color: var(--rose);
+}
+
+.offer-edit-buttons {
+    display: flex;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.offer-edit-buttons .button {
+    min-width: 88px;
+}
+
+.offer-edit-body .field-error {
+    font-size: 0.8rem;
+}
 
 @media (max-width: 640px) {
     .offer-comparator > .offer-edit-dialog {
@@ -93,19 +405,56 @@ html.offer-editor-open { overflow: hidden; }
         border: 0;
         border-radius: 0;
     }
-    .offer-edit-form { height: 100%; max-height: 100%; }
-    .offer-edit-header { padding: 14px 16px; }
-    .offer-edit-header h2 { font-size: 1.2rem; }
-    .offer-edit-body { flex: 1 1 auto; padding: 18px 16px; gap: 20px; }
-    .offer-edit-dialog .offer-card__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
-    .offer-edit-dialog .field-label-row { min-height: 44px; align-items: start; }
-    .offer-edit-dialog .offer-card__grid > .field:nth-child(n) .field-help::after { right: 0; left: auto; }
-    .offer-edit-dialog .offer-card__grid > .field:nth-child(odd) .field-help::after { right: auto; left: 0; }
-    .offer-edit-footer { padding: 12px 16px max(14px, env(safe-area-inset-bottom)); }
-    .offer-edit-preview { gap: 8px; }
-    .offer-edit-preview strong { font-size: 0.96rem; }
-    .offer-edit-preview span { font-size: 0.73rem; }
-    .offer-edit-bottom { flex-wrap: wrap; gap: 8px; }
-    #offerEditStatus { flex: 1 1 100%; }
-    .offer-edit-buttons { justify-content: end; width: 100%; }
+
+    .offer-edit-body {
+        padding: 18px 16px;
+        gap: 20px;
+    }
+
+    .offer-edit-dialog .offer-card__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 12px;
+    }
+
+    .offer-edit-dialog .field-label-row {
+        min-height: 44px;
+        align-items: start;
+    }
+
+    .offer-edit-dialog .offer-card__grid > .field:nth-child(n) .field-help::after {
+        right: 0;
+        left: auto;
+    }
+
+    .offer-edit-dialog .offer-card__grid > .field:nth-child(odd) .field-help::after {
+        right: auto;
+        left: 0;
+    }
+
+    .offer-edit-preview {
+        gap: 8px;
+    }
+
+    .offer-edit-preview strong {
+        font-size: 0.96rem;
+    }
+
+    .offer-edit-preview span {
+        font-size: 0.73rem;
+    }
+
+    .offer-edit-bottom {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    #offerEditStatus {
+        flex: 1 1 100%;
+    }
+
+    .offer-edit-buttons {
+        justify-content: end;
+        width: 100%;
+    }
+
 }

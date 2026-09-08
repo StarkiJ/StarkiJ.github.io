@@ -6,18 +6,26 @@
     var model = window.OfferCompareModel;
     var selectors = window.OfferCompareSelectors;
     var ui = window.OfferCompareUi;
-    var storageKey = "starki.offerCompare.v2";
+    // Check dependencies before reading their exports or initializing controls.
+    if (!core || !model || !selectors || !ui ||
+            !window.OfferCompareEditor || !window.OfferCompareOrder ||
+            !window.OfferCompareTaxView || !window.OfferCompareStorage ||
+            !window.OfferCompareComparisonView) {
+        var application = document.getElementById("offerComparator");
+        application.setAttribute("aria-busy", "false");
+        application.removeAttribute("inert");
+        document.getElementById("resultStatus").textContent =
+            "应用模块加载失败，请刷新页面后重试。";
+        return;
+    }
+    var storage = window.OfferCompareStorage.create({ core: core });
     var numberFormatter = ui.numberFormatter;
     var clone = ui.clone;
     var createElement = ui.createElement;
-    var createId = ui.createId;
     var createUniqueOfferId = ui.createUniqueOfferId;
     var parseNumericInput = ui.parseNumericInput;
     var formatMoney = ui.formatMoney;
     var ratePercentValue = ui.ratePercentValue;
-    var formatHours = ui.formatHours;
-    var formatHourly = ui.formatHourly;
-    var saveTimer = 0;
     var uiState = {
         sortKey: "companyDepartment",
         sortDirection: "asc"
@@ -72,17 +80,12 @@
         hoursColumnHeading: document.getElementById("hoursColumnHeading")
     };
 
+    var fieldValidation = ui.createFieldValidation(elements.settingsForm);
+
     elements.application.setAttribute("aria-busy", "true");
     elements.application.setAttribute("inert", "");
     uiState.sortKey = elements.sortMetric.value;
     uiState.sortDirection = elements.sortDirection.value;
-
-    if (!core || !model || !selectors || !window.OfferCompareEditor || !window.OfferCompareOrder) {
-        elements.application.setAttribute("aria-busy", "false");
-        elements.application.removeAttribute("inert");
-        elements.resultStatus.textContent = "应用模块加载失败，请刷新页面后重试。";
-        return;
-    }
 
     function finishInitialization() {
         applicationReady = true;
@@ -103,24 +106,16 @@
     }
 
     function saveViewPreferences() {
-        try {
-            window.localStorage.setItem(storageKey + ".view", JSON.stringify({
-                sortKey: uiState.sortKey, sortDirection: uiState.sortDirection
-            }));
-        } catch (error) { /* Sorting remains available without browser storage. */ }
+        storage.saveView({ sortKey: uiState.sortKey, sortDirection: uiState.sortDirection });
     }
 
-    try {
-        var storedView = JSON.parse(window.localStorage.getItem(storageKey + ".view") || "null");
-        if (storedView && Array.from(elements.sortMetric.options).some(function (option) {
-            return option.value === storedView.sortKey;
-        })) {
-            uiState.sortKey = storedView.sortKey;
-            uiState.sortDirection = storedView.sortDirection === "asc" ? "asc" : "desc";
-            elements.sortMetric.value = uiState.sortKey;
-            elements.sortDirection.value = uiState.sortDirection;
-        }
-    } catch (error) { /* Ignore unavailable or outdated display preferences. */ }
+    var storedView = storage.loadView(Array.from(elements.sortMetric.options, function (option) { return option.value; }));
+    if (storedView) {
+        uiState.sortKey = storedView.sortKey;
+        uiState.sortDirection = storedView.sortDirection;
+        elements.sortMetric.value = uiState.sortKey;
+        elements.sortDirection.value = uiState.sortDirection;
+    }
 
     var editor = window.OfferCompareEditor.create({
         dialog: document.getElementById("offerEditDialog"),
@@ -275,29 +270,6 @@
         return true;
     }
 
-    function loadStoredState() {
-        try {
-            var stored = window.localStorage.getItem(storageKey);
-            if (!stored) {
-                return null;
-            }
-            var parsed = JSON.parse(stored);
-            if (!parsed || typeof parsed !== "object" ||
-                    !Array.isArray(parsed.offers)) {
-                throw new Error("浏览器保存缺少 offers 数组");
-            }
-            var parsedState = core.parseState(parsed);
-            if (parsedState.validation.errors.length) {
-                throw new Error(parsedState.validation.errors[0].message);
-            }
-            return parsedState.state;
-        } catch (error) {
-            storageWarning =
-                "浏览器保存不可用或版本不兼容，已回退到可用来源。";
-        }
-        return null;
-    }
-
     function updateDataSourceLabel() {
         var label = activeDataOrigin === "browser" ? "浏览器数据" : seedSource.label;
         var offerCount = seedState && Array.isArray(seedState.offers)
@@ -361,7 +333,7 @@
     }
 
     function saveStateSoon(immediate) {
-        window.clearTimeout(saveTimer);
+        storage.cancelPending();
 
         if (latestCalculation && latestCalculation.validation.errors.length) {
             elements.saveStatus.textContent =
@@ -371,19 +343,11 @@
 
         activeDataOrigin = "browser";
         updateDataSourceLabel();
-        function persist() {
-            try {
-                window.localStorage.setItem(
-                    storageKey,
-                    JSON.stringify(latestCalculation.state)
-                );
-                elements.saveStatus.textContent = "已保存到当前浏览器。";
-            } catch (error) {
-                elements.saveStatus.textContent = "浏览器未允许本地保存；本次计算仍然有效。";
-            }
-        }
-        if (immediate) { persist(); }
-        else { saveTimer = window.setTimeout(persist, 180); }
+        storage.save(latestCalculation.state, immediate, function () {
+            elements.saveStatus.textContent = "已保存到当前浏览器。";
+        }, function () {
+            elements.saveStatus.textContent = "浏览器未允许本地保存；本次计算仍然有效。";
+        });
     }
 
     function updateSettingsSummary() {
@@ -427,215 +391,15 @@
         );
     }
 
-    function appendMetricCell(row, value, formattedValue, best) {
-        var cell = createElement(
-            "td",
-            selectors.isBest(value, best) ? "metric-best" : "",
-            formattedValue
-        );
-        if (selectors.isBest(value, best)) {
-            cell.appendChild(createElement("span", "visually-hidden", "（最佳）"));
-        }
-        row.appendChild(cell);
-    }
-
     var taxView = window.OfferCompareTaxView.create({
         dialog: document.getElementById("taxDetailDialog"),
         getLatestCalculation: function () {
             return latestCalculation;
         }
     });
-    var selectedTaxLabel = taxView.selectedTaxLabel;
-    var createTaxCell = taxView.createTaxCell;
+    var comparisonView = window.OfferCompareComparisonView.create({ elements: elements, taxView: taxView });
 
-    function renderTable(views) {
-        var sortedViews = sortViews(views);
-        var best = selectors.bestValues(views);
-        var rows = sortedViews.map(function (view) {
-            var row = document.createElement("tr");
-            var offerCell = document.createElement("th");
-            var offerLink = createElement("button", "comparison-offer-link");
-            var name = createElement("strong", "", view.name);
-            var meta = createElement(
-                "span",
-                "comparison-offer-meta",
-                view.city + " · " + selectedTaxLabel(view.result)
-            );
-
-            row.id = createId("result-row", view.id);
-            row.dataset.offerId = view.id;
-            row.tabIndex = -1;
-            offerCell.scope = "row";
-            offerLink.type = "button";
-            offerLink.dataset.action = "jump-to-offer";
-            offerLink.dataset.offerId = view.id;
-            offerLink.setAttribute("aria-label", "编辑 " + view.name);
-            offerLink.title = "编辑此 Offer";
-            var identityLine = createElement("span", "comparison-offer-identity");
-            identityLine.append(name);
-            offerLink.append(identityLine, meta);
-            offerCell.appendChild(offerLink);
-            row.appendChild(offerCell);
-            appendMetricCell(
-                row,
-                view.monthlySalary,
-                formatMoney(view.monthlySalary),
-                best.monthlySalary
-            );
-            appendMetricCell(
-                row,
-                view.salaryMonths,
-                numberFormatter.format(view.salaryMonths) + " 薪",
-                best.salaryMonths
-            );
-            appendMetricCell(
-                row,
-                view.annualPretaxCash,
-                formatMoney(view.annualPretaxCash),
-                best.annualPretaxCash
-            );
-            row.appendChild(createTaxCell(view));
-            appendMetricCell(
-                row,
-                view.annualTakeHomeCash,
-                formatMoney(view.annualTakeHomeCash),
-                best.annualTakeHomeCash
-            );
-            appendMetricCell(
-                row,
-                view.housingFundEquity,
-                formatMoney(view.housingFundEquity),
-                best.housingFundEquity
-            );
-            appendMetricCell(
-                row,
-                view.cashAndHousingFundEquity,
-                formatMoney(view.cashAndHousingFundEquity),
-                best.cashAndHousingFundEquity
-            );
-            appendMetricCell(row, view.weeklyHours, formatHours(view.weeklyHours, "h"), best.weeklyHours);
-            appendMetricCell(row, view.pretaxHourly, formatHourly(view.pretaxHourly, "h"), best.pretaxHourly);
-            appendMetricCell(row, view.afterTaxHourly, formatHourly(view.afterTaxHourly, "h"), best.afterTaxHourly);
-            return row;
-        });
-
-        elements.comparisonTableBody.replaceChildren.apply(elements.comparisonTableBody, rows);
-    }
-
-    function createSummaryItem(label, owner, metric) {
-        var item = createElement("article");
-        var main = createElement("div", "summary-main");
-
-        main.append(
-            createElement("strong", "summary-owner", owner),
-            createElement("span", "summary-metric", metric)
-        );
-        item.append(createElement("h3", "", label), main);
-        return item;
-    }
-
-    function renderSummary(views) {
-        var leaders = selectors.summaryLeaders(views);
-        var hourlyBest = leaders.afterTaxHourly;
-        var incomeBest = leaders.annualTakeHomeCash;
-        var hoursBest = leaders.weeklyHours;
-
-        elements.resultSummary.classList.add("comparison-summary");
-        elements.resultSummary.replaceChildren(
-            createSummaryItem(
-                "税后等效时薪最高",
-                hourlyBest.name,
-                formatHourly(hourlyBest.afterTaxHourly, "h")
-            ),
-            createSummaryItem(
-                "税后到手最高",
-                incomeBest.name,
-                formatMoney(incomeBest.annualTakeHomeCash)
-            ),
-            createSummaryItem(
-                "周工作时长最低",
-                hoursBest.name,
-                formatHours(hoursBest.weeklyHours, "h")
-            )
-        );
-    }
-
-    function renderAssumptions(calculation) {
-        var content = elements.assumptionPanel.querySelector(".assumption-content");
-        var existingList = content ? content.querySelector("ul") : null;
-        var list = document.createElement("ul");
-
-        calculation.assumptions.forEach(function (assumption) {
-            var item = document.createElement("li");
-            var label = createElement("strong", "", assumption.category + " · " + assumption.label + "：");
-            item.append(label, document.createTextNode(assumption.value));
-            list.appendChild(item);
-        });
-
-        elements.assumptionSummary.textContent =
-            "查看 " + calculation.assumptions.length + " 项全局默认假设";
-        if (existingList) {
-            existingList.replaceWith(list);
-        } else if (content) {
-            content.appendChild(list);
-        }
-    }
-
-    function clearFieldValidation() {
-        elements.settingsForm.querySelectorAll(
-            "[data-field-validation-error]"
-        ).forEach(function (message) {
-            message.remove();
-        });
-        elements.settingsForm.querySelectorAll(
-            "[data-validation-marked]"
-        ).forEach(function (control) {
-            var originalDescription =
-                control.dataset.validationOriginalDescription;
-
-            control.removeAttribute("aria-invalid");
-            control.removeAttribute("data-validation-marked");
-            delete control.dataset.validationErrorId;
-            delete control.dataset.validationOriginalDescription;
-            if (originalDescription) {
-                control.setAttribute("aria-describedby", originalDescription);
-            } else {
-                control.removeAttribute("aria-describedby");
-            }
-        });
-    }
-
-    function markControlInvalid(control, message) {
-        var errorId;
-        var error;
-        var describedBy;
-
-        if (!control || control.dataset.validationMarked === "true") {
-            return;
-        }
-        errorId = createId("validation-error", control.id || (
-            control.dataset.offerId + "-" +
-            (control.dataset.path || control.dataset.dayField || "field") + "-" +
-            (control.dataset.week || "global") + "-" +
-            (control.dataset.weekday || "global")
-        ));
-        describedBy = control.getAttribute("aria-describedby") || "";
-        error = createElement("span", "field-error", message);
-        error.id = errorId;
-        error.dataset.fieldValidationError = "true";
-
-        control.dataset.validationMarked = "true";
-        control.dataset.validationErrorId = errorId;
-        control.dataset.validationOriginalDescription = describedBy;
-        control.setAttribute("aria-invalid", "true");
-        control.setAttribute(
-            "aria-describedby",
-            (describedBy ? describedBy + " " : "") + errorId
-        );
-        control.insertAdjacentElement("afterend", error);
-    }
-
-    function controlsForValidationIssue(validationIssue, calculation) {
+    function controlsForValidationIssue(validationIssue) {
         var settingsControls = {
             "settings.year": elements.taxYear,
             "settings.socialInsuranceRate": elements.socialSecurityRate,
@@ -646,13 +410,13 @@
     }
 
     function renderFieldValidation(calculation) {
-        clearFieldValidation();
+        fieldValidation.clear();
 
         elements.settingsForm.querySelectorAll("input, select").forEach(
             function (control) {
                 if (!control.disabled && control.validity &&
                         !control.validity.valid) {
-                    markControlInvalid(
+                    fieldValidation.mark(
                         control,
                         "请输入控件允许范围内的有效值。"
                     );
@@ -660,9 +424,9 @@
             }
         );
         calculation.validation.errors.forEach(function (validationIssue) {
-            controlsForValidationIssue(validationIssue, calculation).forEach(
+            controlsForValidationIssue(validationIssue).forEach(
                 function (control) {
-                    markControlInvalid(control, validationIssue.message);
+                    fieldValidation.mark(control, validationIssue.message);
                 }
             );
         });
@@ -686,38 +450,10 @@
             elements.settingsPanel.open = true;
         }
 
-        elements.hoursColumnHeading.textContent = "周工时";
-        renderAssumptions(latestCalculation);
-
-        if (!views.length) {
-            elements.resultSummary.classList.remove("comparison-summary");
-            elements.resultSummary.replaceChildren(
-                createElement("p", "", "添加至少一个 Offer 后，这里会显示对比结果。")
-            );
-            elements.comparisonTableBody.replaceChildren(
-                (function () {
-                    var row = document.createElement("tr");
-                    var cell = createElement("td", "", "暂无可计算的 Offer");
-                    cell.colSpan = 11;
-                    row.appendChild(cell);
-                    return row;
-                }())
-            );
-        } else {
-            renderSummary(views);
-            renderTable(views);
-        }
+        comparisonView.render(latestCalculation, views, sortViews(views));
         renderResultControls();
         renderFieldValidation(latestCalculation);
 
-        if (errors.length) {
-            elements.resultStatus.textContent =
-                "有 " + errors.length + " 项输入需要检查：" + errors[0].message;
-            elements.resultStatus.classList.add("is-error");
-        } else {
-            elements.resultStatus.textContent = views.length + " 个 Offer";
-            elements.resultStatus.classList.remove("is-error");
-        }
     }
 
     function commitStateAndRefresh(options) {
@@ -831,12 +567,7 @@
         if (!window.confirm(confirmMessage)) {
             return;
         }
-        window.clearTimeout(saveTimer);
-        try {
-            window.localStorage.removeItem(storageKey);
-        } catch (error) {
-            storageCleared = false;
-        }
+        storageCleared = storage.clear();
         state = clone(seedState);
         latestCalculation = null;
         activeDataOrigin = "source";
@@ -860,20 +591,7 @@
                 "导出失败：请先修正未通过校验的输入。";
             return;
         }
-        var blob = new Blob(
-            [core.stringifyState(
-                latestCalculation ? latestCalculation.state : state
-            )],
-            { type: "application/json;charset=utf-8" }
-        );
-        var url = URL.createObjectURL(blob);
-        var link = document.createElement("a");
-        link.href = url;
-        link.download = "private.json";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
+        storage.download(latestCalculation ? latestCalculation.state : state);
         elements.saveStatus.textContent = "JSON 已导出；文件为未加密明文，请妥善保存。";
     }
 
@@ -881,27 +599,8 @@
         if (!file) {
             return;
         }
-        if (file.size > 2 * 1024 * 1024) {
-            elements.saveStatus.textContent = "导入失败：JSON 文件不能超过 2 MB。";
-            elements.importOffersInput.value = "";
-            return;
-        }
-        file.text().then(function (content) {
+        storage.readImport(file).then(function (imported) {
             endOfferMode(false);
-            var parsed = JSON.parse(content);
-            var parsedState;
-            if (!Array.isArray(parsed.offers)) {
-                throw new Error("JSON 必须包含 offers 数组。");
-            }
-            parsedState = core.parseState(parsed);
-            var imported = parsedState.state;
-            var validation = parsedState.validation;
-
-            if (!imported.offers.length || validation.errors.length) {
-                throw new Error(validation.errors.length
-                    ? validation.errors[0].message
-                    : "JSON 中没有可用的 Offer。");
-            }
             if (!window.confirm("导入会替换当前 Offer 和计算设置，确定继续吗？")) {
                 return;
             }
@@ -1014,7 +713,9 @@
         seedState = clone(loaded.state);
         seedSource = loaded.source;
         seedWarnings = loaded.warnings.slice();
-        storedState = loadStoredState();
+        var stored = storage.load();
+        storageWarning = stored.warning;
+        storedState = stored.state;
         state = storedState || clone(seedState);
         latestCalculation = null;
         activeDataOrigin = storedState ? "browser" : "source";

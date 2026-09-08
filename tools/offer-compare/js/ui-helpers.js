@@ -1,5 +1,7 @@
 (function (root, factory) {
-    var api = factory(root);
+    var domain = typeof module === "object" && module.exports
+        ? require("./domain.js") : root.OfferCompareDomain;
+    var api = factory(root, domain);
 
     if (typeof module === "object" && module.exports) {
         module.exports = api;
@@ -7,10 +9,10 @@
     if (root) {
         root.OfferCompareUi = api;
     }
-}(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
+}(typeof globalThis !== "undefined" ? globalThis : this, function (root, domain) {
     "use strict";
 
-    var weekdayNames = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+    var weekdayNames = domain.WEEKDAY_NAMES;
     var moneyFormatter = new Intl.NumberFormat("zh-CN", {
         style: "currency",
         currency: "CNY",
@@ -25,9 +27,7 @@
         maximumFractionDigits: 2
     });
 
-    function clone(value) {
-        return JSON.parse(JSON.stringify(value));
-    }
+    var clone = domain.clone;
 
     function createElement(tagName, className, textContent) {
         var element = document.createElement(tagName);
@@ -52,6 +52,62 @@
             hash = Math.imul(hash, 16777619);
         }
         return readable + "-" + (hash >>> 0).toString(36);
+    }
+
+    function createFieldValidation(container) {
+        function clear() {
+            container.querySelectorAll(
+                "[data-field-validation-error]"
+            ).forEach(function (message) {
+                message.remove();
+            });
+            container.querySelectorAll(
+                "[data-validation-marked]"
+            ).forEach(function (control) {
+                var originalDescription =
+                    control.dataset.validationOriginalDescription;
+
+                control.removeAttribute("aria-invalid");
+                control.removeAttribute("data-validation-marked");
+                delete control.dataset.validationOriginalDescription;
+                if (originalDescription) {
+                    control.setAttribute("aria-describedby", originalDescription);
+                } else {
+                    control.removeAttribute("aria-describedby");
+                }
+            });
+        }
+
+        function mark(control, message) {
+            var errorId;
+            var error;
+            var describedBy;
+
+            if (!control || control.dataset.validationMarked === "true") {
+                return;
+            }
+            errorId = createId("validation-error", control.id || (
+                control.dataset.offerId + "-" +
+                (control.dataset.path || control.dataset.dayField || "field") + "-" +
+                (control.dataset.week || "global") + "-" +
+                (control.dataset.weekday || "global")
+            ));
+            describedBy = control.getAttribute("aria-describedby") || "";
+            error = createElement("span", "field-error", message);
+            error.id = errorId;
+            error.dataset.fieldValidationError = "true";
+
+            control.dataset.validationMarked = "true";
+            control.dataset.validationOriginalDescription = describedBy;
+            control.setAttribute("aria-invalid", "true");
+            control.setAttribute(
+                "aria-describedby",
+                (describedBy ? describedBy + " " : "") + errorId
+            );
+            control.insertAdjacentElement("afterend", error);
+        }
+
+        return Object.freeze({ clear: clear, mark: mark });
     }
 
     function createUniqueOfferId() {
@@ -120,6 +176,7 @@
         clone: clone,
         createElement: createElement,
         createId: createId,
+        createFieldValidation: createFieldValidation,
         createUniqueOfferId: createUniqueOfferId,
         parseNumericInput: parseNumericInput,
         formatMoney: formatMoney,

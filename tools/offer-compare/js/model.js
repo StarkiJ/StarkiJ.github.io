@@ -1,7 +1,9 @@
 (function (root, factory) {
     "use strict";
 
-    var api = factory();
+    var domain = typeof module === "object" && module.exports
+        ? require("./domain.js") : root.OfferCompareDomain;
+    var api = factory(domain);
 
     if (typeof module === "object" && module.exports) {
         module.exports = api;
@@ -12,29 +14,13 @@
     }
 }(typeof window !== "undefined"
     ? window
-    : (typeof globalThis !== "undefined" ? globalThis : this), function () {
+    : (typeof globalThis !== "undefined" ? globalThis : this), function (domain) {
     "use strict";
 
-    var DEFAULT_MAX_CYCLE_WEEKS = 52;
+    var DEFAULT_MAX_CYCLE_WEEKS = domain.MAX_CYCLE_WEEKS;
 
-    function isObject(value) {
-        return value !== null && typeof value === "object" && !Array.isArray(value);
-    }
-
-    function clone(value) {
-        if (Array.isArray(value)) {
-            return value.map(clone);
-        }
-
-        if (isObject(value)) {
-            return Object.keys(value).reduce(function (copy, key) {
-                copy[key] = clone(value[key]);
-                return copy;
-            }, {});
-        }
-
-        return value;
-    }
+    var isObject = domain.isObject;
+    var clone = domain.clone;
 
     function finiteNumber(value, fallback) {
         var parsed = Number(value);
@@ -49,46 +35,12 @@
         cycleWeeks,
         addSaturday
     ) {
-        var earlyDays = Array.isArray(earlyWeekdays) ? earlyWeekdays : [];
-        var days = [];
-        var week;
-        var weekday;
-
-        for (week = 1; week <= cycleWeeks; week += 1) {
-            for (weekday = 1; weekday <= 5; weekday += 1) {
-                days.push({
-                    week: week,
-                    weekday: weekday,
-                    start: start,
-                    end: earlyDays.indexOf(weekday) >= 0 ? earlyEnd : normalEnd
-                });
-            }
-        }
-
-        if (addSaturday) {
-            days.push({
-                week: cycleWeeks,
-                weekday: 6,
-                start: start,
-                end: earlyEnd
-            });
-        }
-
-        return {
-            cycleWeeks: cycleWeeks,
-            days: days
-        };
+        return domain.createWeekdaySchedule(start, normalEnd, earlyEnd, earlyWeekdays, cycleWeeks,
+            addSaturday ? [{ week: cycleWeeks, weekday: 6, start: start, end: earlyEnd }] : []);
     }
 
     var SCHEDULE_TEMPLATES = {
-        "standard-965": scheduleFromPattern(
-            "09:00",
-            "18:00",
-            "18:00",
-            [],
-            1,
-            false
-        ),
+        "standard-965": domain.createDefaultSchedule(),
         "995-early": scheduleFromPattern(
             "09:00",
             "21:00",
@@ -138,14 +90,7 @@
     }
 
     function createOffer(id) {
-        var schedule = scheduleFromPattern(
-            "09:00",
-            "18:00",
-            "18:00",
-            [],
-            1,
-            false
-        );
+        var schedule = domain.createDefaultSchedule();
 
         schedule.lunchBreakHours = null;
         schedule.dinnerBreakHours = null;

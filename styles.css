@@ -332,7 +332,7 @@ textarea {
 
 .link-grid {
     display: grid;
-    /* Keep sparse sections aligned; allow a card to fit containers narrower than its preferred minimum. */
+    /* Keep sparse sections aligned and allow narrow containers. */
     grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--home-card-min-width)), 1fr));
     gap: 16px;
 }
@@ -499,97 +499,6 @@ textarea {
     resize: vertical;
 }
 
-.line-editor {
-    display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #ffffff;
-}
-
-.line-editor:focus-within {
-    outline: 3px solid rgba(15, 118, 110, 0.16);
-    border-color: var(--teal);
-}
-
-.line-numbers {
-    min-height: 280px;
-    margin: 0;
-    border-right: 1px solid var(--line);
-    background: var(--surface-strong);
-    color: var(--muted);
-    padding: 12px 10px;
-    overflow: hidden;
-    font-family: Consolas, "SFMono-Regular", "Liberation Mono", Menlo, monospace;
-    line-height: 1.5;
-    text-align: right;
-    user-select: none;
-    white-space: pre;
-}
-
-.editor-input-wrap {
-    position: relative;
-    min-width: 0;
-    background: #ffffff;
-}
-
-.editor-highlight-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    padding: 12px 14px;
-    color: transparent;
-    font-family: Consolas, "SFMono-Regular", "Liberation Mono", Menlo, monospace;
-    line-height: 1.5;
-    pointer-events: none;
-    white-space: pre;
-}
-
-.editor-highlight-line {
-    min-height: 1.5em;
-}
-
-.editor-highlight-add {
-    background: #e9f7ef;
-}
-
-.editor-highlight-delete {
-    background: #fff0f3;
-}
-
-.editor-highlight-has-parts.editor-highlight-add,
-.editor-highlight-has-parts.editor-highlight-delete {
-    background: transparent;
-}
-
-.editor-highlight-add .editor-highlight-change {
-    background: #bdebd0;
-}
-
-.editor-highlight-delete .editor-highlight-change {
-    background: #ffc8d1;
-}
-
-.field textarea.diff-textarea {
-    position: relative;
-    z-index: 1;
-    min-height: 280px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    font-family: Consolas, "SFMono-Regular", "Liberation Mono", Menlo, monospace;
-    line-height: 1.5;
-    overflow: auto;
-    resize: vertical;
-    white-space: pre;
-}
-
-.field textarea.diff-textarea:focus {
-    outline: 0;
-}
-
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -631,8 +540,7 @@ textarea {
 }
 
 .stat-grid,
-.detail-list,
-.diff-stats {
+.detail-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -699,78 +607,6 @@ textarea {
     font-weight: 800;
 }
 
-.diff-output {
-    margin-top: 18px;
-    max-height: 560px;
-    overflow: auto;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #ffffff;
-    font-family: Consolas, "SFMono-Regular", "Liberation Mono", Menlo, monospace;
-    font-size: 0.95rem;
-}
-
-.diff-line {
-    display: grid;
-    grid-template-columns: 52px 52px 44px minmax(0, 1fr);
-    border-bottom: 1px solid var(--line);
-    min-width: max-content;
-}
-
-.diff-line:last-child {
-    border-bottom: 0;
-}
-
-.diff-line-number,
-.diff-prefix {
-    padding: 4px 10px;
-    color: var(--muted);
-    text-align: center;
-    user-select: none;
-}
-
-.diff-line-number {
-    border-right: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.48);
-    text-align: right;
-}
-
-.diff-line code {
-    display: block;
-    min-height: 28px;
-    padding: 4px 12px;
-    white-space: pre-wrap;
-}
-
-.diff-add {
-    background: #e9f7ef;
-}
-
-.diff-add .diff-prefix {
-    color: var(--teal);
-}
-
-.diff-delete {
-    background: #fff0f3;
-}
-
-.diff-delete .diff-prefix {
-    color: var(--rose);
-}
-
-.diff-inline-change {
-    border-radius: 4px;
-    padding: 1px 0;
-}
-
-.diff-add .diff-inline-change {
-    background: #bdebd0;
-}
-
-.diff-delete .diff-inline-change {
-    background: #ffc8d1;
-}
-
 .chip-list,
 .group-list {
     display: flex;
@@ -828,8 +664,7 @@ textarea {
     .field-grid,
     .group-grid,
     .stat-grid,
-    .detail-list,
-    .diff-stats {
+    .detail-list {
         grid-template-columns: 1fr;
     }
 
@@ -853,8 +688,8 @@ textarea {
     .tool-hero h1 {
         font-size: 2.25rem;
     }
-}
 
+}
 @media (max-width: 640px) {
     .intro {
         grid-template-columns: 1fr;
@@ -872,8 +707,8 @@ textarea {
         order: -1;
         justify-self: center;
     }
-}
 
+}
 @media (max-width: 520px) {
     .site-header,
     .site-header-inner,
@@ -937,8 +772,8 @@ textarea {
         min-height: 0;
         padding: 18px 44px 18px 18px;
     }
-}
 
+}
 @media (max-width: 420px) {
     .site-header-inner {
         width: calc(100% - 16px);
@@ -962,8 +797,8 @@ textarea {
         padding: 5px 6px;
         font-size: 0.875rem;
     }
-}
 
+}
 .visually-hidden {
     position: absolute !important;
     width: 1px !important;
@@ -989,4 +824,5 @@ textarea {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+
 }

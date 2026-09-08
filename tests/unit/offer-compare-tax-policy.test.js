@@ -150,6 +150,7 @@ var browserSource = fs.readFileSync(
 var browserContext = {
     window: {}
 };
+browserContext.window.OfferCompareDomain = require("../../tools/offer-compare/js/domain.js");
 vm.runInNewContext(browserSource, browserContext, {
     filename: "tax-policy.js"
 });

@@ -1,0 +1,72 @@
+/* Offer controls styles. */
+.field-label-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+}
+
+.field-label-row label {
+    min-width: 0;
+}
+
+.field-help {
+    position: relative;
+    display: inline-grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--teal-dark);
+    cursor: help;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.field-help::after {
+    position: absolute;
+    z-index: 50;
+    right: 0;
+    left: auto;
+    bottom: calc(100% + 8px);
+    width: max-content;
+    max-width: min(260px, 72vw);
+    border-radius: 7px;
+    padding: 8px 10px;
+    background: var(--ink);
+    box-shadow: 0 8px 20px rgba(22, 26, 23, 0.18);
+    color: var(--surface);
+    content: attr(data-tooltip);
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.45;
+    opacity: 0;
+    pointer-events: none;
+    text-align: left;
+    transform: translateY(4px);
+    transition: opacity 140ms ease, transform 140ms ease;
+    white-space: normal;
+}
+
+.field-help:hover::after,
+.field-help:focus::after,
+.field-help:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.field-error {
+    display: block;
+    margin-top: 3px;
+    color: var(--rose);
+    font-size: 0.76rem;
+    font-weight: 750;
+    line-height: 1.35;
+}

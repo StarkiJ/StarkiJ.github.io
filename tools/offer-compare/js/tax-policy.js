@@ -1,7 +1,9 @@
 (function (root, factory) {
     "use strict";
 
-    var api = factory();
+    var domain = typeof module === "object" && module.exports
+        ? require("./domain.js") : root.OfferCompareDomain;
+    var api = factory(domain);
 
     if (typeof module === "object" && module.exports) {
         module.exports = api;
@@ -12,7 +14,7 @@
     }
 }(typeof window !== "undefined"
     ? window
-    : (typeof globalThis !== "undefined" ? globalThis : this), function () {
+    : (typeof globalThis !== "undefined" ? globalThis : this), function (domain) {
     "use strict";
 
     var VERSION = 1;
@@ -56,24 +58,7 @@
         ]
     };
 
-    function isObject(value) {
-        return value !== null && typeof value === "object" && !Array.isArray(value);
-    }
-
-    function clone(value) {
-        if (Array.isArray(value)) {
-            return value.map(clone);
-        }
-
-        if (isObject(value)) {
-            return Object.keys(value).reduce(function (copy, key) {
-                copy[key] = clone(value[key]);
-                return copy;
-            }, {});
-        }
-
-        return value;
-    }
+    var clone = domain.clone;
 
     function normalizeYear(value) {
         var parsed = Number(value);
