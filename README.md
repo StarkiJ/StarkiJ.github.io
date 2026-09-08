@@ -45,6 +45,10 @@ npm run check:all
 如果 PowerShell 策略阻止执行 `npm.ps1`，可将命令中的 `npm` 替换为
 `npm.cmd`。
 
+修改 Offer 页引用的 JavaScript 或 CSS（包括共享的 `styles.css`）后，运行
+`npm run version:offer-assets` 并提交更新的 HTML。资源 URL 使用内容版本，避免
+GitHub Pages 发布后混用浏览器缓存的旧脚本；`npm run check` 会检查版本是否同步。
+
 ## Offer 对比数据
 
 在 Offer 列表中点击公司 / 部门名称打开填写窗口，或使用“新增 Offer”。窗口内实时预览

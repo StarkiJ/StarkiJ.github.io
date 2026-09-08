@@ -71,6 +71,34 @@ async function run() {
     );
     assert.strictEqual(fallbackResult.source.kind, "example");
 
+    var privateSignal;
+    var timedOutPrivate = await dataLoader.loadSeedState(coreStub, {
+        timeoutMs: 10,
+        fetch: function (url, options) {
+            if (url === PRIVATE_URL) {
+                privateSignal = options.signal;
+                return new Promise(function () {});
+            }
+            return response(200, { version: 2, offers: [] });
+        }
+    });
+    assert.strictEqual(timedOutPrivate.source.kind, "example");
+    assert.strictEqual(privateSignal.aborted, true);
+    assert.match(timedOutPrivate.warnings[0], /私有数据未载入：.*超时/);
+
+    var bodySignals = [];
+    var timedOutBodies = await dataLoader.loadSeedState(coreStub, {
+        timeoutMs: 10,
+        fetch: function (_, options) {
+            bodySignals.push(options.signal);
+            return { ok: true, json: function () { return new Promise(function () {}); } };
+        }
+    });
+    assert.strictEqual(timedOutBodies.source.kind, "empty");
+    assert.strictEqual(timedOutBodies.warnings.length, 2);
+    assert.ok(timedOutBodies.warnings.every(function (warning) { return /超时/.test(warning); }));
+    assert.ok(bodySignals.every(function (signal) { return signal.aborted; }));
+
     var invalidPrivateRequests = [];
     var invalidPrivateResult = await dataLoader.loadSeedState(coreStub, {
         fetch: async function (url) {

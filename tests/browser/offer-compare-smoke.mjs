@@ -8,6 +8,7 @@ import {
 import { checkEditorFlow, checkComparisonAndLayout } from "./offer-editor-flow.mjs";
 import { checkOfferActions } from "./offer-actions-flow.mjs";
 import { checkTaxDialog } from "./tax-dialog-flow.mjs";
+import { checkCachedAssetUpgrade } from "./offer-cache-flow.mjs";
 
 async function run() {
     const browser = await startOfferCompareBrowser();
@@ -19,6 +20,7 @@ async function run() {
     } = browser;
 
     try {
+        await checkCachedAssetUpgrade(browser);
         server.setSeedResponseDelay(1500);
         await client.send("Page.navigate", { url: pageUrl });
         await waitFor(

@@ -14,6 +14,7 @@
 
     var PRIVATE_URL = "./data/private.json";
     var EXAMPLE_URL = "./data/examples.json";
+    var REQUEST_TIMEOUT_MS = 8000;
 
     function isStateFile(value) {
         return value && typeof value === "object" && Array.isArray(value.offers);
@@ -23,21 +24,38 @@
         return error && error.message ? error.message : String(error);
     }
 
-    async function fetchState(fetcher, url) {
-        var response = await fetcher(url, { cache: "no-store" });
-        var error;
-        var value;
+    async function fetchState(fetcher, url, timeoutMs) {
+        var controller = typeof AbortController === "function" ? new AbortController() : null;
+        var options = { cache: "no-store" };
+        var timer;
+        if (controller) { options.signal = controller.signal; }
 
-        if (!response.ok) {
-            error = new Error("读取 " + url + " 失败（HTTP " + response.status + "）");
-            error.status = response.status;
-            throw error;
+        // Bound both the request and response body; either can otherwise wait forever.
+        var timeout = new Promise(function (_, reject) {
+            timer = setTimeout(function () {
+                reject(new Error("读取 " + url + " 超时，请检查网络连接。"));
+                if (controller) { controller.abort(); }
+            }, timeoutMs);
+        });
+        var request = (async function () {
+            var response = await fetcher(url, options);
+            var error;
+            if (!response.ok) {
+                error = new Error("读取 " + url + " 失败（HTTP " + response.status + "）");
+                error.status = response.status;
+                throw error;
+            }
+            var value = await response.json();
+            if (!isStateFile(value)) {
+                throw new Error(url + " 缺少 offers 数组");
+            }
+            return value;
+        }());
+        try {
+            return await Promise.race([request, timeout]);
+        } finally {
+            clearTimeout(timer);
         }
-        value = await response.json();
-        if (!isStateFile(value)) {
-            throw new Error(url + " 缺少 offers 数组");
-        }
-        return value;
     }
 
     function parseSeedState(core, rawState, url) {
@@ -52,6 +70,8 @@
 
     async function loadSeedState(core, options) {
         var settings = options || {};
+        var timeoutMs = Number.isFinite(settings.timeoutMs) && settings.timeoutMs > 0
+            ? settings.timeoutMs : REQUEST_TIMEOUT_MS;
         var fetcher = settings.fetch || (
             typeof fetch === "function" ? fetch.bind(globalThis) : null
         );
@@ -71,7 +91,7 @@
         }
 
         try {
-            privateState = await fetchState(fetcher, PRIVATE_URL);
+            privateState = await fetchState(fetcher, PRIVATE_URL, timeoutMs);
             return {
                 state: parseSeedState(core, privateState, PRIVATE_URL),
                 source: { kind: "private", label: "本机私有数据", file: PRIVATE_URL },
@@ -84,7 +104,7 @@
         }
 
         try {
-            exampleState = await fetchState(fetcher, EXAMPLE_URL);
+            exampleState = await fetchState(fetcher, EXAMPLE_URL, timeoutMs);
             return {
                 state: parseSeedState(core, exampleState, EXAMPLE_URL),
                 source: { kind: "example", label: "脱敏示例", file: EXAMPLE_URL },

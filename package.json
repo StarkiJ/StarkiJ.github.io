@@ -5,7 +5,9 @@
     "test": "node --test tests/unit/offer-compare-core.test.js tests/unit/offer-compare-data.test.js tests/unit/offer-compare-model.test.js tests/unit/offer-compare-selectors.test.js tests/unit/offer-compare-tax-policy.test.js",
     "test:browser": "node tests/browser/offer-compare-smoke.mjs",
     "check:links": "node scripts/check-links.mjs",
-    "check": "npm run test && npm run check:links",
+    "version:offer-assets": "node scripts/version-offer-assets.mjs",
+    "check:assets": "node scripts/version-offer-assets.mjs --check",
+    "check": "npm run test && npm run check:links && npm run check:assets",
     "check:all": "npm run check && npm run test:browser"
   }
 }
