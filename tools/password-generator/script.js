@@ -43,11 +43,15 @@ function shuffleCharacters(characters) {
     return shuffled.join("");
 }
 
-function showError(message) {
+function showMessage(title, message) {
     resultPanel.hidden = false;
     resultPanel.classList.add("is-error");
-    resultTitle.textContent = "需要再检查一下";
+    resultTitle.textContent = title;
     resultCopy.textContent = message;
+}
+
+function showError(message) {
+    showMessage("需要再检查一下", message);
     passwordOutput.textContent = "";
 }
 
@@ -126,15 +130,18 @@ async function copyPassword() {
     }
 
     if (!navigator.clipboard) {
-        showError("当前浏览器不支持自动复制，请手动选中密码复制。");
+        showMessage("复制未完成", "当前浏览器不支持自动复制，请手动选中密码复制。");
         return;
     }
 
     try {
         await navigator.clipboard.writeText(password);
+        resultPanel.classList.remove("is-error");
+        resultTitle.textContent = "生成结果";
+        resultCopy.textContent = "已复制到剪贴板。";
         copyButton.textContent = "已复制";
     } catch (error) {
-        showError("复制失败了，请手动选中密码复制。");
+        showMessage("复制未完成", "复制失败了，请手动选中密码复制。");
     }
 }
 

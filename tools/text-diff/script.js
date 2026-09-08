@@ -308,11 +308,15 @@ function scheduleLiveCompare() {
     }, 360);
 }
 
-function showError(message) {
+function showMessage(title, message) {
     resultPanel.hidden = false;
     resultPanel.classList.add("is-error");
-    resultTitle.textContent = "需要再检查一下";
+    resultTitle.textContent = title;
     resultCopy.textContent = message;
+}
+
+function showError(message) {
+    showMessage("需要再检查一下", message);
     diffStats.replaceChildren();
     diffOutput.replaceChildren();
     latestDiffText = "";
@@ -501,15 +505,18 @@ async function copyDiff() {
     }
 
     if (!navigator.clipboard) {
-        showError("当前浏览器不支持自动复制，请手动选中 diff 结果复制。");
+        showMessage("复制未完成", "当前浏览器不支持自动复制，请手动选中 diff 结果复制。");
         return;
     }
 
     try {
         await navigator.clipboard.writeText(latestDiffText);
+        resultPanel.classList.remove("is-error");
+        resultTitle.textContent = "对比结果";
+        resultCopy.textContent = "已复制到剪贴板。";
         copyButton.textContent = "已复制";
     } catch (error) {
-        showError("复制失败了，请手动选中 diff 结果复制。");
+        showMessage("复制未完成", "复制失败了，请手动选中 diff 结果复制。");
     }
 }
 
