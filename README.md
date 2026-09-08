@@ -7,6 +7,8 @@ JavaScript，不需要安装运行时依赖或执行构建步骤。
 
 - `index.html`：主页入口。
 - `styles.css`：主页、导航和通用工具组件的共享样式。
+- `notes/<kebab-case>/index.html`：学习笔记文章，主页的“学习笔记”栏目提供入口。
+- `notes/notes.css`：文章排版、目录和学习路线的共享样式。
 - `tools/<kebab-case>/`：每个工具拥有自己的 `index.html`、脚本和可选资源。
 - `games/<kebab-case>/`：每个游戏拥有独立目录和入口页。
 - `tests/unit/`：Offer 对比的 Node 单元测试。
