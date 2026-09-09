@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
     delay,
     evaluate,
-    startOfferCompareBrowser,
+    startSiteBrowser,
     waitFor
 } from "./helpers/harness.mjs";
 import { checkEditorFlow, checkComparisonAndLayout } from "./offer-editor-flow.mjs";
@@ -11,7 +11,7 @@ import { checkTaxDialog } from "./tax-dialog-flow.mjs";
 import { checkCachedAssetUpgrade } from "./offer-cache-flow.mjs";
 
 async function run() {
-    const browser = await startOfferCompareBrowser();
+    const browser = await startSiteBrowser();
     const {
         client,
         server,

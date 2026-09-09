@@ -324,7 +324,7 @@ async function stopBrowser(browserProcess) {
     }
 }
 
-async function startOfferCompareBrowser() {
+async function startSiteBrowser(entryPath = "/tools/offer-compare/") {
     const runtimeErrors = [];
     let browserErrors = "";
     let browserProcess;
@@ -366,7 +366,7 @@ async function startOfferCompareBrowser() {
         server = await startPublicExampleServer();
         const serverAddress = server.address();
         pageUrl =
-            `http://127.0.0.1:${serverAddress.port}/tools/offer-compare/`;
+            `http://127.0.0.1:${serverAddress.port}${entryPath}`;
         browserProcess = spawn(browserPath, [
             // Keep the test browser attached when Edge's compatibility launcher is active.
             "--edge-skip-compat-layer-relaunch",
@@ -450,6 +450,6 @@ async function startOfferCompareBrowser() {
 export {
     delay,
     evaluate,
-    startOfferCompareBrowser,
+    startSiteBrowser,
     waitFor
 };
