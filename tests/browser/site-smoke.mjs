@@ -44,6 +44,38 @@ try {
     `);
     await waitFor(client, "moveCount === 1 && isHumanTurn", "Computer did not start when the human chose white");
 
+    await visit("/tools/password-generator/index.html", "document.querySelector('#passwordOutput')?.textContent.length > 0");
+    assert.equal(await evaluate(client, "document.querySelector('#passwordOutput').textContent.length"),
+        await evaluate(client, "Number(document.querySelector('#passwordLength').value)"));
+
+    await visit("/tools/random-number/index.html", "typeof window.ToolRandom === 'object'");
+    await evaluate(client, `
+        document.querySelector('#minValue').value = '1';
+        document.querySelector('#maxValue').value = '10';
+        document.querySelector('#count').value = '10';
+        document.querySelector('#allowDuplicates').value = 'false';
+        document.querySelector('#randomNumberForm').dispatchEvent(new Event('submit', { cancelable: true }));
+    `);
+    assert.deepEqual(await evaluate(client, "Array.from(document.querySelectorAll('#randomNumberContainer .chip'), e => Number(e.textContent)).sort((a,b) => a-b)"),
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+    await visit("/tools/random-groups/index.html", "typeof window.ToolRandom === 'object'");
+    await evaluate(client, String.raw`
+        document.querySelector('#names').value = '甲\n乙\n丙\n丁\n戊';
+        document.querySelector('#numGroups').value = '2';
+        document.querySelector('#groupForm').dispatchEvent(new Event('submit', { cancelable: true }));
+    `);
+    assert.deepEqual(await evaluate(client, "Array.from(document.querySelectorAll('.group-list'), e => e.children.length)"), [3, 2]);
+    assert.equal(await evaluate(client, "new Set(Array.from(document.querySelectorAll('.group-list li'), e => e.textContent)).size"), 5);
+
+    for (const game of ["snake", "tetris"]) {
+        await visit(`/games/${game}/index.html`, "typeof gameState === 'string'");
+        await evaluate(client, "document.querySelector('#startButton').click()");
+        assert.equal(await evaluate(client, "gameState"), "playing");
+        await evaluate(client, "document.querySelector('#pauseButton').click()");
+        assert.equal(await evaluate(client, "gameState"), "paused");
+    }
+
     assert.deepEqual(runtimeErrors, []);
     console.log("Site tool and game browser smoke tests passed");
 } finally {

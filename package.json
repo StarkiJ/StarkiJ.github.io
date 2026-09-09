@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node scripts/test-unit.mjs",
-    "test:browser": "node tests/browser/offer-compare-smoke.mjs",
+    "test:browser": "node tests/browser/offer-compare-smoke.mjs && node tests/browser/site-smoke.mjs",
     "generate": "node scripts/generate-site.mjs && npm run version:offer-assets",
     "check:generated": "node scripts/generate-site.mjs --check",
     "check:pages": "node scripts/check-pages.mjs",

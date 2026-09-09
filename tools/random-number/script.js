@@ -4,8 +4,7 @@ const resultTitle = document.getElementById("resultTitle");
 const resultCopy = document.getElementById("resultCopy");
 const randomNumberContainer = document.getElementById("randomNumberContainer");
 const maxResultCount = 1000;
-const safeIntegerRange = 0x20000000000000;
-const randomValues = new Uint32Array(2);
+const random = window.ToolRandom.create({ crypto: window.crypto, allowInsecure: true });
 
 function showError(message) {
     resultPanel.hidden = false;
@@ -30,29 +29,13 @@ function showNumbers(numbers, minValue, maxValue, allowDuplicates) {
     randomNumberContainer.replaceChildren(...chips);
 }
 
-function getRandomOffset(range) {
-    if (!window.crypto || !window.crypto.getRandomValues) {
-        return Math.floor(Math.random() * range);
-    }
-
-    const unbiasedLimit = safeIntegerRange - (safeIntegerRange % range);
-    let randomValue;
-
-    do {
-        window.crypto.getRandomValues(randomValues);
-        randomValue = (randomValues[0] & 0x001fffff) * 0x100000000 + randomValues[1];
-    } while (randomValue >= unbiasedLimit);
-
-    return randomValue % range;
-}
-
 function sampleUniqueNumbers(minValue, range, count) {
     const swaps = new Map();
     const numbers = [];
 
     for (let index = 0; index < count; index += 1) {
         const remaining = range - index;
-        const randomOffset = getRandomOffset(remaining);
+        const randomOffset = random.integer(remaining);
         const selectedOffset = swaps.has(randomOffset) ? swaps.get(randomOffset) : randomOffset;
         const lastOffset = remaining - 1;
         const replacementOffset = swaps.has(lastOffset) ? swaps.get(lastOffset) : lastOffset;
@@ -103,7 +86,7 @@ function generateRandomNumbers(event) {
 
     if (allowDuplicates) {
         for (let index = 0; index < count; index += 1) {
-            numbers.push(getRandomOffset(range) + minValue);
+            numbers.push(random.integer(range) + minValue);
         }
     } else {
         numbers = sampleUniqueNumbers(minValue, range, count);

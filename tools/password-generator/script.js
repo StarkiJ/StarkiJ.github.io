@@ -11,36 +11,10 @@ const resultPanel = document.getElementById("resultPanel");
 const resultTitle = document.getElementById("resultTitle");
 const resultCopy = document.getElementById("resultCopy");
 const passwordOutput = document.getElementById("passwordOutput");
-const uint32Range = 0x100000000;
-
-function getRandomIndex(max) {
-    if (!window.crypto || !window.crypto.getRandomValues) {
-        throw new Error("安全随机数不可用");
-    }
-
-    const randomValues = new Uint32Array(1);
-    const unbiasedLimit = uint32Range - (uint32Range % max);
-
-    do {
-        window.crypto.getRandomValues(randomValues);
-    } while (randomValues[0] >= unbiasedLimit);
-
-    return randomValues[0] % max;
-}
+const random = window.ToolRandom.create({ crypto: window.crypto });
 
 function pickOne(characters) {
-    return characters[getRandomIndex(characters.length)];
-}
-
-function shuffleCharacters(characters) {
-    const shuffled = [...characters];
-
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-        const randomIndex = getRandomIndex(index + 1);
-        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
-    }
-
-    return shuffled.join("");
+    return characters[random.integer(characters.length)];
 }
 
 function showMessage(title, message) {
@@ -93,11 +67,6 @@ function generatePassword(event) {
         return;
     }
 
-    if (selectedSets.length > passwordLength) {
-        showError("密码长度不能小于已选择的字符类型数量。");
-        return;
-    }
-
     const allCharacters = selectedSets.join("");
     let passwordCharacters;
 
@@ -108,7 +77,7 @@ function generatePassword(event) {
             passwordCharacters.push(pickOne(allCharacters));
         }
 
-        passwordOutput.textContent = shuffleCharacters(passwordCharacters);
+        passwordOutput.textContent = random.shuffle(passwordCharacters).join("");
     } catch (error) {
         showError("当前环境无法提供安全随机数，请改用最新版浏览器并通过 HTTPS 访问。");
         return;

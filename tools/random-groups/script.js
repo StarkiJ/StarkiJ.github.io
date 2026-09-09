@@ -4,7 +4,7 @@ const resultTitle = document.getElementById("resultTitle");
 const resultCopy = document.getElementById("resultCopy");
 const groupContainer = document.getElementById("groupContainer");
 const maxPeople = 500;
-const uint32Range = 0x100000000;
+const random = window.ToolRandom.create({ crypto: window.crypto, allowInsecure: true });
 
 function showError(message) {
     resultPanel.hidden = false;
@@ -19,32 +19,6 @@ function getNames() {
         .split(/\r?\n/)
         .map((name) => name.trim())
         .filter(Boolean);
-}
-
-function shuffle(items) {
-    const shuffled = [...items];
-    const randomValues = new Uint32Array(1);
-
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-        const range = index + 1;
-        let randomIndex;
-
-        if (window.crypto && window.crypto.getRandomValues) {
-            const unbiasedLimit = uint32Range - (uint32Range % range);
-
-            do {
-                window.crypto.getRandomValues(randomValues);
-            } while (randomValues[0] >= unbiasedLimit);
-
-            randomIndex = randomValues[0] % range;
-        } else {
-            randomIndex = Math.floor(Math.random() * range);
-        }
-
-        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
-    }
-
-    return shuffled;
 }
 
 function renderGroups(groups, peopleCount) {
@@ -96,7 +70,7 @@ function generateGroups(event) {
         return;
     }
 
-    const people = shuffle(names.length > 0
+    const people = random.shuffle(names.length > 0
         ? names
         : Array.from({ length: numPeople }, (_, index) => `成员 ${index + 1}`));
 

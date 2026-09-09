@@ -15,6 +15,7 @@ function loadTool(name) {
     element("newText").value = "after\nsame";
     const navigator = {};
     const context = vm.createContext({ document, navigator, Event, window: { crypto: webcrypto, setTimeout, clearTimeout } });
+    context.window.ToolRandom = require("../../tools/shared/random.js");
     if (name === "text-diff") context.window.TextDiffCore = require("../../tools/text-diff/core.js");
     vm.runInContext(fs.readFileSync(path.join(__dirname, "../../tools", name, "script.js"), "utf8"), context);
     return { element, navigator, dispatch: (id, type) => element(id).dispatchEvent(new Event(type)) };
