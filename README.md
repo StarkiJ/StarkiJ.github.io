@@ -11,10 +11,13 @@ JavaScript，不需要安装运行时依赖或执行构建步骤。
 - `notes/<kebab-case>/index.html`：学习笔记文章；较长源码可展开，也可下载同目录示例。
 - `notes/notes.css`：文章排版、目录、概念表格和折叠示例的共享样式。
 - `tools/<kebab-case>/`：每个工具拥有自己的 `index.html`、脚本和可选资源。
+- `tools/shared/random.js`：随机数、随机分组和密码生成共用的无偏采样与洗牌；密码禁止不安全回退。
+- `tools/text-diff/core.js`、`style.css`：文本差异算法和专属样式；`script.js` 负责编辑器交互。
 - `games/<kebab-case>/`：每个游戏拥有独立目录和入口页。
-- `tests/unit/`：Offer 对比、工具复制失败和检查脚本的 Node 回归测试。
+- `games/gobang/rules.js`、`ai.js`：棋局规则与 AI 搜索；`script.js` 负责绘制和回合交互。
+- `tests/unit/`：Offer 对比、存储、差异算法、五子棋、随机采样、工具复制失败和检查脚本的 Node 回归测试。
 - `tests/cpp/examples.json`：可下载 C++ 示例的编译目标及故意错误示例的排除理由。
-- `tests/browser/`：Offer 对比的 Edge 浏览器冒烟测试。
+- `tests/browser/`：Offer 对比、文本对比、随机工具和自有游戏的 Edge 浏览器冒烟测试。
 - `scripts/`：静态内容生成、链接与锚点、页面结构、源码和资源版本检查。
 
 工具和游戏统一使用小写 kebab-case 目录。站内链接、canonical 和 sitemap
@@ -56,6 +59,8 @@ npm run check:all
 保留该测试以验证自赋值边界。CI 在 Linux 上运行 `check` 和 `check:cpp`。
 
 浏览器冒烟测试仅支持已安装 Microsoft Edge 的 Windows 环境，CI 单独运行该项。
+该命令依次运行 Offer 流程和其他工具 / 游戏的交互检查；浏览器及本地服务器由
+`tests/browser/helpers/harness.mjs` 统一启动和清理。
 如果 PowerShell 策略阻止执行 `npm.ps1`，可将命令中的 `npm` 替换为
 `npm.cmd`。
 
@@ -77,6 +82,26 @@ GitHub Pages 发布后混用浏览器缓存的旧脚本；`npm run check` 会检
 
 生成仅在维护时执行，提交的仍是完整静态页面，浏览时不依赖 Node.js 或动态加载模板。
 第三方游戏目录（导弹游戏、小恐龙、电子木鱼）与音频不参与生成或重构。
+
+## Offer 模块维护
+
+Offer 的浏览器脚本保持普通脚本加载，纯逻辑模块同时提供 CommonJS 导出供 Node 测试使用。
+入口页显式列出依赖顺序；新增模块时同步维护入口引用及资源版本。
+
+- `js/domain.js`：数字、时间、数据复制和默认工作日程；复制保留税率上限中的 `Infinity`。
+- `js/tax-policy.js`：年份政策与税率表。
+- `js/state.js`：状态版本、规范化、输入校验及默认设置。
+- `js/serialization.js`：已校验数据的 JSON 导出排版。
+- `js/core.js`：工时、收入和税务计算，并保留原有对外接口。
+- `js/model.js`、`selectors.js`：Offer / 日程操作与比较、排序、最优指标查询。
+- `js/data.js`、`storage.js`：种子文件加载，以及浏览器存储、导入和导出；用户确认由主控制脚本处理。
+- `js/comparison-view.js`、`offer-editor.js`、`offer-order.js`、`tax-view.js`：比较结果、编辑草稿、调整顺序和税务详情。
+- `js/ui-helpers.js`、`app.js`：共享界面辅助函数，以及状态更新、模式切换和事件协调。
+
+样式按 `base`（基础）、`controls`（控件）、`layout`（页面与计算方法）、
+`settings`（设置）、`dialog`（公共弹窗外观）、`editor`（编辑与日程）、
+`comparison`（比较与排序）、`tax`（税务详情）划分。
+组件的默认规则和响应式规则放在所属文件中；公共弹窗样式由 `dialog.css` 维护。
 
 ## Offer 对比数据
 
