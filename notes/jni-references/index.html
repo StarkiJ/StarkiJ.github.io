@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">JNI：引用与生命周期</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">JNI：引用与生命周期</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART</p>
+                <p class="eyebrow">Android / ART / 深入专题</p>
                 <h1 id="note-title">JNI：引用与生命周期</h1>
                 <p class="note-deck">梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先了解 GC Roots，再看跨 Java/native 边界的引用和线程规则。</p><p>相关基础：<a href="../art-memory-gc/index.html#roots">可达性与 GC Roots</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#interface">1. 调用边界与线程</a></li><li><a href="#references">2. Local、Global 与 Weak Global</a></li><li><a href="#access">3. 创建对象与访问成员</a></li><li><a href="#gc">4. GC 与 native 缓冲</a></li><li><a href="#boundaries">5. 边界设计</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="interface" aria-labelledby="interface-title"><h2 id="interface-title">1. 调用边界与线程</h2>
 <p><strong>JNI</strong>是托管代码与 native 代码交互的接口。Java/Kotlin 声明 native 方法并加载相应库；运行时通过名称匹配或 RegisterNatives 找到 native 实现。普通实例 native 方法接收 JNIEnv* 和 jobject，普通静态方法接收 JNIEnv* 和 jclass，再接收显式参数。特殊优化调用约定另有约束。</p>
 <p><strong>JavaVM</strong>用于取得线程的运行时接口；<strong>JNIEnv</strong>与当前线程关联，不能从一个线程缓存后交给另一线程使用。native 创建的线程需要先附加到 VM，使用自己的 JNIEnv，并在自己负责附加的线程退出前 detach。</p>

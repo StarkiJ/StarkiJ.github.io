@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">C++ 内存问题定位</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">C++ 内存问题定位</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ 实践</p>
+                <p class="eyebrow">C++ / 深入专题</p>
                 <h1 id="note-title">C++ 内存问题定位</h1>
                 <p class="note-deck">区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先区分拥有与借用，再按泄漏、长期持有和非法访问选择排查路径。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#lifetime">存储与生命周期</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#classification">1. 先确定问题类型</a></li><li><a href="#workflow">2. 定位流程与检测工具</a></li><li><a href="#asan">3. 扩容后的释放后使用</a></li><li><a href="#destructor">4. 非虚析构与工程防线</a></li><li><a href="#monitoring">5. 长期增长与监控开销</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="classification" aria-labelledby="classification-title"><h2 id="classification-title">1. 先确定问题类型</h2>
 <div class="note-table-wrap" role="region" aria-label="现象、机制与证据" tabindex="0"><table><caption>现象、机制与证据</caption><thead><tr><th scope="col">类型</th><th scope="col">常见原因</th><th scope="col">重点证据</th></tr></thead><tbody><tr><td>泄漏</td><td>丢失释放责任、强引用环</td><td>未释放分配的调用栈与拥有关系</td></tr><tr><td>长期持有</td><td>无界缓存、队列、回调捕获</td><td>对象仍可达；数量随业务次数持续增长</td></tr><tr><td>占用未回落</td><td>vector 容量、分配器缓存、碎片</td><td>活对象已减少，但保留存储或驻留页仍较多</td></tr><tr><td>非法访问</td><td>越界、释放后使用、重复释放</td><td>首次非法访问及分配/释放调用栈</td></tr><tr><td>并发问题</td><td>释放与访问竞争、缺少同步</td><td>访问发生在哪些线程，保护协议是否一致</td></tr></tbody></table></div>
 <p>RSS 是驻留物理内存统计，PSS 对共享页按共享比例分摊；虚拟地址空间大小不等于物理占用。统计同一进程时还要区分托管堆、native 堆、映射、线程栈与图形资源。</p>

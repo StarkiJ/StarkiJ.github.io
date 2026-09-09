@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="围绕指针不变量、层序边界和访问映射，整理常见实现题。">
+    <meta name="description" content="链表操作、二叉树层序、B 树平衡与图的深拷贝，结合不变量和实现练习。">
     <meta name="theme-color" content="#f7faf8">
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
     <meta property="og:title" content="链表、树与图 · Starki 笔记">
-    <meta property="og:description" content="围绕指针不变量、层序边界和访问映射，整理常见实现题。">
+    <meta property="og:description" content="链表操作、二叉树层序、B 树平衡与图的深拷贝，结合不变量和实现练习。">
     <meta property="og:url" content="https://starkij.github.io/notes/linked-trees-graphs/index.html">
     <title>链表、树与图 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/linked-trees-graphs/index.html">
@@ -34,23 +34,22 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">链表、树与图</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#algorithms">数据结构与算法</a><span aria-hidden="true">/</span><span aria-current="page">链表、树与图</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">数据结构与算法</p>
+                <p class="eyebrow">数据结构与算法 / 实现练习</p>
                 <h1 id="note-title">链表、树与图</h1>
-                <p class="note-deck">围绕指针不变量、层序边界和访问映射，整理常见实现题。</p>
+                <p class="note-deck">链表操作、二叉树层序、B 树平衡与图的深拷贝，结合不变量和实现练习。</p>
                 <div class="note-meta">
                     <span>Starki</span>
                     <time datetime="2026-09-08">2026.09.08</time>
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
-<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#reverse">1. 链表反转：迭代与递归</a></li><li><a href="#merge">2. 合并两条有序链表</a></li><li><a href="#groups">3. 每 k 个节点反转</a></li><li><a href="#cycle">4. 判环与环入口</a></li><li><a href="#tree">5. 二叉树最大层和</a></li><li><a href="#graph">6. 图的深拷贝</a></li><li><a href="#implementation">7. 实现与边界验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="reverse" aria-labelledby="reverse-title"><h2 id="reverse-title">1. 链表反转：迭代与递归</h2>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 按链表、树和图查阅；每题先看输入前提与不变量，再看实现。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#q01">指针、引用与参数传递</a></p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#reverse">1. 链表反转：迭代与递归</a></li><li><a href="#merge">2. 合并两条有序链表</a></li><li><a href="#groups">3. 每 k 个节点反转</a></li><li><a href="#cycle">4. 判环与环入口</a></li><li><a href="#tree">5. 二叉树最大层和</a></li><li><a href="#b-tree">6. B 树怎样保持平衡</a></li><li><a href="#graph">7. 图的深拷贝</a></li><li><a href="#implementation">8. 实现与边界验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="reverse" aria-labelledby="reverse-title"><h2 id="reverse-title">1. 链表反转：迭代与递归</h2>
 <p>前提是单链表无环。迭代法维护两段：previous 指向已经反转的前缀，head 指向尚未处理的后缀。每轮先保存 next，再改当前 next，最后同时推进两段边界。</p>
 <pre tabindex="0"><code class="language-cpp">Node* next = head-&gt;next;
 head-&gt;next = previous;
@@ -89,14 +88,23 @@ head = next;</code></pre>
 <p>因为孩子也在入队，变化后的长度混入了下一层。必须先冻结本层节点数量，再处理该数量。</p>
 </details>
 </section>
-<section id="graph" aria-labelledby="graph-title"><h2 id="graph-title">6. 图的深拷贝</h2>
+<section id="b-tree" aria-labelledby="b-tree-title"><h2 id="b-tree-title">6. B 树怎样保持平衡</h2>
+<p>以最小度数 t≥2 的 B 树为例：节点内键有序；非根节点有 t−1 到 2t−1 个键；内部节点的孩子数量比键数多 1；所有叶子深度相同。空树和根节点有单独规则。</p>
+<p>插入遇到满节点时分裂，将中间键提升到父节点；根分裂使树高整体增加一层。删除导致键数不足时向有余量的兄弟借键，或与兄弟及父分隔键合并；根空时可收缩一层。平衡来自持续维护占用和等深不变量，不是等到左右子树高度差超过 1 再做 AVL 旋转。</p>
+<p>较高分支数使高度为 O(logₜ n)，适合按页访问。节点内部查找仍有比较成本，不能把一次节点访问等同于一次整数比较。B+ 树常把记录放在叶子并连接叶子，便于范围扫描，具体格式依实现。</p>
+<details class="note-review-question"><summary>经典问题：如何检测 B 树结构已经被破坏？</summary>
+<p>递归校验每个节点的键数范围、严格排序/重复键策略、孩子数量与键值区间，并检查所有叶子深度一致。仅检查高度或某个节点是否满都不够。</p>
+</details>
+<p class="note-source">参考：<a href="https://ocw.mit.edu/courses/6-046j-design-and-analysis-of-algorithms-spring-2015/8fd15588f584c518b6ec83aedb2b96c9_MIT6_046JS15_Recitation2.pdf" target="_blank" rel="noreferrer">MIT B 树讲义</a>。</p>
+</section>
+<section id="graph" aria-labelledby="graph-title"><h2 id="graph-title">7. 图的深拷贝</h2>
 <p>用哈希表记录 <code>旧节点地址 → 新节点地址</code>。第一次遇到旧节点就建立副本并写入映射，再遍历它的边；这样自环、环和重复边都不会导致无限复制。新边必须指向映射中的新节点。</p>
 <p>示例复制入口可达的子图，保留自环、重复边、相同值的不同节点和空边；全部新节点由独立 unique_ptr 集合拥有，邻接指针只作借用。平均时间 O(V+E)、空间 O(V+E)，其中邻接表属于输出。全图含不可达分量时，需对全部节点入口复用同一映射。</p>
 <details class="note-review-question"><summary>经典问题：为什么不能用 value 作为映射键？</summary>
 <p>不同节点可以有相同值，合并它们会改变图结构。深拷贝保留节点身份之间的关系，键应是原节点地址或可靠的唯一 ID。</p>
 </details>
 </section>
-<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">7. 实现与边界验证</h2>
+<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">8. 实现与边界验证</h2>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
 <pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;cassert&gt;
@@ -276,6 +284,6 @@ int main() {
 <p>断言覆盖空表、反转还原、有序合并、k 组尾部保留、非法 k、无环/自环/中部入口、全负树、层和相同，以及图中的环、重复值、重复边与副本独立性。</p>
 </section>
 <section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
-<ul><li><a href="../hash-sorting-arrays/index.html">哈希、LRU、排序与数组</a></li><li><a href="../game-foundations/index.html#pathfinding">寻路与图搜索</a></li></ul>
+<ul><li><a href="../hash-sorting-arrays/index.html">哈希、排序与序列问题</a></li><li><a href="../game-foundations/index.html#pathfinding">寻路与图搜索</a></li></ul>
 </section>
 </div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

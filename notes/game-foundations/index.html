@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">游戏基础：同步、寻路与旋转</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#game">游戏开发</a><span aria-hidden="true">/</span><span aria-current="page">游戏基础：同步、寻路与旋转</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">游戏开发</p>
+                <p class="eyebrow">游戏开发 / 基础综述</p>
                 <h1 id="note-title">游戏基础：同步、寻路与旋转</h1>
                 <p class="note-deck">明确同步对象、搜索代价和坐标约定，再推导实现与边界。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 三个主题可独立阅读；同步需要传输基础，寻路需要图的概念。</p><p>相关基础：<a href="../network-basics/index.html">网络基础</a>、<a href="../linked-trees-graphs/index.html#graph">图的深拷贝</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#synchronization">1. 帧同步与状态同步</a></li><li><a href="#pathfinding">2. 寻路：BFS、Dijkstra 与 A*</a></li><li><a href="#rotation">3. 二维旋转矩阵</a></li><li><a href="#implementation">4. 旋转实现与验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="synchronization" aria-labelledby="synchronization-title"><h2 id="synchronization-title">1. 帧同步与状态同步</h2>
 <div class="note-table-wrap" role="region" aria-label="同步的内容与本地职责" tabindex="0"><table><caption>同步的内容与本地职责</caption><thead><tr><th scope="col">方案</th><th scope="col">网络传什么</th><th scope="col">关键约束</th></tr></thead><tbody><tr><td>确定性锁步 / 帧同步</td><td>按模拟 tick 编号的玩家输入或命令</td><td>相同初始状态、输入和执行顺序必须产生相同模拟结果</td></tr><tr><td>状态同步</td><td>权威状态快照或增量</td><td>客户端处理插值、预测和状态校正；需控制快照带宽与频率</td></tr></tbody></table></div>
 <p>模拟 tick 与屏幕渲染帧不是同一个概念。锁步缺少某 tick 输入时可等待，或采用有明确规则的预测/回滚；状态同步常在两个快照间插值显示其他对象，以少量延迟换平滑。</p>

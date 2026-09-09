@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">vector 与稳定句柄</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">vector 与稳定句柄</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ 实践</p>
+                <p class="eyebrow">C++ / 深入专题</p>
                 <h1 id="note-title">vector 与稳定句柄</h1>
                 <p class="note-deck">区分地址、位置和身份，处理扩容、重排、删除与槽位复用。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先掌握容器失效规则，再区分对象的地址、位置和身份。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#stl">STL 容器与算法</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#invalidation">1. 引用失效与修复</a></li><li><a href="#mapping">2. 句柄与双向映射</a></li><li><a href="#implementation">3. 实现与验证</a></li><li><a href="#boundaries">4. 生命周期与并发边界</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="invalidation" aria-labelledby="invalidation-title"><h2 id="invalidation-title">1. 引用失效与修复</h2>
 <p>vector 元素连续存储。增长导致重新分配时，原存储中的指针、引用与迭代器全部失效；没有重分配的尾部插入不使已有元素引用失效。不能根据“第几次 push_back”猜容量。</p>
 <pre tabindex="0"><code class="language-cpp">std::vector&lt;int&gt; v{1, 2, 3};

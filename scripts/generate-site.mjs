@@ -6,17 +6,24 @@ const check = process.argv.includes("--check");
 const files = await walk();
 const changes = [];
 const noteBySlug = new Map(notes.map(note => [note.slug, note]));
+const noteKinds = { overview: "基础综述", topic: "深入专题", practice: "实现练习" };
 if (noteBySlug.size !== notes.length) throw new Error("Duplicate note slug in site-content.json");
 for (const slug of content.featured) {
     if (!noteBySlug.has(slug)) throw new Error(`Unknown featured note: ${slug}`);
 }
 for (const note of notes) {
-    if (!/^[a-z0-9-]+$/.test(note.slug) || !note.title || !note.summary) {
+    if (!/^[a-z0-9-]+$/.test(note.slug) || !note.title || !note.summary || !Object.hasOwn(noteKinds, note.kind) || !note.reading) {
         throw new Error(`Incomplete note metadata: ${note.slug}`);
     }
     if (!files.includes(path.join(workspace, "notes", note.slug, "index.html"))) {
         throw new Error(`Missing note page: ${note.slug}`);
     }
+}
+
+function noteLink(file, reference) {
+    if (!noteBySlug.has(reference.slug) || !reference.label) throw new Error(`Invalid reading link: ${reference.slug}`);
+    const target = `notes/${reference.slug}/index.html${reference.anchor ? `#${reference.anchor}` : ""}`;
+    return `<a href="${attr(linkFrom(file, target))}">${text(reference.label)}</a>`;
 }
 
 function linkFrom(file, target) {
@@ -61,15 +68,38 @@ function card(file, note, index) {
     </a>`;
 }
 
+function catalogEntry(file, note) {
+    const chapters = note.chapters?.map(chapter => `<li>${noteLink(file, { slug: note.slug, ...chapter })}</li>`).join("");
+    const topics = chapters ? `<div class="note-entry-topics"><p>章节直达</p><ul>${chapters}</ul></div>` : "";
+    return `<li class="note-entry">
+        <h4>${noteLink(file, { slug: note.slug, label: note.cardTitle || note.title })}</h4>
+        <p>${text(note.summary)}</p>${topics ? `\n        ${topics}` : ""}
+    </li>`;
+}
+
 function catalog(file) {
-    const categories = content.categories.map(category => `<a href="#${attr(category.id)}">${text(category.title)}</a>`).join("");
-    const sections = content.categories.map(category => `<section class="section-block" id="${attr(category.id)}" aria-labelledby="${attr(category.id)}-title">
-    <div class="section-heading"><h2 id="${attr(category.id)}-title">${text(category.title)}</h2></div>
-    <div class="link-grid">
-${category.notes.map((note, index) => card(file, note, index)).join("\n")}
-    </div>
-</section>`);
-    return `<nav class="note-categories" aria-label="笔记分类">${categories}</nav>\n${sections.join("\n")}`;
+    const categories = content.categories.map(category => `<a href="#${attr(category.id)}">${text(category.title)} <span>${category.notes.length}</span></a>`).join("");
+    const paths = content.readingPaths.map(route => `<li><strong>${text(route.title)}</strong><ol>${route.steps.map(step => `<li>${noteLink(file, step)}</li>`).join("")}</ol></li>`).join("\n");
+    const sections = content.categories.map(category => {
+        const groups = Object.entries(noteKinds).flatMap(([kind, label]) => {
+            const entries = category.notes.filter(note => note.kind === kind);
+            if (!entries.length) return [];
+            return [`<div class="note-group"><h3>${text(label)}</h3><ul class="note-entry-grid">\n${entries.map(note => catalogEntry(file, note)).join("\n")}\n</ul></div>`];
+        });
+        return `<section class="section-block note-category" id="${attr(category.id)}" aria-labelledby="${attr(category.id)}-title">
+    <div class="section-heading"><h2 id="${attr(category.id)}-title">${text(category.title)}</h2><span>${category.notes.length} 篇</span></div>
+    ${groups.join("\n")}
+</section>`;
+    });
+    return `<nav class="note-categories" aria-label="笔记分类">${categories}</nav>
+<details class="note-paths"><summary>从哪里开始？查看 ${content.readingPaths.length} 条阅读路线</summary><ul>${paths}</ul></details>
+<p class="note-catalog-hint">复习概念看「基础综述」，理解具体机制看「深入专题」，动手验证看「实现练习」。可直接跳到下方列出的章节。</p>
+${sections.join("\n")}`;
+}
+
+function readingGuide(file, note) {
+    const links = note.prerequisites.map(reference => noteLink(file, reference)).join("、");
+    return `<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> ${text(note.reading)}</p>${links ? `<p>相关基础：${links}</p>` : ""}</aside>`;
 }
 
 async function save(file, source, result) {
@@ -94,6 +124,7 @@ for (const file of files.filter(isOwnedPage)) {
         const title = note.title + " · Starki 笔记";
         const description = note.description || note.summary;
         const url = content.origin + "/" + relative(file);
+        const category = content.categories.find(category => category.notes.some(item => item.slug === slug));
         const replacements = [
             [/<title>[^<]*<\/title>/, `<title>${text(title)}</title>`],
             [/<meta name="description" content="[^"]*">/, `<meta name="description" content="${attr(description)}">`],
@@ -101,10 +132,16 @@ for (const file of files.filter(isOwnedPage)) {
             [/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${attr(description)}">`],
             [/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${attr(url)}">`],
             [/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${attr(url)}">`],
-            [/<h1 id="note-title">[^<]*<\/h1>/, `<h1 id="note-title">${text(note.title)}</h1>`]
+            [/<h1 id="note-title">[^<]*<\/h1>/, `<h1 id="note-title">${text(note.title)}</h1>`],
+            [/<p class="eyebrow">[^<]*<\/p>/, `<p class="eyebrow">${text(category.title)} / ${text(noteKinds[note.kind])}</p>`],
+            [/<p class="note-deck">[^<]*<\/p>/, `<p class="note-deck">${text(note.summary)}</p>`]
         ];
         for (const [expression, value] of replacements) result = replaceOne(result, expression, value, `${slug} metadata`);
-        result = result.replace(/(<nav class="note-breadcrumb"[\s\S]*?<span aria-current="page">)[^<]*(<\/span>)/, (_, start, end) => start + text(note.title) + end);
+        result = replaceOne(result, /<nav class="note-breadcrumb"[\s\S]*?<\/nav>/, `<nav class="note-breadcrumb" aria-label="面包屑导航"><a href="${attr(linkFrom(file, "index.html"))}">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#${attr(category.id)}">${text(category.title)}</a><span aria-hidden="true">/</span><span aria-current="page">${text(note.title)}</span></nav>`, `${slug} breadcrumb`);
+        if (!result.includes("<!-- generated:reading-guide:start -->")) {
+            result = replaceOne(result, /<div class="note-layout">/, "<!-- generated:reading-guide:start -->\n<!-- generated:reading-guide:end -->\n<div class=\"note-layout\">", `${slug} reading guide location`);
+        }
+        result = replaceRegion(result, "reading-guide", readingGuide(file, note));
         for (const match of [...result.matchAll(/<code\b([^>]*\bdata-source="([^"]+)"[^>]*)>[\s\S]*?<\/code>/g)]) {
             const sourceFile = path.resolve(path.dirname(file), match[2]);
             if (!relative(sourceFile).startsWith("notes/") || !/\.(cpp|hpp)$/.test(sourceFile)) {

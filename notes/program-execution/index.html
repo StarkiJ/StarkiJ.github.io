@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">程序执行：寄存器、调用与链接</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">程序执行：寄存器、调用与链接</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">计算机基础</p>
+                <p class="eyebrow">计算机基础 / 深入专题</p>
                 <h1 id="note-title">程序执行：寄存器、调用与链接</h1>
                 <p class="note-deck">解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先了解进程和虚拟内存，再沿指令、函数调用、链接与装载阅读。</p><p>相关基础：<a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#cpu">1. 指令、寄存器与内存</a></li><li><a href="#abi">2. AArch64 寄存器与调用约定</a></li><li><a href="#call">3. 一次非叶函数调用</a></li><li><a href="#endian">4. 大小端与数据表示</a></li><li><a href="#elf">5. ELF、链接与装载</a></li><li><a href="#backtrace">6. 调用栈回溯与 LLDB</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="cpu" aria-labelledby="cpu-title"><h2 id="cpu-title">1. 指令、寄存器与内存</h2>
 <p><strong>指令集 ISA</strong>规定可执行指令及其可见效果；<strong>微架构</strong>决定这些指令如何流水执行、预测和访问缓存。同为 AArch64 的不同处理器也可有不同流水线，不能把“五级流水线”当成所有 ARM/RISC-V 的固定实现。</p>
 <p>CPU 执行 load 时按指令计算有效地址，经过地址转换与权限检查，从缓存或更低层存储取得数据，再写入寄存器。TLB 与缓存访问可能并行或重叠；它们不一定是严格串行的一条流程。</p>

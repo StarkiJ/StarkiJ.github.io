@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">网络：TCP、UDP 与 socket</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">网络：TCP、UDP 与 socket</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">计算机基础</p>
+                <p class="eyebrow">计算机基础 / 基础综述</p>
                 <h1 id="note-title">网络：TCP、UDP 与 socket</h1>
                 <p class="note-deck">从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先梳理端点和传输语义，再读应用协议或游戏同步。</p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#layers">1. 分层与 socket</a></li><li><a href="#tcp">2. TCP 的可靠传输</a></li><li><a href="#framing">3. 字节流与消息边界</a></li><li><a href="#udp">4. UDP 与传输选择</a></li><li><a href="#http">5. HTTP 与 HTTPS</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="layers" aria-labelledby="layers-title"><h2 id="layers-title">1. 分层与 socket</h2>
 <p><strong>IP</strong>负责跨网络寻址与转发；<strong>TCP/UDP</strong>在主机间提供传输服务；<strong>HTTP</strong>规定请求与响应语义。socket 是操作系统暴露的通信端点接口，不是某个单独的网络协议。</p>
 <p>TCP 连接通常由协议、两端 IP 和端口区分。同一监听端口可以接收许多连接：accept 返回每条连接对应的新描述符，监听描述符继续负责接入。</p>

@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">操作系统：进程、内存与同步</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">操作系统：进程、内存与同步</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">计算机基础</p>
+                <p class="eyebrow">计算机基础 / 基础综述</p>
                 <h1 id="note-title">操作系统：进程、内存与同步</h1>
                 <p class="note-deck">梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 从进程线程读到内存与同步，为程序执行和运行时专题打基础。</p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#process-thread">1. 进程、线程与调度</a></li><li><a href="#virtual-memory">2. 虚拟地址与物理内存</a></li><li><a href="#allocation">3. 堆、栈与 fork</a></li><li><a href="#ipc">4. 进程间通信</a></li><li><a href="#locks">5. 锁、futex 与死锁</a></li><li><a href="#signals">6. 异常、信号与故障</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="process-thread" aria-labelledby="process-thread-title"><h2 id="process-thread-title">1. 进程、线程与调度</h2>
 <p><strong>进程</strong>是资源与地址空间的组织单位；<strong>线程</strong>是进程内的一条执行流。Linux 将可调度实体表示为任务，同一进程中的线程可在不同 CPU 上同时运行。用户态协程是否被内核单独调度，取决于它如何映射到内核线程。</p>
 <div class="note-table-wrap" role="region" aria-label="同一进程内的常见共享关系" tabindex="0"><table><caption>同一进程内的常见共享关系</caption><thead><tr><th scope="col">共享</th><th scope="col">各线程独立</th></tr></thead><tbody><tr><td>虚拟地址空间：代码、全局数据、堆、映射</td><td>寄存器上下文、执行位置、线程栈、线程局部存储</td></tr><tr><td>文件描述符表等进程资源</td><td>线程 ID、信号屏蔽字、调度相关属性</td></tr></tbody></table></div>

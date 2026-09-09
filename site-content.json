@@ -45,30 +45,107 @@
           "slug": "cpp-interview-roadmap",
           "title": "C++ 核心知识",
           "summary": "语言基础、对象模型、资源管理、STL、模板与并发。",
-          "description": "C++ 核心概念与机制复习笔记，涵盖类型、生命周期、虚函数、智能指针、移动语义、STL、模板、并发和编译链接，附代码示例与经典问题。"
+          "description": "C++ 核心概念与机制复习笔记，涵盖类型、生命周期、虚函数、智能指针、移动语义、STL、模板、并发和编译链接，附代码示例与经典问题。",
+          "kind": "overview",
+          "reading": "按章节复习语言机制；需要完整实现或排查流程时，再读对应专题。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "basics",
+              "label": "语言基础"
+            },
+            {
+              "anchor": "lifetime",
+              "label": "存储与生命周期"
+            },
+            {
+              "anchor": "objects",
+              "label": "类与对象模型"
+            },
+            {
+              "anchor": "ownership",
+              "label": "资源管理与智能指针"
+            },
+            {
+              "anchor": "move",
+              "label": "值类别与移动语义"
+            },
+            {
+              "anchor": "stl",
+              "label": "STL 容器与算法"
+            },
+            {
+              "anchor": "templates",
+              "label": "模板与类型推导"
+            },
+            {
+              "anchor": "concurrency",
+              "label": "并发与同步"
+            },
+            {
+              "anchor": "engineering",
+              "label": "编译、链接与调试"
+            }
+          ]
         },
         {
           "slug": "cpp-shared-ptr",
           "title": "简化 shared_ptr：计数与释放",
           "cardTitle": "共享指针实现",
-          "summary": "从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。"
+          "summary": "从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。",
+          "kind": "practice",
+          "reading": "先理解所有权和对象生命周期，再跟随控制块推导实现。",
+          "prerequisites": [
+            {
+              "slug": "cpp-interview-roadmap",
+              "label": "资源管理与智能指针",
+              "anchor": "ownership"
+            }
+          ]
         },
         {
           "slug": "cpp-stable-handles",
           "title": "vector 与稳定句柄",
-          "summary": "区分地址、位置和身份，处理扩容、重排、删除与槽位复用。"
+          "summary": "区分地址、位置和身份，处理扩容、重排、删除与槽位复用。",
+          "kind": "topic",
+          "reading": "先掌握容器失效规则，再区分对象的地址、位置和身份。",
+          "prerequisites": [
+            {
+              "slug": "cpp-interview-roadmap",
+              "label": "STL 容器与算法",
+              "anchor": "stl"
+            }
+          ]
         },
         {
           "slug": "cpp-cache-performance",
           "title": "缓存局部性与性能测量",
           "cardTitle": "缓存与性能测量",
-          "summary": "由二维数组的访问步长，理解缓存、基准测试和粒子数据布局。"
+          "summary": "由二维数组的访问步长，理解缓存、基准测试和粒子数据布局。",
+          "kind": "topic",
+          "reading": "从连续存储的访问方式出发，再看测量方法和粒子布局。",
+          "prerequisites": [
+            {
+              "slug": "program-execution",
+              "label": "指令、寄存器与内存",
+              "anchor": "cpu"
+            }
+          ]
         },
         {
           "slug": "cpp-memory-diagnostics",
           "title": "C++ 内存问题定位",
           "cardTitle": "内存问题定位",
-          "summary": "区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。"
+          "summary": "区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。",
+          "kind": "topic",
+          "reading": "先区分拥有与借用，再按泄漏、长期持有和非法访问选择排查路径。",
+          "prerequisites": [
+            {
+              "slug": "cpp-interview-roadmap",
+              "label": "存储与生命周期",
+              "anchor": "lifetime"
+            }
+          ]
         }
       ]
     },
@@ -80,25 +157,48 @@
           "slug": "operating-systems",
           "title": "操作系统：进程、内存与同步",
           "cardTitle": "操作系统基础",
-          "summary": "梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。"
+          "summary": "梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。",
+          "kind": "overview",
+          "reading": "从进程线程读到内存与同步，为程序执行和运行时专题打基础。",
+          "prerequisites": []
         },
         {
           "slug": "network-basics",
           "title": "网络：TCP、UDP 与 socket",
           "cardTitle": "网络基础",
-          "summary": "从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。"
+          "summary": "从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。",
+          "kind": "overview",
+          "reading": "先梳理端点和传输语义，再读应用协议或游戏同步。",
+          "prerequisites": []
         },
         {
           "slug": "program-execution",
           "title": "程序执行：寄存器、调用与链接",
           "cardTitle": "程序执行机制",
-          "summary": "解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。"
+          "summary": "解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。",
+          "kind": "topic",
+          "reading": "先了解进程和虚拟内存，再沿指令、函数调用、链接与装载阅读。",
+          "prerequisites": [
+            {
+              "slug": "operating-systems",
+              "label": "虚拟地址与物理内存",
+              "anchor": "virtual-memory"
+            }
+          ]
         },
         {
           "slug": "compiler-ir",
           "title": "编译器：IR、SSA 与优化",
           "cardTitle": "编译器基础",
-          "summary": "连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。"
+          "summary": "连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。",
+          "kind": "topic",
+          "reading": "先建立程序执行的概念，再跟随 IR、SSA 和代码生成理解编译过程。",
+          "prerequisites": [
+            {
+              "slug": "program-execution",
+              "label": "程序执行机制"
+            }
+          ]
         }
       ]
     },
@@ -109,24 +209,59 @@
         {
           "slug": "art-memory-gc",
           "title": "ART 内存与 GC",
-          "summary": "理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。"
+          "summary": "理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。",
+          "kind": "overview",
+          "reading": "从对象可达性开始；虚拟内存基础有助于理解堆空间与 OOM。",
+          "prerequisites": [
+            {
+              "slug": "operating-systems",
+              "label": "虚拟地址与物理内存",
+              "anchor": "virtual-memory"
+            }
+          ]
         },
         {
           "slug": "jni-references",
           "title": "JNI：引用与生命周期",
           "cardTitle": "JNI 引用管理",
-          "summary": "梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。"
+          "summary": "梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。",
+          "kind": "topic",
+          "reading": "先了解 GC Roots，再看跨 Java/native 边界的引用和线程规则。",
+          "prerequisites": [
+            {
+              "slug": "art-memory-gc",
+              "label": "可达性与 GC Roots",
+              "anchor": "roots"
+            }
+          ]
         },
         {
           "slug": "art-compilation-startup",
           "title": "ART 编译与启动",
-          "summary": "区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。"
+          "summary": "区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。",
+          "kind": "topic",
+          "reading": "先区分解释、AOT 和 JIT，再连接 ART 编译与应用启动流程。",
+          "prerequisites": [
+            {
+              "slug": "compiler-ir",
+              "label": "AOT、JIT 与热点统计",
+              "anchor": "jit"
+            }
+          ]
         },
         {
           "slug": "android-mte",
           "title": "MTE：标签与错误定位",
           "cardTitle": "MTE 机制",
-          "summary": "理解内存标签检查、同步/异步报告、检测盲区和性能验证。"
+          "summary": "理解内存标签检查、同步/异步报告、检测盲区和性能验证。",
+          "kind": "topic",
+          "reading": "先熟悉非法内存访问的排查，再看标签检查、报告模式和检测边界。",
+          "prerequisites": [
+            {
+              "slug": "cpp-memory-diagnostics",
+              "label": "C++ 内存问题定位"
+            }
+          ]
         }
       ]
     },
@@ -137,13 +272,78 @@
         {
           "slug": "linked-trees-graphs",
           "title": "链表、树与图",
-          "summary": "围绕指针不变量、层序边界和访问映射，整理常见实现题。"
+          "summary": "链表操作、二叉树层序、B 树平衡与图的深拷贝，结合不变量和实现练习。",
+          "kind": "practice",
+          "reading": "按链表、树和图查阅；每题先看输入前提与不变量，再看实现。",
+          "prerequisites": [
+            {
+              "slug": "cpp-interview-roadmap",
+              "label": "指针、引用与参数传递",
+              "anchor": "q01"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "reverse",
+              "label": "链表反转"
+            },
+            {
+              "anchor": "cycle",
+              "label": "链表判环"
+            },
+            {
+              "anchor": "tree",
+              "label": "二叉树层序"
+            },
+            {
+              "anchor": "b-tree",
+              "label": "B 树平衡"
+            },
+            {
+              "anchor": "graph",
+              "label": "图的深拷贝"
+            }
+          ]
         },
         {
           "slug": "hash-sorting-arrays",
-          "title": "哈希、LRU、排序与数组",
-          "cardTitle": "哈希、排序与数组",
-          "summary": "整理数据结构不变量、复杂度，以及整数和字符串题的边界处理。"
+          "title": "哈希、排序与序列问题",
+          "summary": "哈希与 LRU、排序与循环队列，以及整数翻转、公共子串与子序列。",
+          "kind": "practice",
+          "reading": "按查找与缓存、排序与队列、整数与字符串查阅，完整示例集中在文末。",
+          "prerequisites": [
+            {
+              "slug": "cpp-interview-roadmap",
+              "label": "STL 容器与算法",
+              "anchor": "stl"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "hash",
+              "label": "哈希"
+            },
+            {
+              "anchor": "lru",
+              "label": "LRU"
+            },
+            {
+              "anchor": "sorting",
+              "label": "排序"
+            },
+            {
+              "anchor": "queue",
+              "label": "循环队列"
+            },
+            {
+              "anchor": "integers",
+              "label": "整数翻转"
+            },
+            {
+              "anchor": "strings",
+              "label": "公共子串与子序列"
+            }
+          ]
         }
       ]
     },
@@ -155,7 +355,77 @@
           "slug": "game-foundations",
           "title": "游戏基础：同步、寻路与旋转",
           "cardTitle": "游戏开发基础",
-          "summary": "明确同步对象、搜索代价和坐标约定，再推导实现与边界。"
+          "summary": "明确同步对象、搜索代价和坐标约定，再推导实现与边界。",
+          "kind": "overview",
+          "reading": "三个主题可独立阅读；同步需要传输基础，寻路需要图的概念。",
+          "prerequisites": [
+            {
+              "slug": "network-basics",
+              "label": "网络基础"
+            },
+            {
+              "slug": "linked-trees-graphs",
+              "label": "图的深拷贝",
+              "anchor": "graph"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "readingPaths": [
+    {
+      "title": "C++ 复习与实践",
+      "steps": [
+        {
+          "slug": "cpp-interview-roadmap",
+          "label": "核心知识"
+        },
+        {
+          "slug": "cpp-shared-ptr",
+          "label": "共享指针实现"
+        },
+        {
+          "slug": "cpp-memory-diagnostics",
+          "label": "内存问题定位"
+        }
+      ]
+    },
+    {
+      "title": "程序到运行时",
+      "steps": [
+        {
+          "slug": "operating-systems",
+          "label": "操作系统"
+        },
+        {
+          "slug": "program-execution",
+          "label": "程序执行"
+        },
+        {
+          "slug": "compiler-ir",
+          "label": "编译器"
+        },
+        {
+          "slug": "art-compilation-startup",
+          "label": "ART 编译与启动"
+        }
+      ]
+    },
+    {
+      "title": "内存与跨语言边界",
+      "steps": [
+        {
+          "slug": "art-memory-gc",
+          "label": "ART 内存与 GC"
+        },
+        {
+          "slug": "jni-references",
+          "label": "JNI 引用"
+        },
+        {
+          "slug": "android-mte",
+          "label": "MTE 诊断"
         }
       ]
     }

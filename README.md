@@ -75,6 +75,12 @@ GitHub Pages 发布后混用浏览器缓存的旧脚本；`npm run check` 会检
 `npm run check:generated` 会阻止导航、目录、篇数、文章元信息或 sitemap 漏更新。
 `cardTitle` 只在卡片需要较短标题时填写，`description` 只在搜索摘要需要独立文案时填写。
 
+笔记用 `kind` 区分 `overview`（基础综述）、`topic`（深入专题）与 `practice`（实现练习）。
+`reading` 和 `prerequisites` 生成文章开头的阅读建议；`chapters` 提供目录页的章节直达链接；
+`readingPaths` 维护可展开的阅读路线。章节与前置阅读引用现有文章的 slug 和 anchor，
+由链接检查验证目标。文章分类面包屑、类型和摘要也从配置生成。
+移动章节时保留原锚点并提供新位置链接，避免旧书签失效。
+
 文章正文仍直接编辑各自的 HTML。带有 `data-source` 的代码块由对应的
 `.cpp` / `.hpp` 文件生成，请修改源码后运行生成命令；没有该属性的代码块直接在文章中维护。
 新增笔记时，同时添加文章页面和配置中的条目。生成区域用 `generated:…` 注释标出，

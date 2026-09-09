@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">编译器：IR、SSA 与优化</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">编译器：IR、SSA 与优化</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">计算机基础</p>
+                <p class="eyebrow">计算机基础 / 深入专题</p>
                 <h1 id="note-title">编译器：IR、SSA 与优化</h1>
                 <p class="note-deck">连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先建立程序执行的概念，再跟随 IR、SSA 和代码生成理解编译过程。</p><p>相关基础：<a href="../program-execution/index.html">程序执行机制</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#pipeline">1. 编译阶段与中间表示</a></li><li><a href="#cfg">2. 基本块与控制流图</a></li><li><a href="#ssa">3. SSA 与 phi</a></li><li><a href="#lowering">4. phi 消除与寄存器分配</a></li><li><a href="#optimization">5. 优化的前提与代价</a></li><li><a href="#jit">6. AOT、JIT 与热点统计</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="pipeline" aria-labelledby="pipeline-title"><h2 id="pipeline-title">1. 编译阶段与中间表示</h2>
 <div class="note-table-wrap" role="region" aria-label="从源码到机器码" tabindex="0"><table><caption>从源码到机器码</caption><thead><tr><th scope="col">阶段</th><th scope="col">输入 → 输出</th><th scope="col">主要任务</th></tr></thead><tbody><tr><td>词法分析</td><td>字符 → token</td><td>识别标识符、关键字、字面量等</td></tr><tr><td>语法分析</td><td>token → AST</td><td>按文法建立结构，报告语法错误</td></tr><tr><td>语义分析</td><td>AST → 带类型/绑定信息的表示</td><td>名字查找、类型检查、作用域与转换</td></tr><tr><td>IR 生成与优化</td><td>高层结构 → 中间表示</td><td>显式表达控制流、数据依赖与内存操作</td></tr><tr><td>代码生成</td><td>IR → 目标指令</td><td>指令选择、寄存器分配、调度与目标约束</td></tr><tr><td>汇编与链接</td><td>汇编/目标文件 → 可执行程序或库</td><td>编码指令、解析符号与重定位</td></tr></tbody></table></div>
 <p><strong>AST</strong>保留源程序语法结构；<strong>IR</strong>为分析和变换提供规则更统一的表示。同一编译器可以有多层 IR，从接近语言语义逐步降低到机器指令。汇编器主要完成目标指令编码；解释器直接执行某种表示的语义，不必先生成本机代码。</p>

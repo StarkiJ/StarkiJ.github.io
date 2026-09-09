@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">ART 编译与启动</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">ART 编译与启动</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART</p>
+                <p class="eyebrow">Android / ART / 深入专题</p>
                 <h1 id="note-title">ART 编译与启动</h1>
                 <p class="note-deck">区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先区分解释、AOT 和 JIT，再连接 ART 编译与应用启动流程。</p><p>相关基础：<a href="../compiler-ir/index.html#jit">AOT、JIT 与热点统计</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#execution">1. DEX、解释执行与编译代码</a></li><li><a href="#profiles">2. 热点、Profile 与 dex2oat</a></li><li><a href="#startup">3. Zygote、fork 与应用启动</a></li><li><a href="#tradeoffs">4. 启动优化与验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="execution" aria-labelledby="execution-title"><h2 id="execution-title">1. DEX、解释执行与编译代码</h2>
 <p>DEX 保存 Android 运行时使用的字节码及相关信息；ART 负责类加载、执行、对象管理和运行时服务。同一应用的方法可以处于解释、JIT 编译或 AOT 编译状态，不是每次启动都只能选一种执行方式。</p>
 <div class="note-table-wrap" role="region" aria-label="执行方式" tabindex="0"><table><caption>执行方式</caption><thead><tr><th scope="col">方式</th><th scope="col">收益</th><th scope="col">成本</th></tr></thead><tbody><tr><td>解释</td><td>无需先为所有方法生成本机代码</td><td>反复解释热点指令有成本</td></tr><tr><td>JIT</td><td>按运行热点生成代码并利用运行信息</td><td>占用应用运行期间的 CPU、代码缓存与元数据</td></tr><tr><td>AOT</td><td>提前生成可复用机器码</td><td>编译耗时、磁盘体积；可能编译并不热的方法</td></tr></tbody></table></div>

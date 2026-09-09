@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">缓存局部性与性能测量</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">缓存局部性与性能测量</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ 实践</p>
+                <p class="eyebrow">C++ / 深入专题</p>
                 <h1 id="note-title">缓存局部性与性能测量</h1>
                 <p class="note-deck">由二维数组的访问步长，理解缓存、基准测试和粒子数据布局。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 从连续存储的访问方式出发，再看测量方法和粒子布局。</p><p>相关基础：<a href="../program-execution/index.html#cpu">指令、寄存器与内存</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#layout">1. 连续存储与访问步长</a></li><li><a href="#benchmark">2. 可运行的对照实验</a></li><li><a href="#measurement">3. 结果解释与观测指标</a></li><li><a href="#particles">4. 粒子系统的数据布局</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="layout" aria-labelledby="layout-title"><h2 id="layout-title">1. 连续存储与访问步长</h2>
 <p><code>int a[R][C]</code> 是 R 个长度为 C 的数组连续排列；a[i][j] 相对起点的字节偏移是 <code>(i * C + j) * sizeof(int)</code>。行内相邻元素连续，跨行步长为一整行。</p>
 <div class="note-table-wrap" role="region" aria-label="假设 int 为 4 字节、C = 1024" tabindex="0"><table><caption>假设 int 为 4 字节、C = 1024</caption><thead><tr><th scope="col">访问顺序</th><th scope="col">内层相邻访问间隔</th><th scope="col">访问特点</th></tr></thead><tbody><tr><td>先行后列：i 外、j 内</td><td>4 字节</td><td>连续读取，通常利于预取和向量化</td></tr><tr><td>先列后行：j 外、i 内</td><td>4096 字节</td><td>跨页访问，可能增加缓存与 TLB 压力</td></tr></tbody></table></div>

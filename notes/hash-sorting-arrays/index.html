@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="整理数据结构不变量、复杂度，以及整数和字符串题的边界处理。">
+    <meta name="description" content="哈希与 LRU、排序与循环队列，以及整数翻转、公共子串与子序列。">
     <meta name="theme-color" content="#f7faf8">
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
-    <meta property="og:title" content="哈希、LRU、排序与数组 · Starki 笔记">
-    <meta property="og:description" content="整理数据结构不变量、复杂度，以及整数和字符串题的边界处理。">
+    <meta property="og:title" content="哈希、排序与序列问题 · Starki 笔记">
+    <meta property="og:description" content="哈希与 LRU、排序与循环队列，以及整数翻转、公共子串与子序列。">
     <meta property="og:url" content="https://starkij.github.io/notes/hash-sorting-arrays/index.html">
-    <title>哈希、LRU、排序与数组 · Starki 笔记</title>
+    <title>哈希、排序与序列问题 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/hash-sorting-arrays/index.html">
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
@@ -34,23 +34,23 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">哈希、LRU、排序与数组</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#algorithms">数据结构与算法</a><span aria-hidden="true">/</span><span aria-current="page">哈希、排序与序列问题</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">数据结构与算法</p>
-                <h1 id="note-title">哈希、LRU、排序与数组</h1>
-                <p class="note-deck">整理数据结构不变量、复杂度，以及整数和字符串题的边界处理。</p>
+                <p class="eyebrow">数据结构与算法 / 实现练习</p>
+                <h1 id="note-title">哈希、排序与序列问题</h1>
+                <p class="note-deck">哈希与 LRU、排序与循环队列，以及整数翻转、公共子串与子序列。</p>
                 <div class="note-meta">
                     <span>Starki</span>
                     <time datetime="2026-09-08">2026.09.08</time>
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
-<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#hash">1. 哈希冲突与负载因子</a></li><li><a href="#lru">2. LRU：查找与淘汰分工</a></li><li><a href="#trees">3. B 树怎样保持平衡</a></li><li><a href="#sorting">4. 排序复杂度与稳定性</a></li><li><a href="#queue">5. 循环队列</a></li><li><a href="#integers">6. 整数翻转与溢出检查</a></li><li><a href="#strings">7. 最长公共子串与子序列</a></li><li><a href="#implementation">8. 实现与边界验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="hash" aria-labelledby="hash-title"><h2 id="hash-title">1. 哈希冲突与负载因子</h2>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 按查找与缓存、排序与队列、整数与字符串查阅，完整示例集中在文末。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#stl">STL 容器与算法</a></p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#hash">1. 哈希冲突与负载因子</a></li><li><a href="#lru">2. LRU：查找与淘汰分工</a></li><li><a href="#sorting">3. 排序复杂度与稳定性</a></li><li><a href="#queue">4. 循环队列</a></li><li><a href="#integers">5. 整数翻转与溢出检查</a></li><li><a href="#strings">6. 最长公共子串与子序列</a></li><li><a href="#implementation">7. 实现与边界验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><p class="note-reading-note note-anchor" id="trees"><span id="trees-title" class="note-anchor" aria-hidden="true"></span>B 树内容已归入<a href="../linked-trees-graphs/index.html#b-tree">链表、树与图 · B 树平衡</a>。</p>
+<section id="hash" aria-labelledby="hash-title"><h2 id="hash-title">1. 哈希冲突与负载因子</h2>
 <p><strong>哈希</strong>将键映射到有限位置；不同键落入同一位置是冲突，不等于键相等。查找先定位桶/探测位置，再按键等价关系确认对象。平均 O(1) 依赖哈希分布与负载，最坏查找可退化到 O(n)。</p>
 <div class="note-table-wrap" role="region" aria-label="冲突处理" tabindex="0"><table><caption>冲突处理</caption><thead><tr><th scope="col">方法</th><th scope="col">机制</th><th scope="col">注意点</th></tr></thead><tbody><tr><td>链地址法</td><td>同桶保存多个条目，再在桶内查找</td><td>节点开销与局部性；链长受分布影响</td></tr><tr><td>开放寻址</td><td>冲突后按探测规则寻找后续槽位</td><td>需控制装载；删除不能简单变成“从未使用”，否则截断探测链</td></tr></tbody></table></div>
 <p>负载因子描述元素数量相对桶/槽位数量。rehash 重建映射以改变容量和分布，不是消除所有冲突。开放寻址可使用墓碑或满足探测规则的回移删除；方案必须与查找终止条件配套。</p>
@@ -70,28 +70,20 @@ list: 最近使用 → … → 最久未使用</code></pre>
 </details>
 <p class="note-source">参考：<a href="https://eel.is/c++draft/list.ops" target="_blank" rel="noreferrer">list::splice</a>。</p>
 </section>
-<section id="trees" aria-labelledby="trees-title"><h2 id="trees-title">3. B 树怎样保持平衡</h2>
-<p>以最小度数 t≥2 的 B 树为例：节点内键有序；非根节点有 t−1 到 2t−1 个键；内部节点的孩子数量比键数多 1；所有叶子深度相同。空树和根节点有单独规则。</p>
-<p>插入遇到满节点时分裂，将中间键提升到父节点；根分裂使树高整体增加一层。删除导致键数不足时向有余量的兄弟借键，或与兄弟及父分隔键合并；根空时可收缩一层。平衡来自持续维护占用和等深不变量，不是等到左右子树高度差超过 1 再做 AVL 旋转。</p>
-<p>较高分支数使高度为 O(logₜ n)，适合按页访问。节点内部查找仍有比较成本，不能把一次节点访问等同于一次整数比较。B+ 树常把记录放在叶子并连接叶子，便于范围扫描，具体格式依实现。</p>
-<details class="note-review-question"><summary>经典问题：如何检测 B 树结构已经被破坏？</summary>
-<p>递归校验每个节点的键数范围、严格排序/重复键策略、孩子数量与键值区间，并检查所有叶子深度一致。仅检查高度或某个节点是否满都不够。</p>
-</details>
-<p class="note-source">参考：<a href="https://ocw.mit.edu/courses/6-046j-design-and-analysis-of-algorithms-spring-2015/8fd15588f584c518b6ec83aedb2b96c9_MIT6_046JS15_Recitation2.pdf" target="_blank" rel="noreferrer">MIT B 树讲义</a>。</p>
-</section>
-<section id="sorting" aria-labelledby="sorting-title"><h2 id="sorting-title">4. 排序复杂度与稳定性</h2>
+
+<section id="sorting" aria-labelledby="sorting-title"><h2 id="sorting-title">3. 排序复杂度与稳定性</h2>
 <div class="note-table-wrap" role="region" aria-label="常见比较排序" tabindex="0"><table><caption>常见比较排序</caption><thead><tr><th scope="col">算法</th><th scope="col">平均 / 最坏时间</th><th scope="col">辅助空间</th><th scope="col">常规实现稳定性</th></tr></thead><tbody><tr><td>归并排序（数组）</td><td>O(n log n) / O(n log n)</td><td>O(n) 缓冲，另有递归栈</td><td>合并时相等先取左边可稳定</td></tr><tr><td>堆排序</td><td>O(n log n) / O(n log n)</td><td>O(1)</td><td>通常不稳定</td></tr><tr><td>快速排序</td><td>O(n log n) / O(n²)</td><td>朴素递归平均 O(log n)、最坏 O(n)</td><td>通常不稳定</td></tr></tbody></table></div>
 <p>快速排序若每次先递归较小分区、循环处理较大分区，可把栈深控制在 O(log n)，但不能仅靠这个技巧消除最坏 O(n²) 时间。随机化降低坏划分的发生概率，不是最坏时间保证。</p>
 <p>C++17 sort 要求 O(n log n) 比较次数，不应把标准接口与某个朴素快排实现等同。把 key==0 放到末尾又保留有效项顺序，应选择 stable_partition；完整示例见 <a href="../cpp-interview-roadmap/index.html#q30">范围算法与比较器</a>。</p>
 </section>
-<section id="queue" aria-labelledby="queue-title"><h2 id="queue-title">5. 循环队列</h2>
+<section id="queue" aria-labelledby="queue-title"><h2 id="queue-title">4. 循环队列</h2>
 <p>循环队列在固定数组中复用首尾空间。可维护 head 和 size，容量为 C&gt;0：尾部插入位置为 <code>(head + size) % C</code>，出队后 head 前进一步取模、size 减一；size==0 为空，size==C 为满。</p>
 <p>定长环形缓冲区满时可以拒绝、阻塞或覆盖最旧数据，策略由业务定义，不自动“增加节点”。可扩容版本要分配更大数组，按逻辑顺序搬移，令 head=0，并处理旧地址失效。仅用 head==tail 判断时，需留一个空槽或另设满标志来区分空与满。</p>
 <details class="note-review-question"><summary>经典问题：线程安全队列是否只需把 head、tail 改成 atomic？</summary>
 <p>还需规定元素发布与读取的同步顺序、满/空检查和多生产者/消费者竞争。单生产者单消费者与多方并发是不同设计，不能靠原子下标自动推导正确性。</p>
 </details>
 </section>
-<section id="integers" aria-labelledby="integers-title"><h2 id="integers-title">6. 整数翻转与溢出检查</h2>
+<section id="integers" aria-labelledby="integers-title"><h2 id="integers-title">5. 整数翻转与溢出检查</h2>
 <p>每次用 <code>x % 10</code> 取末位、<code>x /= 10</code> 去掉末位，再计算 result*10+digit。C++17 的整数除法向零截断，负数余数可为负，因此可以直接处理负输入，不必对 INT_MIN 求绝对值。</p>
 <p>计算前检查 result 是否超过上下限的十分之一；相等时再检查最后一位。示例使用 optional 区分“结果为 0”和“溢出失败”，时间 O(d)、空间 O(1)，d 为十进制位数。</p>
 <details class="note-review-question"><summary>经典问题：先乘 10，再发现结果小了来判断溢出，可以吗？</summary>
@@ -99,7 +91,7 @@ list: 最近使用 → … → 最久未使用</code></pre>
 </details>
 <p class="note-source">参考：<a href="https://eel.is/c++draft/expr.mul" target="_blank" rel="noreferrer">C++ 整数运算</a>。</p>
 </section>
-<section id="strings" aria-labelledby="strings-title"><h2 id="strings-title">7. 最长公共子串与子序列</h2>
+<section id="strings" aria-labelledby="strings-title"><h2 id="strings-title">6. 最长公共子串与子序列</h2>
 <div class="note-table-wrap" role="region" aria-label="先明确题目定义" tabindex="0"><table><caption>先明确题目定义</caption><thead><tr><th scope="col">题型</th><th scope="col">状态含义</th><th scope="col">递推</th></tr></thead><tbody><tr><td>公共子串：必须连续</td><td>dp[i][j]：以 a[i−1]、b[j−1] 结尾的公共后缀长度</td><td>字符相同则左上角 +1，否则置 0；全表最大值为答案长度</td></tr><tr><td>公共子序列：可跳过字符</td><td>dp[i][j]：两个前缀的最长公共子序列长度</td><td>字符相同则左上角 +1，否则 max(上方,左方)</td></tr></tbody></table></div>
 <p>两者均可 O(mn) 时间。子串只需记最大长度和结束位置；滚动数组从右向左更新，避免覆盖上一行的左上角。子序列长度可从左向右滚动并额外保存旧左上角；要输出序列本身，还需恢复路径或其他重建策略。示例按字节处理 std::string，中文文本按字符匹配需要先确定 Unicode 分割单位。</p>
 <details class="note-review-question"><summary>经典问题：原题只写“最大子串”，是否能直接套 LCS 模板？</summary>
@@ -107,7 +99,7 @@ list: 最近使用 → … → 最久未使用</code></pre>
 </details>
 <p class="note-source">参考：<a href="https://live.ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/28461a74f81101874a13d9679a40584d_MIT6_006S20_lec16.pdf" target="_blank" rel="noreferrer">MIT：LCS 状态与递推</a>。</p>
 </section>
-<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">8. 实现与边界验证</h2>
+<section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">7. 实现与边界验证</h2>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
 <pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;algorithm&gt;

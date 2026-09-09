@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">ART 内存与 GC</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">ART 内存与 GC</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART</p>
+                <p class="eyebrow">Android / ART / 基础综述</p>
                 <h1 id="note-title">ART 内存与 GC</h1>
                 <p class="note-deck">理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 从对象可达性开始；虚拟内存基础有助于理解堆空间与 OOM。</p><p>相关基础：<a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#roots">1. 可达性与 GC Roots</a></li><li><a href="#collectors">2. 回收算法与并发复制</a></li><li><a href="#generations">3. Young、Full 与卡表</a></li><li><a href="#spaces">4. 堆空间与引用表示</a></li><li><a href="#oom">5. OOM 与应用侧排查</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="roots" aria-labelledby="roots-title"><h2 id="roots-title">1. 可达性与 GC Roots</h2>
 <p><strong>追踪式 GC</strong>从根集合沿对象引用寻找可达对象，再处理不可达对象。它依据可达关系，不依据“变量名还在不在”，也不要求对象引用图没有环。GC 线程之外执行应用代码的线程常称为 mutator。</p>
 <div class="note-table-wrap" role="region" aria-label="根或根访问路径" tabindex="0"><table><caption>根或根访问路径</caption><thead><tr><th scope="col">场景</th><th scope="col">为什么必须保留</th></tr></thead><tbody><tr><td>线程当前栈帧、寄存器中的活引用</td><td>方法后续还可能使用该对象</td></tr><tr><td>JNI local / global 强引用</td><td>native 代码仍可能通过有效引用访问对象</td></tr><tr><td>运行时持有的类、线程和其他内部根</td><td>运行时自身仍需要这些对象</td></tr><tr><td>已加载且可达的类的静态字段</td><td>通过类对象和相关运行时根可继续到达字段指向的对象</td></tr></tbody></table></div>

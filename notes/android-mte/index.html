@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">MTE：标签与错误定位</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">MTE：标签与错误定位</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART</p>
+                <p class="eyebrow">Android / ART / 深入专题</p>
                 <h1 id="note-title">MTE：标签与错误定位</h1>
                 <p class="note-deck">理解内存标签检查、同步/异步报告、检测盲区和性能验证。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先熟悉非法内存访问的排查，再看标签检查、报告模式和检测边界。</p><p>相关基础：<a href="../cpp-memory-diagnostics/index.html">C++ 内存问题定位</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#tags">1. 逻辑标签与分配标签</a></li><li><a href="#coverage">2. 能发现什么，不能发现什么</a></li><li><a href="#modes">3. SYNC 与 ASYNC</a></li><li><a href="#validation">4. 覆盖与性能实验</a></li><li><a href="#hooks">5. Hook 与诊断边界</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="tags" aria-labelledby="tags-title"><h2 id="tags-title">1. 逻辑标签与分配标签</h2>
 <p><strong>MTE（Memory Tagging Extension）</strong>是 Arm 的内存标记机制。在支持并启用检查的内存访问中，CPU 比较指针中的逻辑标签与目标内存颗粒的分配标签；不一致时产生标签检查故障。</p>
 <p>经典 MTE 使用 4 位标签，每个 16 字节对齐的颗粒对应一个分配标签。逻辑标签位于地址表示中的指定高位，分配标签由硬件支持的标签存储维护，不是简单往每个对象结构体末尾加一个成员。地址转换与标签检查各有职责。</p>

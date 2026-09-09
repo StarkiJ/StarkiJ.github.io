@@ -34,14 +34,10 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航">
-            <a href="../../index.html">主页</a><span aria-hidden="true">/</span>
-            <a href="../index.html">笔记</a><span aria-hidden="true">/</span>
-            <span aria-current="page">简化 shared_ptr：计数与释放</span>
-        </nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">简化 shared_ptr：计数与释放</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ 实践</p>
+                <p class="eyebrow">C++ / 实现练习</p>
                 <h1 id="note-title">简化 shared_ptr：计数与释放</h1>
                 <p class="note-deck">从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。</p>
                 <div class="note-meta">
@@ -50,6 +46,9 @@
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先理解所有权和对象生命周期，再跟随控制块推导实现。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#ownership">资源管理与智能指针</a></p></aside>
+<!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#ownership">1. 控制块与所有权</a></li><li><a href="#operations">2. 拷贝、移动与赋值</a></li><li><a href="#implementation">3. 实现与异常安全</a></li><li><a href="#standard">4. 标准 shared_ptr 的扩展</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="ownership" aria-labelledby="ownership-title"><h2 id="ownership-title">1. 控制块与所有权</h2>
 <p><strong>共享所有权</strong>允许多个管理对象共同负责同一个资源；最后一个拥有者离开时释放资源。控制块保存被管理指针和强引用计数，各个 Shared 只保存控制块地址。</p>
 <pre tabindex="0"><code class="language-text">a ─┐
