@@ -1363,7 +1363,6 @@ int main() {
 <div class="note-lesson" id="q42">
 <h3>9.5 性能测量与优化</h3>
 <ul><li><strong>先定指标：</strong>吞吐是单位时间完成量，延迟是一次操作的耗时；二者与内存峰值可能存在取舍。性能分析器（profiler）通过定期采样或加入统计代码，找出耗时和分配集中的位置。</li><li><strong>控制变量：</strong>固定输入规模与分布、编译器、优化配置，区分初始化和稳态成本，重复测量观察波动。</li><li><strong>避免无效基准：</strong>保证计算结果可观察，防止循环被消除；不要随意加 volatile，因为它会改变程序的访问约束。</li><li><strong>结合场景判断：</strong>复杂度描述增长趋势，分配、复制、缓存和锁竞争影响实际成本。reserve 可能减少迁移，也会改变内存占用。</li></ul>
-<p>实践与延伸：<a href="../cpp-cache-performance/index.html">缓存局部性与性能测量</a>。</p>
 </div>
 <p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.def.odr" target="_blank" rel="noreferrer">ODR 与定义</a> · <a href="https://eel.is/c++draft/intro.execution" target="_blank" rel="noreferrer">求值顺序</a> · <a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">AddressSanitizer</a> · <a href="https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html" target="_blank" rel="noreferrer">UndefinedBehaviorSanitizer</a> · <a href="https://clang.llvm.org/docs/ThreadSanitizer.html" target="_blank" rel="noreferrer">ThreadSanitizer</a> · <a href="https://eel.is/c++draft/dcl.inline" target="_blank" rel="noreferrer">inline</a> · <a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a>。</p>
 </section>

@@ -87,7 +87,7 @@ function catalog(file) {
             return [`<div class="note-group"><h3>${text(label)}</h3><ul class="note-entry-grid">\n${entries.map(note => catalogEntry(file, note)).join("\n")}\n</ul></div>`];
         });
         return `<section class="section-block note-category" id="${attr(category.id)}" aria-labelledby="${attr(category.id)}-title">
-    <div class="section-heading"><h2 id="${attr(category.id)}-title">${text(category.title)}</h2><span>${category.notes.length} 篇</span></div>
+    <div class="section-heading"><h2 id="${attr(category.id)}-title">${text(category.title)}</h2><span>${category.notes.length} 篇</span></div>${category.description ? `\n    <p>${text(category.description)}</p>` : ""}
     ${groups.join("\n")}
 </section>`;
     });

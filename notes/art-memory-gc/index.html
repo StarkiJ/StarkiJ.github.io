@@ -34,15 +34,15 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">ART 内存与 GC</span></nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">虚拟机与编译器</a><span aria-hidden="true">/</span><span aria-current="page">ART 内存与 GC</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART / 基础综述</p>
+                <p class="eyebrow">虚拟机与编译器 / 基础综述</p>
                 <h1 id="note-title">ART 内存与 GC</h1>
                 <p class="note-deck">理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。</p>
                 <div class="note-meta">
                     <span>Starki</span>
-                    <time datetime="2026-09-08">2026.09.08</time>
+                    <time datetime="2026-09-10">2026.09.10</time>
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
@@ -66,6 +66,7 @@
 <p>切换线程根、同步关键状态等步骤需要与应用线程协调。大量复制可并发执行，但这不意味着无暂停；区分 GC 总耗时、暂停时长和应用受到的 CPU/屏障开销。</p>
 </details>
 <p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/collector/concurrent_copying.cc" target="_blank" rel="noreferrer">Android 14 CC 源码</a> · <a href="https://source.android.com/docs/core/runtime/gc-debug" target="_blank" rel="noreferrer">ART GC 调试文档</a>。</p>
+<p>若复习 JVM 面试中的三色标记、STW、转发地址与屏障，见 <a href="../jvm-gc/index.html#tricolor">三色漏标反例</a>及 <a href="../jvm-gc/index.html#forwarding">并发移动与转发</a>。那里区分通用原理、G1 与分代 ZGC；本节仍限定 Android 14 ART 的实现。</p>
 </section>
 <section id="generations" aria-labelledby="generations-title"><h2 id="generations-title">3. Young、Full 与卡表</h2>
 <p><strong>卡表</strong>把一段堆划成较粗粒度的 card；写屏障在相关引用写入后标记卡，后续只扫描受影响范围。它记录的是“这片区域需要检查”，通常不是每条精确引用。</p>

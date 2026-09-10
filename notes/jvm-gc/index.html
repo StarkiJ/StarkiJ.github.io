@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从三色标记的漏标反例出发，理解 STW、读写屏障与并发移动的正确性。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="JVM GC：三色标记、STW 与读屏障 · Starki 笔记">
+    <meta property="og:description" content="从三色标记的漏标反例出发，理解 STW、读写屏障与并发移动的正确性。">
+    <meta property="og:url" content="https://starkij.github.io/notes/jvm-gc/index.html">
+    <title>JVM GC：三色标记、STW 与读屏障 · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/jvm-gc/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">虚拟机与编译器</a><span aria-hidden="true">/</span><span aria-current="page">JVM GC：三色标记、STW 与读屏障</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">虚拟机与编译器 / 深入专题</p>
+                <h1 id="note-title">JVM GC：三色标记、STW 与读屏障</h1>
+                <p class="note-deck">从三色标记的漏标反例出发，理解 STW、读写屏障与并发移动的正确性。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-11">2026.09.11</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先确认讨论范围与可达性前提，再依次阅读三色标记、暂停、屏障和转发。</p><p>相关基础：<a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a></p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#scope">1. 讨论范围与阅读前提</a></li><li><a href="#tricolor">2. 三色标记：用不变量解释漏标</a></li><li><a href="#stw">3. STW、安全点与并发阶段</a></li><li><a href="#barriers">4. SATB、增量更新与读屏障</a></li><li><a href="#forwarding">5. 转发地址：移动对象但保留身份</a></li><li><a href="#review">6. 要点回顾与运行时协作</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1">
+<section id="scope" aria-labelledby="scope-title"><span id="interview-map" class="note-anchor" aria-hidden="true"></span><span id="interview-map-title" class="note-anchor" aria-hidden="true"></span><h2 id="scope-title">1. 讨论范围与阅读前提</h2>
+<p>本文关注两个问题：<strong>应用不断修改引用时，GC 如何避免漏掉活对象；对象移动以后，应用如何继续访问同一个对象。</strong>先用三色标记说明并发修改的问题，再看暂停、屏障和转发信息分别承担什么职责。</p>
+<p>阅读前先明确：追踪式 GC 从根集合沿引用寻找可达对象；对象可达不等于业务仍需要它。堆对象、引用与虚拟地址也不是同一层概念，地址与映射基础见 <a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a>。</p>
+<p>本文用一般追踪式 GC 说明原理，再以 <strong>JDK 21 HotSpot 的 G1 / 分代 ZGC</strong> 举例。具体阶段和屏障职责按这一版本与模式区分；收集器实现细节不等同于 JVM 规范。Android 的收集器实现单独见 <a href="../art-memory-gc/index.html">ART 内存与 GC</a>。</p>
+</section>
+<section id="tricolor" aria-labelledby="tricolor-title"><h2 id="tricolor-title">2. 三色标记：用不变量解释漏标</h2>
+<p><strong>三色是逻辑状态，不要求对象头真有三个颜色值。</strong>白色表示尚未发现；灰色表示已发现但引用尚未扫描完；黑色表示已扫描完。可用标记位图和工作队列表达：已标记但仍待扫描的是灰色，已处理的是黑色。</p><pre tabindex="0"><code class="language-text">初始化：对象视为白；从根发现的对象染灰、入队
+循环：取一个灰对象，发现其白色后继并染灰、入队
+      扫描完该对象后，将它视为黑色
+终止：工作队列及线程缓冲中的待处理工作均已收敛
+回收：本轮收集范围内仍白、且无特殊保留规则的对象</code></pre><p>在图不变化的模型中，从根可达的节点会逐步被发现。强三色不变量是<strong>不存在黑对象直接指向白对象的边</strong>；白对象仍可由灰色前沿保护。下面的并发交错会破坏这一保证：</p><pre tabindex="0"><code class="language-text">初态：根 → A（黑），根 → B（灰），B.ref → C（白）
+应用：A.ref = B.ref    // 新增 A（黑）→ C（白）
+应用：B.ref = null     // 删除灰色前沿通向 C 的最后一条路径
+GC：  扫描 B，只看到 null；不会重扫已黑的 A
+结果：C 仍白，却能从根经 A 到达，若回收便发生漏标</code></pre><p>关键是两个变化组合：黑到白的新边出现，且灰色前沿发现该白对象的路径被切断。仅出现一条黑到白的边不一定漏标；若 C 仍能被其他待扫描路径发现，就可能被保住。多标会形成<strong>浮动垃圾</strong>，通常留待后续回收；漏标活对象则破坏内存安全。</p><details class="note-review-question"><summary>复习问题：如何修复上面的交错？</summary><p>可暂停应用，固定引用图后扫描；也可在引用修改时记录必要信息，让并发标记恢复发现 C 的能力。必须连同根变化、分配期间的新对象和终止协议一起处理，不能只说“多加一个标记位”。</p></details><p class="note-source">参考：<a href="https://www.cs.utexas.edu/~EWD/transcriptions/EWD06xx/EWD630.html" target="_blank" rel="noreferrer">Dijkstra 等：并发垃圾收集与颜色不变量</a>。</p>
+</section>
+<section id="stw" aria-labelledby="stw-title"><h2 id="stw-title">3. STW、安全点与并发阶段</h2>
+<p><strong>STW（Stop-The-World）</strong>表示在一段协调窗口内暂停执行应用托管代码的线程；GC 工作线程仍可并行执行。<strong>并行</strong>描述多个工作线程一起做事，<strong>并发</strong>描述 GC 与应用的执行在时间上重叠。并行 GC 完全可能处于 STW。</p>
+<p>HotSpot 在安全点等受控状态获取可靠的机器状态。编译代码的 <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/compiler/oopMap.hpp" target="_blank" rel="noreferrer"><strong>OopMap</strong></a>描述特定程序位置的哪些寄存器或栈槽保存对象引用；不是把所有像地址的整数都当成对象。暂停请求到达后，各线程还要到达或被判定处于安全状态，因此“请求暂停”不等于“立即开始 GC 工作”。native 线程可以通过线程状态协议被视为安全，但返回托管执行前仍要遵守协调规则。</p>
+<p>STW 可用于建立根快照、完成标记收敛或切换关键阶段；具体工作随收集器变化。G1 有并发标记，但 Young / Mixed 的疏散复制与引用更新在暂停中进行，Remark 也需要暂停。不能把“有并发标记”推导为“对象搬迁同样并发”。</p><pre tabindex="0"><code class="language-text">观察一次延迟时分开看：
+到达安全状态所需时间 → 安全点内的 GC / VM 操作时间 → 恢复应用
+另看整轮 GC 墙钟时间、累计 CPU、分配停顿与应用尾延迟</code></pre><details class="note-review-question"><summary>复习问题：有读屏障是否就能完全消除 STW？</summary><p>不能据此保证。读屏障主要让应用安全地使用引用，根处理、阶段切换和工作收敛仍需要协议。有些工作能改成并发扫描或线程握手，但必须说明具体收集器和版本；更短暂停也可能付出屏障、CPU 和预留空间成本。</p></details><p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html" target="_blank" rel="noreferrer">JDK 21 G1：并发标记与暂停疏散</a>。</p>
+</section>
+<section id="barriers" aria-labelledby="barriers-title"><h2 id="barriers-title">4. SATB、增量更新与读屏障</h2>
+<div class="note-table-wrap" role="region" aria-label="屏障解决的不同问题" tabindex="0"><table><caption>屏障解决的不同问题</caption><thead><tr><th scope="col">机制</th><th scope="col">记录或检查什么</th><th scope="col">在漏标例子中的作用</th></tr></thead><tbody><tr><td>SATB（起始快照）写前屏障</td><td>覆盖引用前，记录旧引用；标记线程处理缓冲</td><td>覆盖 B.ref 前保留 C，使起始快照中的存活关系仍可被追踪</td></tr><tr><td>增量更新写屏障</td><td>关注新边，可把新目标染灰或让源对象重扫，具体条件依算法</td><td>建立 A.ref → C 时保护 C，维护相应标记不变量</td></tr><tr><td>卡表 / remembered set 屏障</td><td>记录可能产生跨代、跨区域引用的槽或粗粒度区域</td><td>局部收集时能找到收集范围外指向范围内的引用</td></tr><tr><td>GC 读 / load 屏障</td><td>读取引用后、使用对象前检查引用是否需要处理</td><td>并发移动期间把旧引用解析到当前可访问对象；有的设计还承担标记</td></tr></tbody></table></div><p>SATB 的逻辑是保存标记起始时的可达快照，实际可保守地多留对象；它不要求任何时刻都严格满足“没有黑到白边”。本轮开始后分配的对象也有专门保护规则。卡表屏障与 SATB 屏障可以出现在同一次写入周围，但服务于不同目的。</p><pre tabindex="0"><code class="language-text">写引用(slot, new):                   // SATB 概念伪代码
+    old = *slot
+    若本轮标记需要：把 old 记入线程缓冲
+    *slot = new
+    若需跨区域追踪：记录 slot 所在区域
+
+读引用(slot):                        // 并发移动的概念伪代码
+    old = *slot
+    若 old 为空或状态已满足要求：返回可用引用
+    current = 运行时解析或协助迁移(old)
+    尝试有条件地将 slot 中的 old 修复为 current
+    返回 current</code></pre><p>上述仅表达职责，省略内存序、标记队列并发、弱引用、阶段状态和机器码优化，不能直接实现为普通 C++ 并发读写。修复槽通常需要比较交换等协议，避免把应用同时写入的新值覆盖掉。快速路径让多数正常引用低成本通过；慢路径才处理需要修复的情况。</p>
+<p><strong>GC 屏障与 CPU 内存屏障不同。</strong>前者维护对象图或引用有效性；后者约束内存访问排序和可见性。GC 屏障内部可能使用原子操作或排序指令，但一个 acquire load 不会自动找到搬迁后的对象。</p><details class="note-review-question"><summary>复习问题：ZGC 是不是只有读屏障？</summary><p>不能这样概括。JDK 21 的分代 ZGC 同时有 load 与 store 屏障：load 路径负责取得可用的对象地址，store 路径参与标记及代际引用维护。旧版非分代 ZGC 的职责分配不同，回答时必须限定模式和版本。</p></details><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/gc/z/zBarrier.inline.hpp" target="_blank" rel="noreferrer">JDK 21 分代 ZGC：屏障与 self-healing</a>。</p><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/gc/g1/g1BarrierSet.inline.hpp" target="_blank" rel="noreferrer">JDK 21 G1：SATB 写前屏障与卡表写后屏障</a>。</p>
+</section>
+<section id="forwarding" aria-labelledby="forwarding-title"><h2 id="forwarding-title">5. 转发地址：移动对象但保留身份</h2>
+<p>假设对象 O 从 <code>0x1000</code> 复制到 <code>0x9000</code>，堆字段、栈槽或寄存器仍可能暂时保存旧引用。<strong>转发信息表达“旧对象位置 → 权威新位置”</strong>，让这些引用最终指向同一个对象。实现可以借用旧对象头、设置额外间接指针或建立旁路转发表；不能一概说“转发地址永远存在 Mark Word”。</p><pre tabindex="0"><code class="language-text">复制前：p ─┐
+          ├→ O @ 0x1000
+        q ─┘
+复制后：转发表 0x1000 → 0x9000（O 的权威副本）
+        p 已更新 → 0x9000
+        q 仍为旧引用 → 经屏障解析 → 0x9000</code></pre><ol><li><strong>唯一性：</strong>GC 线程和应用线程可能同时尝试迁移同一对象。发布转发结果需要原子协议，使观察者收敛到唯一新地址；允许投机复制的设计还必须处理竞争失败的副本。</li><li><strong>可见性与写入：</strong>新地址可供解引用前，副本初始化必须满足发布协议。应用的字段写入也须与搬迁协调，否则写在旧副本上的更新可能丢失；并非有一条转发记录就自动正确。</li><li><strong>身份与元数据：</strong>多个别名仍要指向同一对象，身份哈希、锁等状态也必须保留或转移。地址变化不应改变语言层的对象身份。</li><li><strong>回收时机：</strong>旧存储与转发元数据的寿命未必相同。只有旧引用已被更新，或仍能由可靠元数据安全解析时，才可按协议复用旧区域；不能在无保护下把旧地址重新解释成另一个对象。</li></ol><details class="note-review-question"><summary>复习问题：两个线程复制同一个对象，为什么不能各用自己的副本？</summary><p>那会把一个对象分裂成两个身份：通过 p 的写入可能无法通过 q 观察到。需要原子决定权威副本；未获胜者转向已发布的新地址，而不是仅保证两份初始内容相同。</p></details><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/gc/z/zForwarding.inline.hpp" target="_blank" rel="noreferrer">JDK 21 ZForwarding：查询、并发插入与转发表生命周期</a>。</p>
+</section>
+<section id="review" aria-labelledby="review-title"><h2 id="review-title">6. 要点回顾与运行时协作</h2>
+<p><strong>要点回顾：</strong>三色标记用白、灰、黑表达发现和扫描状态。应用并发修改引用，可能让活对象逃过灰色前沿；STW 固定图，写屏障则在并发场景保存必要信息。对象移动后，转发信息关联旧新位置，读屏障保证使用正确引用。收集器选择把哪些工作放进暂停、哪些并发执行，本质上是在正确性约束下权衡暂停、吞吐、CPU 和内存。</p><details class="note-review-question"><summary>复习问题：GC 为什么需要编译器和 ABI 配合？</summary><p>GC 需要知道机器状态里哪些值是引用；编译器生成安全点信息并插入屏障，ABI 又规定值如何跨调用保存。异常展开需要恢复上一帧，但 DWARF CFI 描述恢复规则，OopMap 描述对象引用位置，二者不是同一份信息。</p></details><details class="note-review-question"><summary>复习问题：malloc 的指针为什么通常不能这样搬？</summary><p>普通 native 调用者可以复制、隐藏裸指针，分配器没有完整根集合和编译器屏障协作，不能擅自移动已交付的活块。realloc 可以返回新地址，但必须由调用者更新使用方式；详见 malloc 专题。</p></details><p>复习时画出漏标交错与旧新地址映射，说明每种机制维护的条件；比较收集器时，分别看暂停阶段、并发工作、屏障开销和迁移所需空间。</p>
+</section></div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

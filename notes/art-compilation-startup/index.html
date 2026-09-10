@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。">
+    <meta name="description" content="沿解释、JIT、Profile 与 AOT，理解编译状态如何影响应用启动。">
     <meta name="theme-color" content="#f7faf8">
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
-    <meta property="og:title" content="ART 编译与启动 · Starki 笔记">
-    <meta property="og:description" content="区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。">
+    <meta property="og:title" content="ART 编译与应用启动 · Starki 笔记">
+    <meta property="og:description" content="沿解释、JIT、Profile 与 AOT，理解编译状态如何影响应用启动。">
     <meta property="og:url" content="https://starkij.github.io/notes/art-compilation-startup/index.html">
-    <title>ART 编译与启动 · Starki 笔记</title>
+    <title>ART 编译与应用启动 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/art-compilation-startup/index.html">
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
@@ -34,22 +34,22 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#android">Android / ART</a><span aria-hidden="true">/</span><span aria-current="page">ART 编译与启动</span></nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">虚拟机与编译器</a><span aria-hidden="true">/</span><span aria-current="page">ART 编译与应用启动</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">Android / ART / 深入专题</p>
-                <h1 id="note-title">ART 编译与启动</h1>
-                <p class="note-deck">区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。</p>
+                <p class="eyebrow">虚拟机与编译器 / 深入专题</p>
+                <h1 id="note-title">ART 编译与应用启动</h1>
+                <p class="note-deck">沿解释、JIT、Profile 与 AOT，理解编译状态如何影响应用启动。</p>
                 <div class="note-meta">
                     <span>Starki</span>
-                    <time datetime="2026-09-08">2026.09.08</time>
+                    <time datetime="2026-09-11">2026.09.11</time>
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
 <!-- generated:reading-guide:start -->
-<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先区分解释、AOT 和 JIT，再连接 ART 编译与应用启动流程。</p><p>相关基础：<a href="../compiler-ir/index.html#jit">AOT、JIT 与热点统计</a></p></aside>
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先理解方法的执行与编译状态，再看它们在应用启动路径上的成本和取舍。</p><p>相关基础：<a href="../compiler-ir/index.html#jit">AOT、JIT 与热点统计</a></p></aside>
 <!-- generated:reading-guide:end -->
-<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#execution">1. DEX、解释执行与编译代码</a></li><li><a href="#profiles">2. 热点、Profile 与 dex2oat</a></li><li><a href="#startup">3. Zygote、fork 与应用启动</a></li><li><a href="#tradeoffs">4. 启动优化与验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="execution" aria-labelledby="execution-title"><h2 id="execution-title">1. DEX、解释执行与编译代码</h2>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#execution">1. DEX、解释执行与编译代码</a></li><li><a href="#profiles">2. 热点、Profile 与 dex2oat</a></li><li><a href="#startup">3. 应用启动中的运行环境与编译状态</a></li><li><a href="#tradeoffs">4. 启动优化与验证</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="execution" aria-labelledby="execution-title"><h2 id="execution-title">1. DEX、解释执行与编译代码</h2>
 <p>DEX 保存 Android 运行时使用的字节码及相关信息；ART 负责类加载、执行、对象管理和运行时服务。同一应用的方法可以处于解释、JIT 编译或 AOT 编译状态，不是每次启动都只能选一种执行方式。</p>
 <div class="note-table-wrap" role="region" aria-label="执行方式" tabindex="0"><table><caption>执行方式</caption><thead><tr><th scope="col">方式</th><th scope="col">收益</th><th scope="col">成本</th></tr></thead><tbody><tr><td>解释</td><td>无需先为所有方法生成本机代码</td><td>反复解释热点指令有成本</td></tr><tr><td>JIT</td><td>按运行热点生成代码并利用运行信息</td><td>占用应用运行期间的 CPU、代码缓存与元数据</td></tr><tr><td>AOT</td><td>提前生成可复用机器码</td><td>编译耗时、磁盘体积；可能编译并不热的方法</td></tr></tbody></table></div>
 <p>运行时还需要在解释帧、编译帧和 native 调用间转换。编译代码依赖相应检查、类状态和 GC 协作信息，不是与运行时脱离的一段裸机器码。</p>
@@ -61,12 +61,15 @@
 <details class="note-review-question"><summary>经典问题：“JIT 预编译”通常需要怎样澄清？</summary>
 <p>如果指运行前依据已有 profile 生成机器码，那更接近 profile-guided AOT；如果指在运行中提前安排将使用的方法编译，则仍是运行时策略。应明确生成时间、输入信息和代码保存位置。</p>
 </details>
+<details class="note-review-question"><summary>经典问题：热点统计应选择什么数据结构？</summary>
+<p>通常可把计数与状态放在方法关联元数据中，结合调用/回边计数或采样，降低查表和同步开销；编译队列要去重，计数可饱和。真实字段、阈值和队列实现需对照目标 ART 分支。</p>
+</details>
 <p class="note-source">参考：<a href="https://source.android.com/docs/core/runtime/jit-compiler" target="_blank" rel="noreferrer">ART JIT 与 profile 流程</a> · <a href="https://source.android.com/docs/core/runtime/configure" target="_blank" rel="noreferrer">ART 配置与编译过滤器</a>。</p>
 </section>
-<section id="startup" aria-labelledby="startup-title"><h2 id="startup-title">3. Zygote、fork 与应用启动</h2>
-<p>典型 Android 启动主线是引导加载器 → 内核 → init → 启动 Zygote 等服务 → system_server 的系统服务初始化。应用进程通常从 Zygote 派生，再完成身份/运行环境配置，进入应用运行入口、绑定应用并执行相应组件生命周期。不同启动路径与预创建进程策略会改变细节。</p>
+<section id="startup" aria-labelledby="startup-title"><h2 id="startup-title">3. 应用启动中的运行环境与编译状态</h2>
+<p>应用进程通常从 Zygote 派生，再完成运行环境配置、绑定应用并执行相应组件生命周期。这里关注应用启动路径上的执行成本：哪些方法需要解释，哪些已有可用编译代码，以及启动期间是否发生 JIT 编译。</p>
 <p><strong>Zygote</strong>预加载可复用的类和资源。fork 后父子私有映射起初可用写时复制共享物理页：读取共享，写入相关页时才形成私有副本。共享的是页级存储效果，父子不是持有同一个可随意共同修改的 Java 堆。</p>
-<p>Framework 提供组件、窗口、包管理、进程管理等系统能力；应用通常经 Binder 与 system_server 等进程协作。zygote 预加载、类初始化、Binder 调用与首帧渲染分别可能成为启动耗时来源。</p>
+<p>预加载与写时复制解释了应用进程如何复用已有运行环境；方法采用解释、JIT 还是 AOT，则决定相应代码的执行与编译成本。已有 profile 可指导提前编译；启动期间的 JIT 可能减少后续解释成本，也会占用 CPU。分析时还要分开观察类初始化、Binder 调用与首帧渲染，避免把全部启动耗时归因于编译。</p>
 <details class="note-review-question"><summary>经典问题：fork 是否立刻复制 Zygote 中的全部数据？</summary>
 <p>通常不会逐字节立即复制全部私有页。页表与进程状态需要建立，原数据页可按写时复制共享；后续写入越多，私有化越多。具体还要看映射类型与启动实现。</p>
 </details>
@@ -75,10 +78,7 @@
 <section id="tradeoffs" aria-labelledby="tradeoffs-title"><h2 id="tradeoffs-title">4. 启动优化与验证</h2>
 <p>降低 JIT 阈值可能更早优化热点，也可能抢占启动关键路径资源；提高阈值则可能延长解释执行。profile/AOT 可以把一部分成本移到执行前，但仍有包体、编译和存储代价。</p>
 <ul><li>区分冷启动、温启动、热启动，固定 profile、编译状态、设备温度和后台负载。</li><li>记录首帧/完全可用耗时、主线程阻塞、CPU 调度、JIT 编译时段、GC 暂停和内存峰值，不能只报平均总时间。</li><li>用 Perfetto 等时间线工具关联事件，再针对一项策略做对照。应用侧可减少主线程工作、延迟非必要初始化并使用适用的 baseline profile。</li></ul>
-<p>ADB 是与 Android 设备通信和执行调试操作的工具。基础只读入口包括 <code>adb logcat</code>、<code>adb shell dumpsys meminfo 包名</code>；具体服务输出、权限和命令随系统而异。使用编译/清理 profile 命令会改变实验状态，应明确记录。</p>
-<details class="note-review-question"><summary>经典问题：热点统计应选择什么数据结构？</summary>
-<p>通常可把计数与状态放在方法关联元数据中，结合调用/回边计数或采样，降低查表和同步开销；编译队列要去重，计数可饱和。真实字段、阈值和队列实现需对照目标 ART 分支。</p>
-</details>
+
 <p class="note-source">参考：<a href="https://developer.android.com/topic/performance/vitals/launch-time" target="_blank" rel="noreferrer">Android 启动性能</a>。</p>
 </section>
 <section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>

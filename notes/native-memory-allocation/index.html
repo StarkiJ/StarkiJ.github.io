@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="沿 glibc 的线程缓存、arena、空闲块与系统映射理解 native 内存分配。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="malloc：分配路径、碎片与回收 · Starki 笔记">
+    <meta property="og:description" content="沿 glibc 的线程缓存、arena、空闲块与系统映射理解 native 内存分配。">
+    <meta property="og:url" content="https://starkij.github.io/notes/native-memory-allocation/index.html">
+    <title>malloc：分配路径、碎片与回收 · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/native-memory-allocation/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">虚拟机与编译器</a><span aria-hidden="true">/</span><span aria-current="page">malloc：分配路径、碎片与回收</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">虚拟机与编译器 / 深入专题</p>
+                <h1 id="note-title">malloc：分配路径、碎片与回收</h1>
+                <p class="note-deck">沿 glibc 的线程缓存、arena、空闲块与系统映射理解 native 内存分配。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <time datetime="2026-09-10">2026.09.10</time>
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先区分对象生命周期与虚拟内存，再沿 malloc / free 的路径分析性能和碎片。</p><p>相关基础：<a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a></p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#layers">1. malloc、new、虚拟内存各负责什么</a></li><li><a href="#allocation">2. 一次分配经过哪些路径</a></li><li><a href="#free">3. free 怎么知道大小，为什么不立刻还内存</a></li><li><a href="#tradeoffs">4. 碎片、并发与 realloc</a></li><li><a href="#review">5. 面试回答与排查入口</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1">
+<section id="layers" aria-labelledby="layers-title"><h2 id="layers-title">1. malloc、new、虚拟内存各负责什么</h2>
+<p><strong>malloc 是用户态分配接口，一次调用通常先复用分配器管理的空闲块，不是每次都向内核申请一段物理内存。</strong>本文先讲通用机制，再用 <strong>Linux / glibc 2.39</strong> 的分配器作为具体例子；jemalloc、TCMalloc、Android Scudo 或其他版本有不同结构。</p><div class="note-table-wrap" role="region" aria-label="从对象到物理页" tabindex="0"><table><caption>从对象到物理页</caption><thead><tr><th scope="col">层次</th><th scope="col">职责</th><th scope="col">常见误解</th></tr></thead><tbody><tr><td>C++ new 表达式</td><td>取得存储并初始化对象；普通失败路径抛异常，可重载分配函数</td><td>new 不保证直接调用 malloc；placement new 不另取存储</td></tr><tr><td>malloc / free</td><td>按字节交付和回收可用存储，不运行 C++ 构造 / 析构</td><td>malloc 的大小不等于分配器实际占用；free 不保证降低 RSS</td></tr><tr><td>用户态分配器</td><td>对齐、大小分组、缓存、切分、合并与并发控制</td><td>arena、tcache 不是操作系统概念</td></tr><tr><td>操作系统</td><td>虚拟地址映射、页权限、按需建立物理页等</td><td>地址连续不要求物理页连续；申请成功不等于所有页已驻留</td></tr></tbody></table></div><p>常规对象使用 new/delete、数组使用 new[]/delete[]，malloc 对应 free，不能随意混配。对齐要求超出普通 malloc 保证时，要选择适合平台的对齐分配接口。托管堆内的对象分配还可能走 TLAB 指针递增路径，不等于每创建一个 Java 对象就调用一次 native malloc。</p><p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man3/malloc.3.html" target="_blank" rel="noreferrer">Linux malloc / free 接口与内存映射</a>。</p>
+</section>
+<section id="allocation" aria-labelledby="allocation-title"><h2 id="allocation-title">2. 一次分配经过哪些路径</h2>
+<p>首先检查请求大小及溢出，再把用户大小换算为满足对齐和元数据要求的 chunk 大小。大小类别降低查找成本，也会产生内部碎片。以下是 glibc 2.39 常见路径的<strong>概念顺序</strong>，实际分支还会受到大小、缓存状态、线程和配置影响：</p><pre tabindex="0"><code class="language-text">malloc(n)
+  → 检查大小、规范化为内部 chunk 大小
+  → 符合条件且 tcache 有块：从当前线程缓存取出
+  → 进入 arena 路径：尝试适用的空闲结构并按需补充缓存
+  → 找到合适块：可能切分，剩余块继续由分配器管理
+  → 使用 top chunk（arena 尾部的可扩展空闲块）
+  → 仍不足：按条件扩展 arena 或单独 mmap
+  → 成功返回用户区域；失败返回空指针</code></pre><div class="note-table-wrap" role="region" aria-label="glibc 常见结构" tabindex="0"><table><caption>glibc 常见结构</caption><thead><tr><th scope="col">结构</th><th scope="col">作用</th><th scope="col">代价或边界</th></tr></thead><tbody><tr><td>tcache</td><td>每线程、按大小分组缓存部分空闲块，使命中路径避免 arena 锁</td><td>有容量和适用大小限制；每线程缓存会留住内存</td></tr><tr><td>arena</td><td>包含锁、bins、top 等状态的分配域，管理一个或多个堆区域</td><td>多 arena 降低争用，也可能增加碎片；不等于每线程一个 arena</td></tr><tr><td>fastbins</td><td>缓存部分小块，快速路径通常暂不合并相邻块</td><td>后续可能触发集中合并，不等于立即变成连续大块</td></tr><tr><td>unsorted / small / large bins</td><td>暂存或按大小组织空闲块，支持复用与查找</td><td>切分、归类及合并取决于具体路径，不能只背一条固定链</td></tr><tr><td>单独 mmap 的块</td><td>满足条件时独立映射，释放时可解除映射</td><td>系统调用及页级管理有成本，阈值和策略不是普适常数</td></tr></tbody></table></div><p>glibc 的主 arena 可通过 brk 扩展，其他 arena 的堆空间也可来自 mmap；不能把“用了 mmap”直接等同于“一定是独立大块分配”。<code>mmap_threshold</code> 在默认策略下可动态调整，显式配置会改变行为；“大于 128 KB 必走 mmap”不是可靠的通用答案。</p><p class="note-source">参考：<a href="https://github.com/bminor/glibc/blob/glibc-2.39/malloc/malloc.c" target="_blank" rel="noreferrer">glibc 2.39 malloc.c：分配与空闲结构</a>。</p><p class="note-source">参考：<a href="https://sourceware.org/glibc/manual/2.39/html_node/Memory-Allocation-Tunables.html" target="_blank" rel="noreferrer">glibc 2.39：arena、tcache 与 mmap 调整项</a>。</p>
+</section>
+<section id="free" aria-labelledby="free-title"><h2 id="free-title">3. free 怎么知道大小，为什么不立刻还内存</h2>
+<p>free 接收原始用户指针，分配器根据其布局找回 chunk 元数据，从而确定块大小、状态与所属管理结构。glibc 使用 chunk 头部及相邻块状态信息支持检查和合并，但这不赋予用户访问 <code>p[-1]</code> 的权限；头部布局、最小块和保护机制均属于实现细节。</p>
+<ol><li><code>free(nullptr)</code> 无操作；其他参数必须是仍有效且允许释放的分配起始指针。</li><li>符合缓存条件的块可进入线程 tcache；某些小块进入 fastbins，暂缓合并。</li><li>进入普通合并路径时，根据相邻空闲块状态合并，并放入相应结构或合入 top。</li><li>独立 mmap 块通常通过解除映射释放；arena 管理的空闲存储可保留供后续复用，满足条件时再 trim 或归还页。</li></ol>
+<p><strong>free 后指针变量的位值不会自动清零，但对应存储已不再允许原调用者使用。</strong>继续读写是 use-after-free；重复 free、释放偏移后的内部指针或破坏元数据均可能产生未定义行为。</p><details class="note-review-question"><summary>面试追问：释放了 1 GB，RSS 为什么没明显下降？</summary><p>可能已经逻辑释放，但空闲块仍留在 tcache / arena，或被活块隔开而难以归还整页。先分开观察业务存活量、分配器保留量与操作系统驻留量；仅看 RSS 无法断言泄漏，也不能因调用过 free 就排除泄漏。</p></details><p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man3/malloc_trim.3.html" target="_blank" rel="noreferrer">malloc_trim：满足条件时归还空闲页</a>。</p>
+</section>
+<section id="tradeoffs" aria-labelledby="tradeoffs-title"><h2 id="tradeoffs-title">4. 碎片、并发与 realloc</h2>
+<p><strong>内部碎片</strong>是交付块因大小分组、对齐而超过请求；<strong>外部碎片</strong>是空闲空间分散，难以拼出所需连续虚拟地址块。分配器元数据本身也占空间。线程缓存和多 arena 改善争用，却可能让空闲存储滞留在局部，不能只从一次分配的耗时判断整体收益。</p>
+<p>普通 malloc 通常无法移动仍在使用的块，因为不知道应用保存了多少裸指针及其副本。池、句柄和托管运行时通过额外约束才有机会整理；可对照 <a href="../jvm-gc/index.html#forwarding">GC 的转发与引用修复</a>。</p>
+<p><strong>realloc</strong>可能原地扩缩，也可能分配新块、复制保留范围并释放旧块。对于非零的新大小，失败返回空指针而旧块仍有效，因此不要直接用返回值覆盖唯一旧指针。成功后都以返回的指针作为有效分配地址；之前指针及内部借用的使用需重新建立。零大小的规则随语言标准和实现有差异，业务代码最好显式 free 并单独处理。</p><pre tabindex="0"><code class="language-cpp">void* next = std::realloc(buffer, new_size); // 前提：new_size &gt; 0
+if (next != nullptr) {
+    buffer = next;                         // 重新建立后续内部指针
+} else {
+    // 原 buffer 仍由调用者拥有，可保留、稍后重试或释放
+}</code></pre><details class="note-review-question"><summary>面试追问：怎样定位 malloc 引起的性能问题？</summary><p>观察大小分布、分配次数、线程数、跨线程释放与峰值同时存活量；用剖析区分缓存命中、锁竞争、系统调用及缺页。固定负载比较吞吐、尾延迟和 RSS；仅做单线程 malloc/free 紧循环，往往只测到了缓存快路径。</p></details><p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man3/malloc.3.html" target="_blank" rel="noreferrer">realloc 契约及多线程分配背景</a>。</p>
+</section>
+<section id="review" aria-labelledby="review-title"><h2 id="review-title">5. 面试回答与排查入口</h2>
+<p><strong>一分钟回答：</strong>malloc 先在用户态把大小规范化，优先复用线程缓存或 arena 内的空闲块，必要时切分、合并或向操作系统扩展映射。free 通过元数据识别块，把它交回分配器，不保证马上归还物理页。性能来自缓存和分组，也付出碎片和保留内存的代价。具体 bins、阈值和锁策略要限定分配器与版本。</p>
+<p>追问路线：<a href="../operating-systems/index.html#virtual-memory">虚拟内存与缺页</a> → <a href="../cpp-memory-diagnostics/index.html">泄漏与非法访问定位</a> → <a href="../cpp-stable-handles/index.html">稳定句柄</a> → <a href="../jvm-gc/index.html">移动 GC</a>。面试时能画出“用户请求、chunk、arena、虚拟页”四层关系，比只背 brk / mmap 两个名字更完整。</p>
+</section></div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -7,7 +7,7 @@ JavaScript，不需要安装运行时依赖或执行构建步骤。
 
 - `index.html`：主页入口。
 - `styles.css`：主页、导航和通用工具组件的共享样式。
-- `notes/index.html`：按 C++、计算机基础、Android、算法与游戏开发分类的笔记目录。
+- `notes/index.html`：按计算机基础、C++、虚拟机与编译器分类的笔记目录。
 - `notes/<kebab-case>/index.html`：学习笔记文章；较长源码可展开，也可下载同目录示例。
 - `notes/notes.css`：文章排版、目录、概念表格和折叠示例的共享样式。
 - `tools/<kebab-case>/`：每个工具拥有自己的 `index.html`、脚本和可选资源。
@@ -74,6 +74,13 @@ GitHub Pages 发布后混用浏览器缓存的旧脚本；`npm run check` 会检
 修改后运行 `npm run generate`，将配置与生成后的页面一起提交；
 `npm run check:generated` 会阻止导航、目录、篇数、文章元信息或 sitemap 漏更新。
 `cardTitle` 只在卡片需要较短标题时填写，`description` 只在搜索摘要需要独立文案时填写。
+
+分类按知识领域划分：计算机基础只收操作系统、计算机网络、数据结构和计算机组成原理
+相关内容；目前已有操作系统和网络两篇，不为未成文的主题建立空目录。
+程序执行、ABI、编译优化、JVM / ART、GC、JNI 和 native 内存分配统一归入
+「虚拟机与编译器」；C++ 分类保留语言与工程实践。
+文章围绕明确的知识主线组织，跨专题复习入口放在目录的阅读路线中。
+分类条目的 `description` 用于目录页说明收录范围，与文章的搜索摘要分别维护。
 
 笔记用 `kind` 区分 `overview`（基础综述）、`topic`（深入专题）与 `practice`（实现练习）。
 `reading` 和 `prerequisites` 生成文章开头的阅读建议；`chapters` 提供目录页的章节直达链接；

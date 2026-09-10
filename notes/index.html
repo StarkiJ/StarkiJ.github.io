@@ -17,13 +17,28 @@
 <main class="note-shell" id="note-catalog" tabindex="-1"><nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../index.html">主页</a><span aria-hidden="true">/</span><span aria-current="page">笔记</span></nav>
 <header class="note-header"><p class="eyebrow">Notes</p><h1>笔记</h1><p class="note-deck">从基础综述到深入专题，按主题复习，也可以直接查找具体章节。</p></header>
 <!-- generated:note-catalog:start -->
-<nav class="note-categories" aria-label="笔记分类"><a href="#cpp">C++ <span>5</span></a><a href="#foundations">计算机基础 <span>4</span></a><a href="#android">Android / ART <span>4</span></a><a href="#algorithms">数据结构与算法 <span>2</span></a><a href="#game">游戏开发 <span>1</span></a></nav>
-<details class="note-paths"><summary>从哪里开始？查看 3 条阅读路线</summary><ul><li><strong>C++ 复习与实践</strong><ol><li><a href="./cpp-interview-roadmap/index.html">核心知识</a></li><li><a href="./cpp-shared-ptr/index.html">共享指针实现</a></li><li><a href="./cpp-memory-diagnostics/index.html">内存问题定位</a></li></ol></li>
-<li><strong>程序到运行时</strong><ol><li><a href="./operating-systems/index.html">操作系统</a></li><li><a href="./program-execution/index.html">程序执行</a></li><li><a href="./compiler-ir/index.html">编译器</a></li><li><a href="./art-compilation-startup/index.html">ART 编译与启动</a></li></ol></li>
-<li><strong>内存与跨语言边界</strong><ol><li><a href="./art-memory-gc/index.html">ART 内存与 GC</a></li><li><a href="./jni-references/index.html">JNI 引用</a></li><li><a href="./android-mte/index.html">MTE 诊断</a></li></ol></li></ul></details>
+<nav class="note-categories" aria-label="笔记分类"><a href="#foundations">计算机基础 <span>2</span></a><a href="#cpp">C++ <span>4</span></a><a href="#runtime">虚拟机与编译器 <span>7</span></a></nav>
+<details class="note-paths"><summary>从哪里开始？查看 4 条阅读路线</summary><ul><li><strong>C++ 复习与实践</strong><ol><li><a href="./cpp-interview-roadmap/index.html">核心知识</a></li><li><a href="./cpp-shared-ptr/index.html">共享指针实现</a></li><li><a href="./cpp-memory-diagnostics/index.html">内存问题定位</a></li></ol></li>
+<li><strong>程序到运行时</strong><ol><li><a href="./operating-systems/index.html">操作系统</a></li><li><a href="./program-execution/index.html">程序执行</a></li><li><a href="./compiler-ir/index.html">编译器</a></li><li><a href="./art-compilation-startup/index.html">ART 编译与应用启动</a></li></ol></li>
+<li><strong>内存与跨语言边界</strong><ol><li><a href="./art-memory-gc/index.html">ART 内存与 GC</a></li><li><a href="./jni-references/index.html">JNI 引用</a></li></ol></li>
+<li><strong>JVM 面试：运行时与编译器</strong><ol><li><a href="./jvm-gc/index.html#tricolor">GC 标记与屏障</a></li><li><a href="./native-memory-allocation/index.html">malloc</a></li><li><a href="./program-execution/index.html#abi">ABI 与异常展开</a></li><li><a href="./compiler-ir/index.html#ssa">SSA 与 inline cache</a></li></ol></li></ul></details>
 <p class="note-catalog-hint">复习概念看「基础综述」，理解具体机制看「深入专题」，动手验证看「实现练习」。可直接跳到下方列出的章节。</p>
+<section class="section-block note-category" id="foundations" aria-labelledby="foundations-title">
+    <div class="section-heading"><h2 id="foundations-title">计算机基础</h2><span>2 篇</span></div>
+    <p>围绕操作系统、计算机网络、数据结构与计算机组成原理整理基础知识。</p>
+    <div class="note-group"><h3>基础综述</h3><ul class="note-entry-grid">
+<li class="note-entry">
+        <h4><a href="./operating-systems/index.html">操作系统基础</a></h4>
+        <p>梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。</p>
+    </li>
+<li class="note-entry">
+        <h4><a href="./network-basics/index.html">网络基础</a></h4>
+        <p>从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。</p>
+    </li>
+</ul></div>
+</section>
 <section class="section-block note-category" id="cpp" aria-labelledby="cpp-title">
-    <div class="section-heading"><h2 id="cpp-title">C++</h2><span>5 篇</span></div>
+    <div class="section-heading"><h2 id="cpp-title">C++</h2><span>4 篇</span></div>
     <div class="note-group"><h3>基础综述</h3><ul class="note-entry-grid">
 <li class="note-entry">
         <h4><a href="./cpp-interview-roadmap/index.html">C++ 核心知识</a></h4>
@@ -37,10 +52,6 @@
         <p>区分地址、位置和身份，处理扩容、重排、删除与槽位复用。</p>
     </li>
 <li class="note-entry">
-        <h4><a href="./cpp-cache-performance/index.html">缓存与性能测量</a></h4>
-        <p>由二维数组的访问步长，理解缓存、基准测试和粒子数据布局。</p>
-    </li>
-<li class="note-entry">
         <h4><a href="./cpp-memory-diagnostics/index.html">内存问题定位</a></h4>
         <p>区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。</p>
     </li>
@@ -52,31 +63,9 @@
     </li>
 </ul></div>
 </section>
-<section class="section-block note-category" id="foundations" aria-labelledby="foundations-title">
-    <div class="section-heading"><h2 id="foundations-title">计算机基础</h2><span>4 篇</span></div>
-    <div class="note-group"><h3>基础综述</h3><ul class="note-entry-grid">
-<li class="note-entry">
-        <h4><a href="./operating-systems/index.html">操作系统基础</a></h4>
-        <p>梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。</p>
-    </li>
-<li class="note-entry">
-        <h4><a href="./network-basics/index.html">网络基础</a></h4>
-        <p>从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。</p>
-    </li>
-</ul></div>
-<div class="note-group"><h3>深入专题</h3><ul class="note-entry-grid">
-<li class="note-entry">
-        <h4><a href="./program-execution/index.html">程序执行机制</a></h4>
-        <p>解释 CPU 取数、AArch64 调用约定、ELF 装载和调用栈回溯。</p>
-    </li>
-<li class="note-entry">
-        <h4><a href="./compiler-ir/index.html">编译器基础</a></h4>
-        <p>连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。</p>
-    </li>
-</ul></div>
-</section>
-<section class="section-block note-category" id="android" aria-labelledby="android-title">
-    <div class="section-heading"><h2 id="android-title">Android / ART</h2><span>4 篇</span></div>
+<section class="section-block note-category" id="runtime" aria-labelledby="runtime-title">
+    <div class="section-heading"><h2 id="runtime-title">虚拟机与编译器</h2><span>7 篇</span></div>
+    <p>程序执行、编译优化、JVM / ART、垃圾回收与 native 内存管理。</p>
     <div class="note-group"><h3>基础综述</h3><ul class="note-entry-grid">
 <li class="note-entry">
         <h4><a href="./art-memory-gc/index.html">ART 内存与 GC</a></h4>
@@ -85,40 +74,32 @@
 </ul></div>
 <div class="note-group"><h3>深入专题</h3><ul class="note-entry-grid">
 <li class="note-entry">
+        <h4><a href="./program-execution/index.html">程序执行机制</a></h4>
+        <p>从 ELF 装载到指令执行，理解 AArch64 调用约定、栈回溯与 C++ 异常展开。</p>
+        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./program-execution/index.html#elf">ELF 链接与装载</a></li><li><a href="./program-execution/index.html#abi">arm64 调用约定</a></li><li><a href="./program-execution/index.html#call">函数调用</a></li><li><a href="./program-execution/index.html#backtrace">调用栈回溯</a></li><li><a href="./program-execution/index.html#unwind">C++ unwind</a></li></ul></div>
+    </li>
+<li class="note-entry">
+        <h4><a href="./compiler-ir/index.html">编译器基础</a></h4>
+        <p>连接 SSA、循环 phi、寄存器分配与 inline cache、类型反馈和反优化。</p>
+        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./compiler-ir/index.html#cfg">控制流图</a></li><li><a href="./compiler-ir/index.html#ssa">SSA 与 phi</a></li><li><a href="./compiler-ir/index.html#lowering">phi 消除</a></li><li><a href="./compiler-ir/index.html#inline-cache">inline cache</a></li></ul></div>
+    </li>
+<li class="note-entry">
+        <h4><a href="./jvm-gc/index.html">JVM GC：三色标记、STW 与读屏障</a></h4>
+        <p>从三色标记的漏标反例出发，理解 STW、读写屏障与并发移动的正确性。</p>
+        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./jvm-gc/index.html#scope">讨论范围与阅读前提</a></li><li><a href="./jvm-gc/index.html#tricolor">三色标记：用不变量解释漏标</a></li><li><a href="./jvm-gc/index.html#stw">STW、安全点与并发阶段</a></li><li><a href="./jvm-gc/index.html#barriers">SATB、增量更新与读屏障</a></li><li><a href="./jvm-gc/index.html#forwarding">转发地址：移动对象但保留身份</a></li></ul></div>
+    </li>
+<li class="note-entry">
+        <h4><a href="./art-compilation-startup/index.html">ART 编译与应用启动</a></h4>
+        <p>沿解释、JIT、Profile 与 AOT，理解编译状态如何影响应用启动。</p>
+    </li>
+<li class="note-entry">
         <h4><a href="./jni-references/index.html">JNI 引用管理</a></h4>
         <p>梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。</p>
     </li>
 <li class="note-entry">
-        <h4><a href="./art-compilation-startup/index.html">ART 编译与启动</a></h4>
-        <p>区分解释、JIT、AOT、profile 与 dex2oat，并连接 Zygote 和应用启动。</p>
-    </li>
-<li class="note-entry">
-        <h4><a href="./android-mte/index.html">MTE 机制</a></h4>
-        <p>理解内存标签检查、同步/异步报告、检测盲区和性能验证。</p>
-    </li>
-</ul></div>
-</section>
-<section class="section-block note-category" id="algorithms" aria-labelledby="algorithms-title">
-    <div class="section-heading"><h2 id="algorithms-title">数据结构与算法</h2><span>2 篇</span></div>
-    <div class="note-group"><h3>实现练习</h3><ul class="note-entry-grid">
-<li class="note-entry">
-        <h4><a href="./linked-trees-graphs/index.html">链表、树与图</a></h4>
-        <p>链表操作、二叉树层序、B 树平衡与图的深拷贝，结合不变量和实现练习。</p>
-        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./linked-trees-graphs/index.html#reverse">链表反转</a></li><li><a href="./linked-trees-graphs/index.html#cycle">链表判环</a></li><li><a href="./linked-trees-graphs/index.html#tree">二叉树层序</a></li><li><a href="./linked-trees-graphs/index.html#b-tree">B 树平衡</a></li><li><a href="./linked-trees-graphs/index.html#graph">图的深拷贝</a></li></ul></div>
-    </li>
-<li class="note-entry">
-        <h4><a href="./hash-sorting-arrays/index.html">哈希、排序与序列问题</a></h4>
-        <p>哈希与 LRU、排序与循环队列，以及整数翻转、公共子串与子序列。</p>
-        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./hash-sorting-arrays/index.html#hash">哈希</a></li><li><a href="./hash-sorting-arrays/index.html#lru">LRU</a></li><li><a href="./hash-sorting-arrays/index.html#sorting">排序</a></li><li><a href="./hash-sorting-arrays/index.html#queue">循环队列</a></li><li><a href="./hash-sorting-arrays/index.html#integers">整数翻转</a></li><li><a href="./hash-sorting-arrays/index.html#strings">公共子串与子序列</a></li></ul></div>
-    </li>
-</ul></div>
-</section>
-<section class="section-block note-category" id="game" aria-labelledby="game-title">
-    <div class="section-heading"><h2 id="game-title">游戏开发</h2><span>1 篇</span></div>
-    <div class="note-group"><h3>基础综述</h3><ul class="note-entry-grid">
-<li class="note-entry">
-        <h4><a href="./game-foundations/index.html">游戏开发基础</a></h4>
-        <p>明确同步对象、搜索代价和坐标约定，再推导实现与边界。</p>
+        <h4><a href="./native-memory-allocation/index.html">malloc：分配路径、碎片与回收</a></h4>
+        <p>沿 glibc 的线程缓存、arena、空闲块与系统映射理解 native 内存分配。</p>
+        <div class="note-entry-topics"><p>章节直达</p><ul><li><a href="./native-memory-allocation/index.html#layers">malloc、new、虚拟内存各负责什么</a></li><li><a href="./native-memory-allocation/index.html#allocation">一次分配经过哪些路径</a></li><li><a href="./native-memory-allocation/index.html#free">free 怎么知道大小，为什么不立刻还内存</a></li><li><a href="./native-memory-allocation/index.html#tradeoffs">碎片、并发与 realloc</a></li></ul></div>
     </li>
 </ul></div>
 </section>

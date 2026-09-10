@@ -47,7 +47,7 @@
                 </div>
             </header>
 <!-- generated:reading-guide:start -->
-<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先梳理端点和传输语义，再读应用协议或游戏同步。</p></aside>
+<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先梳理端点和传输语义，再读消息边界与 HTTP/HTTPS。</p></aside>
 <!-- generated:reading-guide:end -->
 <div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#layers">1. 分层与 socket</a></li><li><a href="#tcp">2. TCP 的可靠传输</a></li><li><a href="#framing">3. 字节流与消息边界</a></li><li><a href="#udp">4. UDP 与传输选择</a></li><li><a href="#http">5. HTTP 与 HTTPS</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="layers" aria-labelledby="layers-title"><h2 id="layers-title">1. 分层与 socket</h2>
 <p><strong>IP</strong>负责跨网络寻址与转发；<strong>TCP/UDP</strong>在主机间提供传输服务；<strong>HTTP</strong>规定请求与响应语义。socket 是操作系统暴露的通信端点接口，不是某个单独的网络协议。</p>
@@ -97,6 +97,6 @@ UDP：socket → 按需要 bind → sendto/recvfrom → close</code></pre>
 <p class="note-source">参考：<a href="https://www.rfc-editor.org/rfc/rfc9110.html" target="_blank" rel="noreferrer">HTTP 语义 RFC 9110</a> · <a href="https://www.rfc-editor.org/rfc/rfc8446.html" target="_blank" rel="noreferrer">TLS 1.3 RFC 8446</a> · <a href="https://www.rfc-editor.org/rfc/rfc9114.html" target="_blank" rel="noreferrer">HTTP/3 RFC 9114</a>。</p>
 </section>
 <section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
-<ul><li><a href="../operating-systems/index.html#ipc">操作系统：IPC</a></li><li><a href="../game-foundations/index.html">游戏中的同步与寻路</a></li></ul>
+<ul><li><a href="../operating-systems/index.html#ipc">操作系统：IPC</a></li></ul>
 </section>
 </div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -5,17 +5,7 @@
     { "name": "memory-diagnostics", "sources": ["cpp-memory-diagnostics/examples.cpp"] },
     { "name": "object-layout", "sources": ["cpp-interview-roadmap/layout.cpp"] },
     { "name": "stl-ordering", "sources": ["cpp-interview-roadmap/stl-ordering.cpp"] },
-    { "name": "linking", "sources": ["cpp-interview-roadmap/linking/counter.cpp", "cpp-interview-roadmap/linking/main.cpp"] },
-    { "name": "linked-trees-graphs", "sources": ["linked-trees-graphs/examples.cpp"] },
-    { "name": "hash-sorting-arrays", "sources": ["hash-sorting-arrays/examples.cpp"] },
-    { "name": "game-foundations", "sources": ["game-foundations/examples.cpp"] },
-    {
-      "name": "cache-benchmark",
-      "sources": ["cpp-cache-performance/kernels.cpp", "cpp-cache-performance/benchmark.cpp"],
-      "flags": ["-O3", "-fno-lto"],
-      "separateCompilation": true,
-      "args": ["1024"]
-    }
+    { "name": "linking", "sources": ["cpp-interview-roadmap/linking/counter.cpp", "cpp-interview-roadmap/linking/main.cpp"] }
   ],
   "excluded": {
     "cpp-memory-diagnostics/invalid-reference.cpp": "用于演示悬垂引用和 ASan 诊断，包含故意触发的未定义行为，不纳入正常运行测试。"

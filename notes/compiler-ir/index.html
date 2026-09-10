@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。">
+    <meta name="description" content="连接 SSA、循环 phi、寄存器分配与 inline cache、类型反馈和反优化。">
     <meta name="theme-color" content="#f7faf8">
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
     <meta property="og:title" content="编译器：IR、SSA 与优化 · Starki 笔记">
-    <meta property="og:description" content="连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。">
+    <meta property="og:description" content="连接 SSA、循环 phi、寄存器分配与 inline cache、类型反馈和反优化。">
     <meta property="og:url" content="https://starkij.github.io/notes/compiler-ir/index.html">
     <title>编译器：IR、SSA 与优化 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/compiler-ir/index.html">
@@ -34,22 +34,22 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">编译器：IR、SSA 与优化</span></nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">虚拟机与编译器</a><span aria-hidden="true">/</span><span aria-current="page">编译器：IR、SSA 与优化</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">计算机基础 / 深入专题</p>
+                <p class="eyebrow">虚拟机与编译器 / 深入专题</p>
                 <h1 id="note-title">编译器：IR、SSA 与优化</h1>
-                <p class="note-deck">连接词法语法分析、控制流、SSA 构建、寄存器分配与热点编译。</p>
+                <p class="note-deck">连接 SSA、循环 phi、寄存器分配与 inline cache、类型反馈和反优化。</p>
                 <div class="note-meta">
                     <span>Starki</span>
-                    <time datetime="2026-09-08">2026.09.08</time>
+                    <time datetime="2026-09-10">2026.09.10</time>
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
 <!-- generated:reading-guide:start -->
 <aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先建立程序执行的概念，再跟随 IR、SSA 和代码生成理解编译过程。</p><p>相关基础：<a href="../program-execution/index.html">程序执行机制</a></p></aside>
 <!-- generated:reading-guide:end -->
-<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#pipeline">1. 编译阶段与中间表示</a></li><li><a href="#cfg">2. 基本块与控制流图</a></li><li><a href="#ssa">3. SSA 与 phi</a></li><li><a href="#lowering">4. phi 消除与寄存器分配</a></li><li><a href="#optimization">5. 优化的前提与代价</a></li><li><a href="#jit">6. AOT、JIT 与热点统计</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="pipeline" aria-labelledby="pipeline-title"><h2 id="pipeline-title">1. 编译阶段与中间表示</h2>
+<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#pipeline">1. 编译阶段与中间表示</a></li><li><a href="#cfg">2. 基本块与控制流图</a></li><li><a href="#ssa">3. SSA 与 phi</a></li><li><a href="#lowering">4. phi 消除与寄存器分配</a></li><li><a href="#optimization">5. 优化的前提与代价</a></li><li><a href="#jit">6. AOT、JIT 与热点统计</a></li><li><a href="#inline-cache">7. Inline cache、类型反馈与反优化</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="pipeline" aria-labelledby="pipeline-title"><h2 id="pipeline-title">1. 编译阶段与中间表示</h2>
 <div class="note-table-wrap" role="region" aria-label="从源码到机器码" tabindex="0"><table><caption>从源码到机器码</caption><thead><tr><th scope="col">阶段</th><th scope="col">输入 → 输出</th><th scope="col">主要任务</th></tr></thead><tbody><tr><td>词法分析</td><td>字符 → token</td><td>识别标识符、关键字、字面量等</td></tr><tr><td>语法分析</td><td>token → AST</td><td>按文法建立结构，报告语法错误</td></tr><tr><td>语义分析</td><td>AST → 带类型/绑定信息的表示</td><td>名字查找、类型检查、作用域与转换</td></tr><tr><td>IR 生成与优化</td><td>高层结构 → 中间表示</td><td>显式表达控制流、数据依赖与内存操作</td></tr><tr><td>代码生成</td><td>IR → 目标指令</td><td>指令选择、寄存器分配、调度与目标约束</td></tr><tr><td>汇编与链接</td><td>汇编/目标文件 → 可执行程序或库</td><td>编码指令、解析符号与重定位</td></tr></tbody></table></div>
 <p><strong>AST</strong>保留源程序语法结构；<strong>IR</strong>为分析和变换提供规则更统一的表示。同一编译器可以有多层 IR，从接近语言语义逐步降低到机器指令。汇编器主要完成目标指令编码；解释器直接执行某种表示的语义，不必先生成本机代码。</p>
 <p>record/结构体需要字段类型、偏移、大小与对齐规则；类继承还涉及基类子对象、访问与动态分派。先确定语言语义，再按 ABI 降低到布局和地址操作，不能仅把每个字段按字节相加。</p>
@@ -79,6 +79,26 @@ merge:
 <p>不是。SSA 约束 IR 值名的定义；store 仍可反复修改内存。对内存的依赖分析需别名分析或 MemorySSA 等额外表示，不能把不同 load 的结果直接视为恒等。</p>
 </details>
 <p class="note-source">参考：<a href="https://llvm.org/docs/LangRef.html#phi-instruction" target="_blank" rel="noreferrer">LLVM phi 语义</a> · <a href="https://llvm.org/docs/MemorySSA.html" target="_blank" rel="noreferrer">LLVM MemorySSA</a>。</p>
+<h3 id="phi-loop">循环里的 phi：静态一次定义，动态反复执行</h3>
+<p>循环头有入口边和回边，phi 合并初始值与上一轮结果。以下函数累加 <code>0..n-1</code>，演示 phi 的控制流语义；调用约定为 n 非负且结果能放入 i32。</p><pre tabindex="0"><code class="language-llvm">define i32 @sum_to(i32 %n) {
+entry:
+  br label %loop
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %body ]
+  %sum = phi i32 [ 0, %entry ], [ %updated, %body ]
+  %more = icmp slt i32 %i, %n
+  br i1 %more, label %body, label %exit
+body:
+  %updated = add i32 %sum, %i
+  %next = add i32 %i, 1
+  br label %loop
+exit:
+  ret i32 %sum
+}</code></pre><p>n=3 时，进入循环头的 <code>(i, sum)</code> 依次为 <code>(0,0) → (1,0) → (2,1) → (3,3)</code>，最后返回 3。<code>%i</code> 只有一处静态定义，但该定义可以动态执行多次；“循环变量会变化，所以不能是 SSA”混淆了静态程序与动态执行。</p>
+<p>在 LLVM IR 中，phi 必须集中在基本块开头，输入成对标明值与前驱；输入值的使用发生在对应边上。因此 <code>%updated</code> 只需在 body→loop 的边上可用，不需要在 entry→loop 的边上也有定义。同一块的多个 phi 同时选择对应边的输入。</p>
+<h3>phi、select 与优化收益</h3>
+<p>phi 按<strong>实际进入的前驱</strong>选值；select 按<strong>显式布尔条件</strong>从已可用的操作数中选值。把分支改成 select 时，不能随便把原本只在一个分支执行的可能抛异常、越界或有副作用的计算提升到公共路径。phi 通常在后端转成边上的复制或经寄存器合并消失，不要求 CPU 有名为 phi 的指令。</p>
+<p>SSA 使定义—使用关系明确：沿值的唯一来源做常量传播，按使用关系删除死值，检查支配与别名后复用计算。它不会自动解决别名、内存依赖或正确性问题；“SSA 就等于更少寄存器”也不成立，寄存器压力还要看活跃区间。</p><details class="note-review-question"><summary>面试追问：面试要求手工构建 SSA，按什么顺序？</summary><p>先画 CFG 并标入口、回边与合并块；算支配关系，在需要汇合多个定义的迭代支配边界放 phi；沿支配树重命名定义与使用，给每条前驱边填入对应版本；最后去掉无用或输入相同的 phi。循环头的回边输入不要漏填。</p></details>
 </section>
 <section id="lowering" aria-labelledby="lowering-title"><h2 id="lowering-title">4. phi 消除与寄存器分配</h2>
 <p>降低 SSA 时，可把 <code>v = phi(a from A, b from B)</code> 变成在边 A→合并块上执行 v←a、边 B→合并块上执行 v←b。若前驱有多个后继而目标有多个前驱，直接把复制放任一块可能在错误路径执行，应按需要拆分临界边。</p>
@@ -102,7 +122,24 @@ merge:
 <p>ART 的实际编译与 profile 流程见 <a href="../art-compilation-startup/index.html">ART 编译与启动</a>。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/17/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot：分层编译与代码缓存</a>。</p>
 </section>
+<section id="inline-cache" aria-labelledby="inline-cache-title"><h2 id="inline-cache-title">7. Inline cache、类型反馈与反优化</h2>
+<p><strong>Inline cache（内联缓存，IC）是在调用点缓存接收者类型与调用目标的关系。</strong>同一个虚调用点往往反复遇到同一类对象；缓存命中时可缩短动态分派路径。这里的 inline 描述缓存贴近调用点，并不等于把被调用函数体展开。</p><pre tabindex="0"><code class="language-text">调用点：receiver.work()
+首次执行：尚无缓存 → 运行时解析 receiver 的类型与目标
+单态路径（概念）：
+    按语言要求处理 null
+    if receiver.klass == cached_klass:
+        call cached_target(receiver)
+    else:
+        进入 IC miss / 运行时分派路径</code></pre><p>缓存键必须足以识别运行时类型，例如可靠的 Klass 身份；同名类可能由不同类加载器定义，不能只比较类名字符串。虚表按类描述方法槽位，IC 则利用<strong>某一个调用点</strong>的类型规律，两者可以配合。</p>
+<ul><li><strong>未链接 / 未初始化：</strong>第一次调用尚需解析。</li><li><strong>单态（monomorphic）：</strong>调用点反复看到一种接收者类型，可使用类型检查加直接目标。</li><li><strong>多态内联缓存（PIC）：</strong>一般设计中可缓存少量“类型→目标”对，按 guard 逐一检查。</li><li><strong>超多态（megamorphic）：</strong>类型过多时，维护长检查链得不偿失，可退回通用虚表 / 接口表等分派。</li></ul>
+<p>上面是通用设计词汇，<strong>不是每个 HotSpot 调用点都必经四级状态</strong>。JDK 21 的 CompiledIC 主要表达 clean、monomorphic、megamorphic 等状态；JIT 根据 profile 生成多个类型 guard 的优化代码，与 CompiledIC 自身是否维护 PIC 数组是不同问题。</p>
+<h3>类型反馈怎样支持内联和反优化</h3>
+<p>JIT 看到单态热点后，可以生成“类型 guard + A.work 的内联代码 + 失败路径”。原 IC 快速调用仍存在一次调用，内联则消除了调用边界，并给后续常量传播、逃逸分析等提供机会。内联要平衡收益、代码膨胀和指令缓存压力。</p>
+<p>当接收者出现新类型时，普通 IC miss 可以进入运行时解析并更新状态，不必每次都反优化。如果机器码依赖了更强假设，例如类层次分析认定某方法只有一个实现，则新类加载可能使依赖失效，触发失效处理或反优化。反优化需要用元数据恢复解释执行所需的局部变量、操作数栈和内联帧状态。</p>
+<p>修改目标与缓存类型还必须满足并发发布协议，避免其他线程看到“新类型配旧目标”；代码修补也需遵守目标架构的指令可见性要求。这是运行时实现细节，不能直接用两次普通赋值替代。</p><details class="note-review-question"><summary>面试追问：IC miss、缓存状态变化、反优化是同一件事吗？</summary><p>不是。miss 表示当前接收者不满足该缓存快速路径；运行时可能解析后更新缓存，或者走通用分派。反优化则是退出不再适用的优化机器码、重建可继续执行的状态。guard 失败可以设计为慢调用，也可以设计为 uncommon trap，取决于编译决策。</p></details><details class="note-review-question"><summary>面试追问：如何把 inline cache 与 SSA 连起来回答？</summary><p>IC / profile 提供类型证据，JIT 生成 guard 把快速与慢速路径分开；两条路径返回的值在合并块可由 phi 汇合。进一步内联后，SSA 的定义—使用关系帮助传播常量与删除冗余计算。</p></details><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/compiledIC.hpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态与调用点约定</a>。</p><p class="note-source">参考：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/hotspot/share/code/compiledIC.cpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态转换与目标更新</a>。</p>
+</section>
 <section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
 <ul><li><a href="../program-execution/index.html">程序执行：ABI 与链接</a></li><li><a href="../art-compilation-startup/index.html">ART 编译与启动</a></li></ul>
+<p><a href="../jvm-gc/index.html#stw">GC 安全点与引用位置</a> · <a href="../program-execution/index.html#unwind">C++ 异常展开与 IR 的异常边</a></p>
 </section>
 </div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>
