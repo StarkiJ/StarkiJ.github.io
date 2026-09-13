@@ -25,6 +25,7 @@
         annualTakeHomeCash: "annualTakeHomeCash",
         pretaxHourly: "pretaxHourly",
         afterTaxHourly: "afterTaxHourly",
+        combinedHourly: "combinedHourly",
         housingFundEquity: "housingFundEquity",
         cashAndHousingFundEquity: "cashAndHousingFundEquity",
         annualIncomeTax: "annualIncomeTax"
@@ -37,6 +38,7 @@
         annualTakeHomeCash: "max",
         pretaxHourly: "max",
         afterTaxHourly: "max",
+        combinedHourly: "max",
         housingFundEquity: "max",
         cashAndHousingFundEquity: "max"
     };
@@ -92,6 +94,7 @@
             annualTakeHomeCash: finiteOrZero(metrics.annualTakeHomeCash),
             pretaxHourly: finiteOrZero(metrics.pretaxHourly),
             afterTaxHourly: finiteOrZero(metrics.afterTaxHourly),
+            combinedHourly: finiteOrZero(metrics.combinedHourly),
             housingFundEquity: finiteOrZero(metrics.housingFundEquity),
             cashAndHousingFundEquity: finiteOrZero(
                 metrics.cashAndHousingFundEquity

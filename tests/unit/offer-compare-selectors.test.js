@@ -24,6 +24,7 @@ function result(overrides) {
         annualTakeHomeCash: 400000,
         pretaxHourly: 200,
         afterTaxHourly: 160,
+        combinedHourly: 180,
         housingFundEquity: 48000,
         cashAndHousingFundEquity: 448000,
         annualIncomeTax: 60000
@@ -39,6 +40,7 @@ function result(overrides) {
             annualTakeHomeCash: values.annualTakeHomeCash,
             pretaxHourly: values.pretaxHourly,
             afterTaxHourly: values.afterTaxHourly,
+            combinedHourly: values.combinedHourly,
             housingFundEquity: values.housingFundEquity,
             cashAndHousingFundEquity: values.cashAndHousingFundEquity,
             annualIncomeTax: values.annualIncomeTax
@@ -74,6 +76,7 @@ function calculation(primaryHoursBasis) {
                 annualTakeHomeCash: 380000,
                 pretaxHourly: 190,
                 afterTaxHourly: 170,
+                combinedHourly: 175,
                 housingFundEquity: 36000,
                 cashAndHousingFundEquity: 416000,
                 annualIncomeTax: 50000
@@ -105,6 +108,7 @@ assert.strictEqual(views[0].monthlySalary, 20000);
 assert.strictEqual(views[1].salaryMonths, 12);
 assert.strictEqual(views[0].weeklyHours, 50);
 assert.strictEqual(views[0].pretaxHourly, 200);
+assert.strictEqual(views[0].combinedHourly, 180);
 assert.strictEqual(views[0].result, canonicalCalculation.results[0]);
 assert.strictEqual(views[0].offer, canonicalCalculation.state.offers[0]);
 assert.strictEqual(views[1].sourceIndex, 1);
@@ -192,6 +196,16 @@ assert.deepStrictEqual(
 );
 
 var best = selectors.bestValues(views);
+assert.deepStrictEqual(
+    selectors.sortViews(views, "combinedHourly", "desc").map(function (view) { return view.id; }),
+    ["first", "second"],
+    "综合时薪排序应使用包含公积金的指标"
+);
+assert.deepStrictEqual(
+    selectors.sortViews(views, "combinedHourly", "asc").map(function (view) { return view.id; }),
+    ["second", "first"]
+);
+assert.strictEqual(best.combinedHourly, 180);
 var leaders = selectors.summaryLeaders(views);
 assert.strictEqual(best.monthlySalary, 20000);
 assert.strictEqual(best.weeklyHours, 45);
@@ -215,6 +229,7 @@ assert.deepStrictEqual(selectors.bestValues([]), {
     annualTakeHomeCash: null,
     pretaxHourly: null,
     afterTaxHourly: null,
+    combinedHourly: null,
     housingFundEquity: null,
     cashAndHousingFundEquity: null
 });

@@ -371,7 +371,8 @@
             annualTakeHomeCash: cleanNumber(annualTakeHomeCash),
             cashAndHousingFundEquity: cleanNumber(cashAndHousingFundEquity),
             pretaxHourly: safeDivide(annualPretaxCash, primaryAnnualHours),
-            afterTaxHourly: safeDivide(annualTakeHomeCash, primaryAnnualHours)
+            afterTaxHourly: safeDivide(annualTakeHomeCash, primaryAnnualHours),
+            combinedHourly: safeDivide(cashAndHousingFundEquity, primaryAnnualHours)
         };
 
         taxInputs = {

@@ -215,6 +215,7 @@
                                 <option value="weeklyHours">周工时</option>
                                 <option value="pretaxHourly">税前时薪</option>
                                 <option value="afterTaxHourly">税后时薪</option>
+                                <option value="combinedHourly">综合时薪</option>
                             </select>
                         </div>
                         <div class="field sort-field sort-direction-field">
@@ -249,11 +250,12 @@
                                 <th scope="col" id="hoursColumnHeading">周工时</th>
                                 <th scope="col">税前时薪</th>
                                 <th scope="col">税后时薪</th>
+                                <th scope="col" aria-describedby="combinedHourlyHint" title="综合年收入 ÷（所选口径的周工时 × 52）；含个人与单位公积金">综合时薪</th>
                             </tr>
                         </thead>
                         <tbody id="comparisonTableBody" data-testid="comparison-table-body">
                             <tr>
-                                <td colspan="11">正在计算……</td>
+                                <td colspan="12">正在计算……</td>
                             </tr>
                         </tbody>
                     </table>
@@ -290,6 +292,7 @@
                     <section aria-labelledby="hours-method-title">
                         <h3 id="hours-method-title">工时与时薪</h3>
                         <p>大小周按两周周期取平均，月度额外班次按全年次数折算。等效时薪等于年收入除以“所选口径的周工作时长 × 固定 52 周”。</p>
+                        <p id="combinedHourlyHint">“综合时薪”＝综合年收入 ÷（所选口径的周工时 × 52），包含个人与单位公积金，部分资金使用受限。</p>
                         <p>净时长使用该岗位统一的午休与晚休设置；岗位留空时继承全局默认值。</p>
                         <p>在“我的计算设置”或“Offer 列表”中切换工时口径后，两处选项及周工作时长、排序、摘要和时薪都会同步更新。</p>
                     </section>
@@ -355,16 +358,16 @@
     <script src="./js/tax-policy.js?v=7bf5097917b4"></script>
     <script src="./js/state.js?v=454f1ef4861e"></script>
     <script src="./js/serialization.js?v=2dec1d7ad868"></script>
-    <script src="./js/core.js?v=c5e3dcbc7a81"></script>
+    <script src="./js/core.js?v=3d73f72e55bd"></script>
     <script src="./js/data.js?v=6633d0c7b726"></script>
     <script src="./js/model.js?v=3c72632a11bb"></script>
-    <script src="./js/selectors.js?v=d5e4a20daff5"></script>
+    <script src="./js/selectors.js?v=ee3fd3281835"></script>
     <script src="./js/ui-helpers.js?v=6d5439c7ae00"></script>
     <script src="./js/tax-view.js?v=6c9b836d1db8"></script>
     <script src="./js/offer-editor.js?v=002de49ad220"></script>
     <script src="./js/offer-order.js?v=69235d357270"></script>
     <script src="./js/storage.js?v=a27cd32b6c90"></script>
-    <script src="./js/comparison-view.js?v=1b2551f30124"></script>
+    <script src="./js/comparison-view.js?v=0750403fe004"></script>
     <script src="./js/app.js?v=a69e2d65f409"></script>
 </body>
 

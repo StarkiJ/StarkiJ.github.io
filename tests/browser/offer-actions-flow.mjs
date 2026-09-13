@@ -63,7 +63,7 @@ export async function checkOfferActions({ client }) {
     assert.equal(await read(`document.querySelector('#hoursColumnHeading').textContent`), '周工时');
     assert.match(await read(`document.querySelector('#comparisonTableBody tr td:nth-child(9)').firstChild.textContent`), /^\d+(\.\d+)? h$/);
     assert.deepStrictEqual(await read(`[...document.querySelectorAll('#comparisonTable thead th')].map(cell => cell.textContent)`),
-        ['公司 / 部门', '税前月薪', '总薪数', '税前年收入', '个人所得税', '税后年收入', '公积金', '综合年收入', '周工时', '税前时薪', '税后时薪']);
+        ['公司 / 部门', '税前月薪', '总薪数', '税前年收入', '个人所得税', '税后年收入', '公积金', '综合年收入', '周工时', '税前时薪', '税后时薪', '综合时薪']);
     assert.equal(await read(`document.querySelector('#comparisonTableBody tr td:nth-child(5) .tax-cell__trigger') !== null`), true);
     await change('#socialSecurityRate', '11', 'input');
     await delay(220);

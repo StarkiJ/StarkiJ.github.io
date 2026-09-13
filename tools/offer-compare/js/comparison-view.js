@@ -86,6 +86,7 @@
                 appendMetricCell(row, view.weeklyHours, formatHours(view.weeklyHours, "h"), best.weeklyHours);
                 appendMetricCell(row, view.pretaxHourly, formatHourly(view.pretaxHourly, "h"), best.pretaxHourly);
                 appendMetricCell(row, view.afterTaxHourly, formatHourly(view.afterTaxHourly, "h"), best.afterTaxHourly);
+                appendMetricCell(row, view.combinedHourly, formatHourly(view.combinedHourly, "h"), best.combinedHourly);
                 return row;
             });
 
@@ -165,7 +166,7 @@
                     (function () {
                         var row = document.createElement("tr");
                         var cell = createElement("td", "", "暂无可计算的 Offer");
-                        cell.colSpan = 11;
+                        cell.colSpan = 12;
                         row.appendChild(cell);
                         return row;
                     }())

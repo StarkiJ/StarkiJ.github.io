@@ -72,6 +72,44 @@ assert.strictEqual(
 var batchState = stateWithSchedule(1, [
     { week: 1, weekday: 1, start: "09:00", end: "17:00" }
 ]);
+var combinedHourlyState = stateWithSchedule(2, [
+    { week: 1, weekday: 1, start: "09:00", end: "17:00" },
+    { week: 2, weekday: 1, start: "09:00", end: "19:00" }
+]);
+combinedHourlyState.settings = { year: 2026, dinnerThreshold: "18:00" };
+combinedHourlyState.offers[0].housingFundRate = 0.05;
+combinedHourlyState.offers[0].overtime = {
+    shiftsPerYear: 12, start: "09:00", end: "17:00", payMultiplier: 0
+};
+[
+    { basis: "presence", annualHours: 564 },
+    { basis: "net", annualHours: 410 }
+].forEach(function (scenario) {
+    combinedHourlyState.settings.primaryHoursBasis = scenario.basis;
+    var metrics = core.calculateAll(combinedHourlyState).results[0].metrics;
+    assert.strictEqual(
+        metrics.combinedHourly,
+        (metrics.annualTakeHomeCash + 12000) / scenario.annualHours,
+        "综合时薪应包含个人和单位公积金，并按周期排班、额外班次及所选工时口径计算"
+    );
+});
+combinedHourlyState.offers[0].housingFundRate = 0;
+var noHousingFundMetrics = core.calculateAll(combinedHourlyState).results[0].metrics;
+assert.strictEqual(
+    noHousingFundMetrics.combinedHourly,
+    noHousingFundMetrics.afterTaxHourly,
+    "不缴公积金时，综合时薪应等于税后时薪"
+);
+combinedHourlyState.offers[0].schedule.days = [];
+combinedHourlyState.offers[0].overtime.shiftsPerYear = 0;
+["presence", "net"].forEach(function (basis) {
+    combinedHourlyState.settings.primaryHoursBasis = basis;
+    assert.strictEqual(
+        core.calculateAll(combinedHourlyState).results[0].metrics.combinedHourly,
+        0,
+        "零工时应沿用现有时薪的零值处理，避免 Infinity 或 NaN"
+    );
+});
 batchState.offers = ["a", "b", "c"].map(function (id) {
     var offer = JSON.parse(JSON.stringify(batchState.offers[0]));
     offer.id = id;

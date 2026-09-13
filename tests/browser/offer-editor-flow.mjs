@@ -219,14 +219,47 @@ export async function checkComparisonAndLayout({ client }) {
         control.dispatchEvent(new Event('change', { bubbles: true }));
     })()`);
     const tableBefore = await read(`document.querySelector('#comparisonTableBody').textContent`);
+    const combinedRows = () => read(`(() => {
+        const numeric = cell => Number(cell.firstChild.textContent.replace(/[^0-9.-]/g, ''));
+        return [...document.querySelectorAll('#comparisonTableBody tr')].map(row => ({
+            id: row.dataset.offerId,
+            columns: row.cells.length,
+            income: numeric(row.cells[7]),
+            hours: numeric(row.cells[8]),
+            hourly: numeric(row.cells[11]),
+            best: row.cells[11].classList.contains('metric-best')
+        }));
+    })()`);
+    const checkCombinedRows = async () => {
+        const rows = await combinedRows();
+        for (const row of rows) {
+            assert.equal(row.columns, 12);
+            assert.ok(Math.abs(row.hourly - row.income / (row.hours * 52)) < 1,
+                'Combined hourly pay should match annual combined income and selected work hours');
+        }
+        assert.ok(rows.some(row => row.best && row.hourly === Math.max(...rows.map(item => item.hourly))));
+        return rows;
+    };
+    assert.equal(await read(`document.querySelector('#comparisonTable thead th:last-child').textContent`), '综合时薪');
+    const presenceRows = await checkCombinedRows();
+    await change('#sortMetric', 'combinedHourly');
+    for (const direction of ['desc', 'asc']) {
+        await change('#sortDirection', direction);
+        const rows = await combinedRows();
+        const values = rows.map(row => row.hourly);
+        assert.deepStrictEqual(values, values.slice().sort((a, b) => direction === 'asc' ? a - b : b - a));
+    }
     await change('#primaryHoursBasis', 'net');
     assert.equal(await read(`document.querySelector('#settingsPrimaryHoursBasis').value`), 'net');
     assert.notEqual(await read(`document.querySelector('#comparisonTableBody').textContent`), tableBefore);
+    const netRows = await checkCombinedRows();
+    assert.ok(netRows.every(row => row.hourly > presenceRows.find(item => item.id === row.id).hourly));
     await click('.comparison-offer-link[data-offer-id="demo-a"]');
     assert.match(await read(`document.querySelector('#offerEditPreview').textContent`), /周净工时/);
     await click('#cancelOfferEdit');
     await change('#settingsPrimaryHoursBasis', 'presence');
     assert.equal(await read(`document.querySelector('#primaryHoursBasis').value`), 'presence');
+    await checkCombinedRows();
 
     for (const width of [1440, 760, 390, 375, 320]) {
         await client.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: width < 800 });
