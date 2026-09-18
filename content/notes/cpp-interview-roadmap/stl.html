@@ -1,0 +1,201 @@
+<section id="stl" aria-labelledby="stl-title">
+<h3 id="stl-title">7. STL 容器与算法</h3>
+<p>本章关注标准库接口、常见实现与 C++ 对象的有效性。动态数组的摊还分析、链表、堆、红黑树维护和哈希冲突处理统一见<a href="../data-structures/index.html">数据结构基础</a>；先理解结构，再把它与容器保证对应起来。</p>
+<div class="note-lesson" id="q26">
+<span id="stl-foundation" class="note-anchor" aria-hidden="true"></span><h4>7.1 容器、迭代器与算法</h4>
+<p><strong>STL</strong> 通常指标准库的容器、迭代器、算法等通用组件。容器保存元素；迭代器表示访问位置，<code>*it</code> 访问元素，<code>++it</code> 前进一步；算法通过这些位置操作元素，不必知道具体容器类型。</p>
+<p><strong>范围 [first, last)</strong> 包含 first、不包含 last。begin() 指向开头，end() 是不能解引用的尾后位置；空范围二者相等。vector 迭代器支持直接跳到第 n 个位置，list 则沿节点移动；std::sort 要求随机访问迭代器，list 应用自己的 sort 成员。</p>
+<p><strong>复杂度：</strong>n 是元素数，O 描述工作量随 n 增长的量级。“摊还 O(1)”把一系列操作的总成本平均到每次，不代表每次操作都同样快。</p>
+<div class="note-table-wrap" role="region" aria-label="常用容器与适配器" tabindex="0"><table><caption>常用容器与适配器</caption><thead><tr><th scope="col">类型</th><th scope="col">访问与修改复杂度</th><th scope="col">特点</th></tr></thead><tbody><tr><td>vector</td><td>随机访问 O(1)；尾插摊还 O(1)；中间插删 O(n)</td><td>连续存储，重分配会迁移元素。</td></tr><tr><td>deque</td><td>随机访问 O(1)；首尾单元素插删 O(1)</td><td>整体不保证连续，常见实现为分段存储。</td></tr><tr><td>list</td><td>已知位置插删 O(1)；查找位置 O(n)</td><td>双向链表，节点有额外分配和指针开销。</td></tr><tr><td>stack / queue</td><td>取决于底层容器</td><td>限制后进先出/先进先出接口，默认底层为 deque。</td></tr><tr><td>priority_queue</td><td>top O(1)；堆调整 O(log n)，底层容器操作另计</td><td>常用二叉堆，使父节点优先级不低于孩子，堆顶优先级最高；不是完整排序。</td></tr></tbody></table></div>
+<p><strong>选择依据：</strong>看访问和修改方式、地址稳定性及内存成本。CPU 缓存保存近期取用的数据，连续存储利于相邻访问复用同一批数据，体现空间局部性；链表不因插删复杂度低就一定更快。</p>
+<p><strong>其他常用类型：</strong><code>array&lt;T,N&gt;</code> 在对象内部保存固定数量的连续元素，没有动态扩容；<code>forward_list&lt;T&gt;</code> 是单向链表，通过 before_begin、insert_after、erase_after 表达前驱位置。priority_queue 默认以 vector 保存元素，借助堆算法维护优先级；栈、队列和堆的通用机制见<a href="../data-structures/index.html#stack-queue-heap">接口与底层结构</a>。</p>
+</div>
+
+<div class="note-lesson" id="q27">
+<h4>7.2 vector 的大小、容量与扩容</h4>
+<div class="note-table-wrap" role="region" aria-label="vector 容量接口" tabindex="0"><table><caption>vector 容量接口</caption><thead><tr><th scope="col">接口</th><th scope="col">作用</th></tr></thead><tbody><tr><td>size / capacity</td><td>分别表示已有元素数、当前存储可容纳的元素数。</td></tr><tr><td>reserve(n)</td><td>请求至少 n 的容量，不新增元素。</td></tr><tr><td>resize(n)</td><td>调整元素数；扩大会构造元素，缩小会销毁尾部元素。</td></tr><tr><td>clear / shrink_to_fit</td><td>clear 销毁元素但不要求归还容量；shrink_to_fit 是非强制缩容请求。</td></tr></tbody></table></div>
+<p><strong>扩容机制：</strong>容量不足时取得新存储，在其中构造迁移后的元素，再销毁旧元素并释放旧存储。常见实现采用几何增长，但标准不规定固定 1.5 倍或 2 倍。</p>
+<p>可把存储理解为三条边界：起点、已构造元素的结尾、容量的结尾；<code>[size, capacity)</code> 只是预留空间，不能当作已有 T 访问。迁移使用 T 的拷贝或移动构造，不能一律当成 memcpy；选择与异常保证见<a href="#q25">移动与 noexcept</a>。为什么几何增长能摊还为 O(1)，见<a href="../data-structures/index.html#dynamic-array">动态数组扩容分析</a>。</p>
+<p><strong>易错点：</strong>下标合法性由 size 决定；每次插入前都 reserve(size + 1) 可能破坏增长策略。默认分配器下 vector&lt;int&gt; 的 resize 新增元素为 0。</p>
+<details class="note-example-details"><summary>代码示例：reserve 与 resize 的不同结果</summary>
+<figure class="note-example">
+    <figcaption>预留容量之后，size 仍然为零</figcaption>
+    <pre tabindex="0" aria-label="预留容量之后，size 仍然为零"><code class="language-cpp" data-example="vector-capacity">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;int&gt; values;
+    values.reserve(8);
+    std::cout &lt;&lt; values.size() &lt;&lt; '\n';
+    // values[0] = 7; // 越界：目前还没有元素。
+    values.resize(3);
+    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values[0] &lt;&lt; '\n';
+    values.push_back(7);
+    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values.back() &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>0
+3 0
+4 7</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-vector-size"><summary>经典问题：reserve(100) 以后，为什么不能直接写第 100 个元素？</summary>
+<p>reserve 不建立新元素。原来 size 为 0 时，任何元素下标都不合法；应 resize 或插入元素，随后按 size 判断下标。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="deque-storage">
+<h4>7.3 deque 的分段存储与链表接口</h4>
+<p><strong>deque 的典型实现</strong>用一张块指针表连接若干元素块。libstdc++ 的实现可作为具体例子：元素在块内连续，块与块之间不要求相邻；这里的块指针表有时叫 map，与 std::map 无关。</p>
+<pre tabindex="0" aria-label="deque 分段索引示意"><code class="language-text">块指针表：[块 A 地址][块 B 地址][块 C 地址]
+              │          │          │
+              ▼          ▼          ▼
+块内元素： [空 a b c]  [d e f g]  [h 空 空 空]
+              ↑                     ↑
+            第一个元素            最后一个元素</code></pre>
+<p>以上每块 4 个位置仅用于示意。设块容量为 B、第一个元素在首块内偏移 s，逻辑下标 i 对应块偏移 <code>(s+i)/B</code> 和块内偏移 <code>(s+i)%B</code>；用块指针表可直接定位，所以非连续存储仍能支持 O(1) 随机访问。不能用 <code>&amp;d[0] + i</code> 跨块代替 d[i]。</p>
+<p>两端增长可新建元素块，必要时调整块指针表。已有元素可以留在原块内，迭代器依赖的块索引信息却可能变化；因此必须按<a href="#container-invalidation">标准失效规则</a>判断，不能观察一次地址没变就复用旧迭代器。块大小、空块保留策略和具体迭代器字段属于实现细节。</p>
+<p><strong>list / forward_list：</strong>节点式组织让插入不必迁移其他元素。list 可用已知节点位置删除；forward_list 的 erase_after 需要前驱。先按值查找位置仍可能花 O(n)，不能把完整业务操作都记成 O(1)。指针如何连接及空间成本见<a href="../data-structures/index.html#linked-list">单向与双向链表</a>。</p>
+<p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/gcc-12.5.0/libstdc%2B%2B/api/a00467_source.html" target="_blank" rel="noreferrer">libstdc++：deque 实现</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/deque.overview" target="_blank" rel="noreferrer">C++17：deque 接口保证</a>。</p>
+</div>
+
+<div class="note-lesson" id="q29">
+<h4>7.4 map、set 与无序关联容器</h4>
+<p><strong>关联容器</strong>按键查找元素。map 保存键值对，如姓名到成绩；set 只保存键，常用于判重或成员查询。下列容器中键不能重复，查找依据是键的等价关系。</p>
+<div class="note-table-wrap" role="region" aria-label="关联容器" tabindex="0"><table><caption>关联容器</caption><thead><tr><th scope="col">容器</th><th scope="col">组织与查找</th><th scope="col">适用需求</th></tr></thead><tbody><tr><td>map / set</td><td>按比较器有序；典型查找与插入 O(log n)</td><td>有序遍历、上下界与范围查询。</td></tr><tr><td>unordered_map / unordered_set</td><td>按哈希组织；查找平均 O(1)、最坏 O(n)</td><td>不需要排序，接受桶空间与 rehash 成本。</td></tr></tbody></table></div>
+<p><strong>有序容器</strong>常用红黑树这类自平衡二叉搜索树：比较键后进入较小或较大的一侧，并维持树高，避免退化为长链。<code>comp(a,b)</code> 表示 a 是否应排在 b 前；双方都不排在对方前时视为等价，不一定由 == 判断。</p>
+<p>标准规定顺序、复杂度和元素有效性等要求，并未指定必须使用红黑树。libstdc++ 的树节点包含父子链接与颜色；重平衡通过调整节点链接完成，保留未删除元素的身份。通用的黑高约束、旋转与插删修复见<a href="../data-structures/index.html#red-black-tree">红黑树</a>，本章继续关注 map/set 的接口保证。</p>
+<p><strong>哈希容器</strong>先把键算成哈希值，再定位到桶（元素分组），最后比较键。不同键可能落入同一桶，这叫冲突；等价键必须有相同哈希值。负载因子是元素数/桶数；元素增长可能触发 <strong>rehash</strong>，调整桶并重新分组。</p>
+<p>libstdc++ 的实现使用节点链接与桶索引；图解中的“每桶一条链”是逻辑分组，不应当作所有标准库相同的字段布局。链式散列、开放寻址和退化原因见<a href="../data-structures/index.html#hash-table">哈希表</a>。std::unordered_map 的 rehash 会使迭代器失效，却保留元素引用/指针；不能套用其他平坦哈希表的地址规则。</p>
+<p><strong>容量规划：</strong>unordered_map 的 <code>reserve(n)</code> 按预计元素数和最大负载因子规划桶，<code>rehash(n)</code> 按桶数请求重建；都不是新增 n 个元素。应在取得长期使用的迭代器之前安排这些操作。扩大桶数无法修复“所有键哈希值都相同”这类坏哈希。</p>
+<p><strong>接口副作用：</strong><code>map[key]</code> 在键缺失时插入默认值；只查询可用 find，要求存在可用 at（缺失抛异常）。contains 自 C++20 提供。</p>
+<p><strong>选型追问：</strong>有序遍历和范围查询偏向 map；只做按键查询可考虑 unordered_map，但还要计算键的哈希/比较成本、分配、内存和扩桶开销。树的成员 lower_bound 可沿树查找；对 map 迭代器调用通用 std::lower_bound，比较次数虽是对数级，迭代器推进仍可能是线性的。</p>
+<p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/libstdc%2B%2B/latest-doxygen/a00749_source.html" target="_blank" rel="noreferrer">libstdc++：树节点与重链接</a> · <a href="https://gcc.gnu.org/onlinedocs/gcc-12.4.0/libstdc%2B%2B/api/a19407_source.html" target="_blank" rel="noreferrer">libstdc++：哈希表结构</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/unord.req" target="_blank" rel="noreferrer">C++17：无序容器要求</a>。</p>
+</div>
+
+<div class="note-lesson" id="q28">
+<span id="container-invalidation" class="note-anchor" aria-hidden="true"></span>
+<h4>7.5 迭代器、引用与指针失效</h4>
+<p><strong>失效</strong>表示之前取得的位置不再保证可用，不能继续用它访问元素，常因元素搬迁、销毁或容器内部结构改变。迭代器失效与对象地址失效要分别判断：哈希表重新分桶可能改变遍历结构，却不搬动元素。</p>
+<div class="note-table-wrap" role="region" aria-label="最常用的失效规则" tabindex="0"><table><caption>最常用的失效规则</caption><thead><tr><th scope="col">容器与操作</th><th scope="col">迭代器</th><th scope="col">元素引用 / 指针</th></tr></thead><tbody><tr><th scope="row">vector 重新分配</th><td>全部失效，包括旧 end()。</td><td>全部失效。</td></tr><tr><th scope="row">vector 插入，未重新分配</th><td>插入位置及之后失效；尾部插入使旧 end() 失效。</td><td>插入位置及之后失效；尾部插入不影响已有元素引用。</td></tr><tr><th scope="row">vector erase</th><td>被删位置及之后失效，包括旧 end()。</td><td>被删位置及之后失效。</td></tr><tr><th scope="row">list / map / set 插入</th><td>通常不影响已有元素迭代器。</td><td>已有元素引用保持有效。</td></tr><tr><th scope="row">list / map / set 删除</th><td>被删除元素的迭代器失效。</td><td>被删除元素的引用失效。</td></tr><tr><th scope="row">unordered_map rehash</th><td>全部迭代器失效。</td><td>已有元素的引用 / 指针仍有效。</td></tr><tr><th scope="row">unordered_map erase</th><td>仅被删除元素的迭代器失效。</td><td>仅被删除元素的引用 / 指针失效。</td></tr></tbody></table></div>
+<p>上表按操作成功后的 C++17 保证理解。list / map / set 的普通插入不使已有迭代器失效；unordered_map 插入若未触发 rehash，不使已有迭代器失效，触发时按 rehash 行处理。vector 的 reserve 未改变容量时不使访问位置失效，发生重分配时按首行处理。</p>
+<div class="note-table-wrap" role="region" aria-label="deque 插入与非空范围删除的失效规则" tabindex="0"><table><caption>deque 插入与非空范围删除的失效规则</caption><thead><tr><th scope="col">操作</th><th scope="col">已有元素迭代器 / 旧 end()</th><th scope="col">元素引用 / 指针</th></tr></thead><tbody>
+<tr><th scope="row">在任一端插入</th><td>全部迭代器失效，含旧 end()。</td><td>已有元素保持有效。</td></tr>
+<tr><th scope="row">在中间插入</th><td>全部失效，含旧 end()。</td><td>全部失效。</td></tr>
+<tr><th scope="row">删除首部，未删除最后一个元素</th><td>仅被删元素的迭代器失效；旧 end() 保持有效。</td><td>仅被删元素失效。</td></tr>
+<tr><th scope="row">删除范围包含最后一个元素</th><td>被删元素的迭代器与旧 end() 失效；其他元素迭代器保持有效。</td><td>仅被删元素失效。</td></tr>
+<tr><th scope="row">删除严格位于中间的范围</th><td>全部失效，含旧 end()。</td><td>全部失效。</td></tr>
+</tbody></table></div>
+<p>pop_front / pop_back 同样按删除规则判断；只剩一个元素时，pop_front 也删除了最后一个元素，旧 end() 因而失效。clear 后不再有可用的旧元素访问入口。索引可在修改后重新定位，但插入、删除和重排也可能改变索引对应的对象。</p>
+<details class="note-example-details"><summary>代码示例：deque 两端增长保留引用，rehash 保留元素指针</summary>
+<figure class="note-example">
+<figcaption>保留有保证的元素访问入口，修改后重新获取迭代器</figcaption>
+<pre tabindex="0" aria-label="容器修改后引用与迭代器的不同保证"><code class="language-cpp" data-example="container-reference-stability">#include &lt;cassert&gt;
+#include &lt;deque&gt;
+#include &lt;iostream&gt;
+#include &lt;unordered_map&gt;
+
+int main() {
+    std::deque&lt;int&gt; d{10, 20};
+    int&amp; first = d.front();
+    d.push_front(5);
+    d.push_back(30);
+    assert(&amp;first == &amp;d[1]);
+    auto fresh = d.begin();  // 插入前取得的迭代器不可复用。
+    assert(*fresh == 5);
+
+    std::unordered_map&lt;int, int&gt; table{{1, 7}};
+    int* value = &amp;table.at(1);
+    const auto old_buckets = table.bucket_count();
+    table.rehash(old_buckets + 1);
+    assert(table.bucket_count() &gt; old_buckets);
+    assert(value == &amp;table.at(1));
+    *value = 9;
+    std::cout &lt;&lt; first &lt;&lt; ' ' &lt;&lt; table.find(1)-&gt;second &lt;&lt; '\n';
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>10 9</code></pre>
+</figure>
+</details>
+<p class="note-source">参考：<a href="https://timsong-cpp.github.io/cppwp/n4659/deque.modifiers" target="_blank" rel="noreferrer">C++17：deque 修改与失效</a>。</p>
+<details class="note-review-question" id="review-06"><summary>经典问题：vector 扩容之后，原来保存的元素引用还能继续使用吗？</summary>
+<p>发生重分配后，旧引用、指针和迭代器全部失效。应在修改后重新获取访问位置；如果还会删除或重排，需要额外设计稳定的对象标识。</p>
+</details>
+<p>实践与延伸：<a href="../cpp-stable-handles/index.html">稳定句柄：对象身份、重排与生命周期</a>。</p>
+</div>
+
+<div class="note-lesson" id="q31">
+<h4>7.6 push_back 与 emplace_back</h4>
+<p><strong>push_back</strong> 接收一个 T，再拷贝或移动到容器；<strong>emplace_back</strong> 把参数按原来的左值/右值性质传给构造函数，在新元素位置直接构造 T。传构造参数可省去临时对象；传已有 T 时仍可能拷贝或移动。</p>
+<p><strong>emplace 不保证更快。</strong>它不消除扩容时旧元素的迁移，也不保证没有分配或异常。转交资源前应先用管理对象建立所有权，避免裸资源在异常路径泄漏。</p>
+<details class="note-example-details"><summary>代码示例：预留容量后比较新元素的构造</summary>
+<figure class="note-example">
+    <figcaption>预留容量以排除旧元素迁移，比较新元素的构造过程</figcaption>
+    <pre tabindex="0" aria-label="预留容量以排除旧元素迁移，比较新元素的构造过程"><code class="language-cpp" data-example="emplace">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+struct Widget {
+    explicit Widget(int n) { std::cout &lt;&lt; &quot;construct &quot; &lt;&lt; n &lt;&lt; '\n'; }
+    Widget(const Widget&amp;) { std::cout &lt;&lt; &quot;copy\n&quot;; }
+    Widget(Widget&amp;&amp;) noexcept { std::cout &lt;&lt; &quot;move\n&quot;; }
+};
+int main() {
+    std::vector&lt;Widget&gt; items;
+    items.reserve(2);
+    items.push_back(Widget(7));
+    items.emplace_back(8);
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>construct 7
+move
+construct 8</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q30">
+<h4>7.7 范围算法与比较器</h4>
+<p><strong>谓词</strong>是返回真假条件的函数，例如“元素是否为偶数”。算法用它筛选或分组；比较器则判断两个元素的先后关系。</p>
+<p><strong>remove/remove_if</strong> 将保留元素移至范围前部，返回新逻辑结尾，不改变容器大小。应再调用 erase 删除尾部；remove 后尾部元素的具体值不应作为过滤结果使用。</p>
+<pre class="note-snippet" tabindex="0"><code>auto last = std::remove_if(v.begin(), v.end(),
+                          [](int x) { return x % 2 == 0; });
+v.erase(last, v.end());  // 真正缩小容器</code></pre>
+<p><strong>删除遍历：</strong>vector 常用 <code>it = v.erase(it)</code> 接回有效位置，不能继续使用已失效的 it。C++20 的 erase_if 可简化适用容器的删除。</p>
+<p><strong>严格弱序</strong>要求元素不排在自身前面、先后关系可传递，以及“互不先于”的等价关系也可传递。升序可用 <code>a &lt; b</code>；写成 <code>a &lt;= b</code> 会破坏自比较为假的要求。</p>
+<p><strong>lower_bound</strong> 折半缩小候选范围，寻找第一个不排在目标值前面的元素；普通升序下就是第一个大于等于目标的元素，找不到则返回 end。范围必须满足“排在目标前的元素在前，其余在后”；按同一比较器排序是满足这一前提的常见方式。</p>
+<details class="note-example-details"><summary>代码示例：erase-remove 删除偶数</summary>
+<figure class="note-example">
+    <figcaption>先得到新的逻辑结尾，再删除容器尾部</figcaption>
+    <pre tabindex="0" aria-label="先得到新的逻辑结尾，再删除容器尾部"><code class="language-cpp" data-example="erase-remove">#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;int&gt; values{1, 2, 3, 4, 5};
+    auto last = std::remove_if(values.begin(), values.end(),
+                              [](int x) { return x % 2 == 0; });
+    values.erase(last, values.end());
+    for (int x : values) std::cout &lt;&lt; x;
+    std::cout &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>135</code></pre>
+</figure>
+</details>
+<p><strong>排序与稳定分区</strong></p>
+<div class="note-table-wrap" role="region" aria-label="算法的语义与 C++17 常规重载复杂度" tabindex="0"><table><caption>算法的语义与 C++17 常规重载复杂度</caption><thead><tr><th scope="col">算法</th><th scope="col">结果</th><th scope="col">相等/同组元素的原顺序</th><th scope="col">复杂度</th></tr></thead><tbody><tr><td>sort</td><td>按比较器有序</td><td>不保证保留</td><td>O(n log n) 次比较</td></tr><tr><td>stable_sort</td><td>按比较器有序</td><td>保留等价元素顺序</td><td>内存足够时 O(n log n)，否则 O(n log² n) 次比较</td></tr><tr><td>partition</td><td>满足谓词的元素在前</td><td>两组都不保证保留</td><td>O(n) 次谓词调用和交换上界</td></tr><tr><td>stable_partition</td><td>满足谓词的元素在前</td><td>两组都保留</td><td>O(n) 次谓词调用；移动/交换通常依可用内存为 O(n) 或 O(n log n)</td></tr></tbody></table></div>
+<p><strong>稳定</strong>描述相对顺序，不表示地址或业务身份稳定。排序可以不重分配 vector，却改变某个位置上保存的是哪个对象值。</p>
+<pre tabindex="0"><code class="language-cpp">auto valid_end = std::stable_partition(v.begin(), v.end(),
+    [](const KV&amp; x) { return x.key != 0; });</code></pre>
+<p>若 key == 0 表示无效数据，该调用把无效项移到末尾，保留有效项的原顺序，不删除元素。返回值是无效区间的起点。</p>
+<p><a href="stl-ordering.cpp" download>下载源码（stl-ordering.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>稳定分区与按 key 降序排列：含顺序断言</summary>
+<pre tabindex="0"><code class="language-cpp" data-source="stl-ordering.cpp"></code></pre>
+</details>
+<details class="note-review-question"><summary>经典问题：把无效项放到末尾，再降序排列，应该如何选择算法？</summary>
+<p>先确认两项要求是否分别执行：仅移走无效项用 stable_partition；若还要按 key 降序，只排序有效区间。相同 key 也要保留原顺序时用 stable_sort；否则 sort 即可。降序用 a.key &gt; b.key，不用 &gt;=。</p>
+</details>
+<p class="note-source">参考：<a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a> · <a href="https://eel.is/c++draft/alg.partitions" target="_blank" rel="noreferrer">分区算法</a>。</p>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/container.requirements" target="_blank" rel="noreferrer">容器要求</a> · <a href="https://eel.is/c++draft/vector.capacity" target="_blank" rel="noreferrer">vector 容量</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 修改与失效</a> · <a href="https://eel.is/c++draft/unord.req" target="_blank" rel="noreferrer">无序关联容器</a> · <a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [vector.modifiers]（修改与失效）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

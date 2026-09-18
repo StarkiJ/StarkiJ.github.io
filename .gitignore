@@ -4,3 +4,5 @@ Thumbs.db
 
 # Keep the public example; ignore the local private Offer data file.
 /tools/offer-compare/data/private.json
+
+/docs/Interview/

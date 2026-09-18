@@ -1,0 +1,9 @@
+<section id="scope" aria-labelledby="scope-title"><h2 id="scope-title">阅读范围与实现边界</h2>
+<p>托管运行时先把程序表示变成可用的类型与方法，再协调执行、线程与内存管理。本篇沿字节码、类身份、初始化、调用、同步和执行状态展开；对象如何分配与回收见<a href="../managed-memory-gc/index.html">托管内存</a>，优化机器码如何生成见<a href="../compiler-ir/index.html">编译器</a>。</p>
+<p>共同语义以 Java SE 21 的语言与虚拟机规范为参照，HotSpot 示例限定 JDK 21；Android 对照采用 ART / Android 14 的常规应用场景。ART 使用 DEX，不能直接套用 class 文件、HotSpot 元数据或全部 Java SE API。JDK 虚拟线程也不等同于 Android 平台线程或 Kotlin 协程。</p>
+</section>
+<!-- include: classes-and-execution.html -->
+<!-- include: threads-and-cooperation.html -->
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../program-execution/index.html#call">机器调用与 ABI</a></li><li><a href="../compiler-ir/index.html#osr-deoptimization">OSR 与反优化状态恢复</a></li><li><a href="../managed-memory-gc/index.html#gc-foundations">运行时内存、对象与回收</a></li><li><a href="../jni-references/index.html#native-registration">JNI 注册与类加载器上下文</a></li><li><a href="../art-compilation-startup/index.html#build-artifacts">Android 构建产物与执行入口</a></li></ul>
+</section>

@@ -1,0 +1,119 @@
+<p class="note-reading-note">本篇讨论与语言无关的存储结构、操作成本和维护过程。C++ 的元素生命周期、容器接口和迭代器保证见<a href="../cpp-interview-roadmap/index.html#stl">STL 容器与算法</a>。</p>
+
+<section id="complexity" aria-labelledby="complexity-title">
+<h2 id="complexity-title">1. 从操作需求看复杂度</h2>
+<p><strong>接口</strong>描述能做什么，<strong>数据结构</strong>决定怎样保存与维护数据。同样是队列，可以用链表或循环数组实现；同样是按键查找，可以用搜索树或哈希表。</p>
+<p>以下用 n 表示元素数，默认一次元素访问、移动、键比较或哈希计算成本为 O(1)。长字符串的比较和哈希、对象复制及内存分配可能增加实际成本。O 表示增长的上界，不代表精确耗时。</p>
+<div class="note-table-wrap" role="region" aria-label="三种复杂度口径" tabindex="0"><table><caption>三种复杂度口径</caption><thead><tr><th scope="col">口径</th><th scope="col">回答的问题</th><th scope="col">例子</th></tr></thead><tbody>
+<tr><th scope="row">最坏情况</th><td>一次操作最多需要多少工作？</td><td>平衡搜索树查找 O(log n)；动态数组扩容 O(n)。</td></tr>
+<tr><th scope="row">平均 / 期望</th><td>在给定输入分布或随机性假设下，平均需要多少工作？</td><td>哈希分布合适、负载受控时，查找期望 O(1)。</td></tr>
+<tr><th scope="row">摊还</th><td>一串操作的总成本分到每次是多少？</td><td>几何扩容的动态数组连续尾插，摊还 O(1)，不依赖输入随机。</td></tr>
+</tbody></table></div>
+<p>选型先列出高频操作：按位置访问、按键查找、首尾增删、范围查询还是取最大值。还要考虑地址稳定性、额外空间、缓存局部性和单次操作的延迟上限。</p>
+</section>
+
+<section id="linear-storage" aria-labelledby="linear-storage-title">
+<h2 id="linear-storage-title">2. 连续存储与链式存储</h2>
+<h3 id="dynamic-array">2.1 动态数组与扩容</h3>
+<p>数组用连续位置保存元素，可从起点和下标直接定位。中间插入要给新元素让位，中间删除要填补空缺，所以通常移动 O(n) 个元素。动态数组另外记录元素数 n 和容量 C，容量不足时取得更大的存储并迁移元素。</p>
+<pre tabindex="0" aria-label="动态数组大小与容量"><code class="language-text">元素数 n = 3，容量 C = 4
+[A][B][C][空]
+插入 D：[A][B][C][D]
+再插入 E，扩容为 8：
+[A][B][C][D][E][空][空][空]</code></pre>
+<p><strong>为什么尾插可以摊还 O(1)：</strong>以满时容量翻倍为例，从空开始插入 n 次，历次扩容搬迁数量形成 1 + 2 + 4 + …，总和小于 2n；加上 n 次新元素写入，总成本是 O(n)。某次扩容仍是 O(n)，没有保证每次都很快。</p>
+<p>若每次只增加一个位置，搬迁量可能变成 1 + 2 + … + (n−1)，总成本 O(n²)。若同时支持缩容，应留出不同的扩容和缩容阈值，避免在边界附近反复搬迁。连续存储有利于顺序访问，但迁移会影响保存的地址；具体语言和容器的有效性保证需另查接口。</p>
+<p class="note-source">参考：<a href="https://opendatastructures.org/newhtml/ods/latex/arrays.html" target="_blank" rel="noreferrer">Open Data Structures：数组结构与摊还分析</a>。</p>
+<h3 id="linked-list">2.2 单向与双向链表</h3>
+<pre tabindex="0" aria-label="链表节点关系"><code class="language-text">单向：head → [A|next] → [B|next] → [C|null]
+双向：     [prev|A|next] ⇄ [prev|B|next] ⇄ [prev|C|next]</code></pre>
+<p>节点保存元素和链接，各节点不要求相邻。已知插入位置或待删节点及必要的前驱时，只需修改少量链接；但按下标或按值寻找位置仍可能遍历 O(n) 个节点。单向链表删除通常需要前驱，双向链表可以通过 prev 找到前驱。</p>
+<p>例如在 A、C 之间插入 B，双向链表要让 A.next 指向 B、B.prev 指向 A、B.next 指向 C、C.prev 指向 B。删除 B 则重新连接 A 与 C，并归还 B；空表、首尾节点可用边界分支或哨兵节点统一处理。</p>
+<p>修改链接不必搬迁其他节点，但删除仍会终结被删节点的生命。节点分配、额外指针和较差的局部性都可能增加成本，因此“链表插删 O(1)”不能推出它总比数组快。</p>
+<details class="note-review-question"><summary>经典问题：删除第 k 个元素，链表一定比数组快吗？</summary><p>不一定。若只给下标，链表先走到第 k 个位置就可能花 O(n)；数组虽然需要移动后续元素，却可以连续访问。要比较完整操作，并说明是否已持有节点位置。</p></details>
+<p class="note-source">参考：<a href="https://opendatastructures.org/newhtml/ods/latex/linkedlists.html" target="_blank" rel="noreferrer">Open Data Structures：链表</a>。</p>
+</section>
+
+<section id="stack-queue-heap" aria-labelledby="stack-queue-heap-title">
+<h2 id="stack-queue-heap-title">3. 栈、队列与堆</h2>
+<h3 id="stack-and-queue">3.1 访问顺序与底层存储</h3>
+<p><strong>栈</strong>限制为后进先出，<strong>队列</strong>限制为先进先出，<strong>双端队列</strong>允许两端操作。它们描述接口，不唯一指定数组或链表。循环数组用 head 和元素数记录范围，下标通过取模绕回开头，避免每次出队都移动剩余元素。</p>
+<p>C++ 的 stack、queue 是容器适配器；std::deque 的常见分段实现属于具体标准库设计，见<a href="../cpp-interview-roadmap/index.html#deque-storage">deque 的分段存储与链表接口</a>。</p>
+<h3 id="binary-heap">3.2 二叉堆与上浮、下沉</h3>
+<p>二叉堆同时满足<strong>形状</strong>和<strong>顺序</strong>约束：形状是从上到下、从左到右填充的完全二叉树；最大堆要求父节点不小于孩子，最小堆则相反。它只保证堆顶是极值，不要求兄弟节点或整个数组有序。</p>
+<pre tabindex="0" aria-label="最大堆与数组下标"><code class="language-text">       9                  数组：[9, 7, 8, 1, 3]
+     /   \                下标： 0  1  2  3  4
+    7     8
+   / \                    下标 i 的孩子：2i+1、2i+2
+  1   3                   i &gt; 0 时父节点：floor((i-1)/2)</code></pre>
+<p><strong>插入：</strong>先放到末尾以保持形状，再与父节点比较，违反堆序就交换并继续上浮。<strong>删除堆顶：</strong>用末尾元素补到根，缩小范围，再与优先级更高的孩子比较并下沉。路径长度 O(log n)；读取堆顶 O(1)，查找任意键通常仍是 O(n)。</p>
+<p><strong>建堆：</strong>从最后一个非叶节点开始向前下沉，靠近叶子的节点数量多、下沉距离短，总成本 O(n)。逐个插入建堆则有 O(n log n) 的上界。底层数组若需要扩容，还须另计存储增长的成本。</p>
+<p class="note-source">参考：<a href="https://opendatastructures.org/newhtml/ods/latex/heaps.html" target="_blank" rel="noreferrer">Open Data Structures：二叉堆</a>。</p>
+</section>
+
+<section id="search-trees" aria-labelledby="search-trees-title">
+<h2 id="search-trees-title">4. 搜索树与红黑树</h2>
+<h3 id="binary-search-tree">4.1 有序性与树高</h3>
+<p>以不重复的键为例，二叉搜索树要求每个节点左子树的键更小、右子树的键更大。查找时比较当前键，选择一侧继续；中序遍历得到有序序列。操作成本与树高 h 相关，但普通搜索树不保证 h = O(log n)：按递增顺序插入可能退化成链。</p>
+<p>删除叶节点可直接摘除；只有一个孩子时让孩子接替；有两个孩子时，可找到中序后继（右子树中的最小节点），将问题转化为移除至多只有一个孩子的位置。具体实现选择移动节点还是替换数据，还会影响外部保存的节点身份。</p>
+<h3 id="red-black-tree">4.2 红黑树怎样限制高度</h3>
+<p>红黑树在搜索树基础上给节点加颜色，维持以下约束：</p>
+<ul><li>节点为红或黑；根为黑，空孩子视为黑色 NIL 叶节点。</li><li>红节点不能有红孩子，即路径上不能连续出现红节点。</li><li>从同一节点到所有后代 NIL 叶节点的路径，包含相同数量的黑节点。</li></ul>
+<p>相同黑高约束防止某条路径无限变短，无连续红节点约束限制路径变长；两者一起把树高限制为 O(log n)。红黑树不要求左右子树高度完全相同。查找无需读取颜色，颜色用于修改后的平衡维护。</p>
+<h3 id="tree-rotation">4.3 旋转保持顺序，变色修复约束</h3>
+<p>左旋把右孩子提升，右旋对称。下面对 x 左旋，子树 A、B、C 的内部结构不变；中序顺序始终是 A、x、B、y、C，所以旋转不破坏搜索树的有序性。</p>
+<pre tabindex="0" aria-label="搜索树左旋示意"><code class="language-text">      x                       y
+     / \                     / \
+    A   y       左旋        x   C
+       / \      ───→      / \
+      B   C               A   B</code></pre>
+<p>一次旋转只修改局部链接，成本 O(1)；它与变色一起恢复红黑约束。旋转次数少并不表示完整插入 O(1)，查找位置及向上修复仍可能经过 O(log n) 个节点。</p>
+<h3 id="tree-maintenance">4.4 插入与删除的维护过程</h3>
+<p><strong>插入：</strong>先按搜索树规则找到位置，通常将新节点设为红色，避免立即增加路径黑高。父节点为黑则结束；父节点为红时，检查叔节点。叔节点为红可通过变色把问题上移；叔节点为黑时，用旋转整理形状，再旋转和变色解除连续红节点。最后保证根为黑。</p>
+<pre tabindex="0" aria-label="插入十、二十、三十后的红黑修复"><code class="language-text">插入 10、20、30，修复前：       修复后：
+10(黑)                            20(黑)
+    \                            /      \
+    20(红)        ───→        10(红)   30(红)
+        \
+        30(红)
+此例对 10 左旋，并将 20 变黑、10 变红；省略 NIL 叶节点。</code></pre>
+<p><strong>删除：</strong>先完成搜索树的结构删除，再根据被移除位置原有的颜色修复。移除红色不减少黑高；黑色位置若由红孩子接替，可把孩子变黑。其余情况可把缺少一层黑色视为沿路径传递的“黑高缺口”。</p>
+<p>修复时检查兄弟及其孩子：红兄弟先通过旋转和变色转换为黑兄弟情形；黑兄弟没有红孩子时，可能将缺口上移；有红孩子时，通过适当旋转和变色补足缺口。左右情形互为镜像，必须同步维护父子链接。这里解释维护思路，完整实现还需覆盖 NIL、根替换及各旋转分支。</p>
+<details class="note-review-question"><summary>经典问题：红黑树为什么不把每个新节点都设为黑色？</summary><p>直接插入黑节点会增加该路径的黑节点数，破坏等黑高。插入红节点先保留黑高，再集中处理它与父节点可能形成的连续红色。</p></details>
+<p class="note-source">参考：<a href="https://ocw.mit.edu/courses/6-046j-introduction-to-algorithms-sma-5503-fall-2005/resources/lecture-10-red-black-trees-rotations-insertions-deletions/" target="_blank" rel="noreferrer">MIT：红黑树与旋转</a> · <a href="https://opendatastructures.org/newhtml/ods/latex/redblack.html" target="_blank" rel="noreferrer">Open Data Structures：红黑树维护</a>。不同教材和实现的平衡算法可能不同，应配套理解其不变量。</p>
+</section>
+
+<section id="hash-table" aria-labelledby="hash-table-title">
+<h2 id="hash-table-title">5. 哈希表、冲突与扩桶</h2>
+<h3 id="hash-lookup">5.1 从键到候选位置</h3>
+<p>哈希表先计算键的哈希值，再将哈希值映射到桶或槽位，最后比较候选键。相同键必须有相同哈希结果，但相同哈希结果不意味着键相同；冲突需要通过额外查找解决。它不保持按键排序，也不能直接代替搜索树的范围查询。</p>
+<h3 id="hash-collisions">5.2 链式散列与开放寻址</h3>
+<div class="note-table-wrap" role="region" aria-label="两种哈希冲突处理方式" tabindex="0"><table><caption>两种哈希冲突处理方式</caption><thead><tr><th scope="col">方式</th><th scope="col">查找与插入</th><th scope="col">删除与成本</th></tr></thead><tbody>
+<tr><th scope="row">链式散列</th><td>同桶元素通过节点链等结构组织，逐个比较候选键。</td><td>可摘除节点；有节点和链接开销，过长的链会拖慢查询。</td></tr>
+<tr><th scope="row">开放寻址</th><td>元素放在槽位数组中，冲突后按探测序列找下一个槽位。</td><td>删除需保留探测连续性，例如墓碑标记或按算法回移；直接标为空可能使后续键查找失败。</td></tr>
+</tbody></table></div>
+<pre tabindex="0" aria-label="哈希冲突的两种处理示意"><code class="language-text">教学示例：bucket(key) = key % 4，插入 1、5、9
+链式：桶 1 → [1] → [5] → [9]
+线性探测：槽位 0  1  2  3
+                  [空][1][5][9]
+查询 9：从槽 1 开始，比较 1、5、9。
+若删除 5 后直接把槽 2 当成“从未使用”，查询可能提前停止。</code></pre>
+<h3 id="hash-rehash">5.3 负载因子与重新分布</h3>
+<p>负载因子 α = 元素数 / 桶数（或槽位数）。链式散列可以 α &gt; 1；开放寻址需要空槽，并通常在接近满载前扩容。表变拥挤时，可以分配更多桶或槽位，并按新映射重新组织元素，这就是 rehash。</p>
+<p>例如上面的取模教学模型从 4 桶改为 8 桶，键 1、5、9 分别进入桶 1、5、1；不能只扩充数组长度而不重新分组。具体桶数、索引算法和增长策略由实现决定。</p>
+<p>在哈希分布合适、负载受控的假设下，链式查找期望成本 O(1+α)，控制 α 后可记为期望 O(1)。大量键落到同一桶时，最坏可退化到 O(n)；若它们的完整哈希值都相同，单纯增加桶数仍不能分开它们。rehash 要重新处理已有元素，应同时考虑单次延迟和额外空间。</p>
+<details class="note-review-question"><summary>经典问题：哈希表平均 O(1)，为什么不总选它？</summary><p>需要有序遍历、范围查询或稳定的最坏查找界时，平衡搜索树更合适；哈希表还受哈希成本、数据分布、桶空间和扩桶影响。O(1) 的成立有条件。</p></details>
+<p class="note-source">参考：<a href="https://opendatastructures.org/newhtml/ods/latex/hashing.html" target="_blank" rel="noreferrer">Open Data Structures：链式散列与线性探测</a>。</p>
+</section>
+
+<section id="selection" aria-labelledby="selection-title">
+<h2 id="selection-title">6. 从结构原理回到选型</h2>
+<div class="note-table-wrap" role="region" aria-label="需求与数据结构的对应" tabindex="0"><table><caption>需求与数据结构的对应</caption><thead><tr><th scope="col">主要需求</th><th scope="col">可考虑的结构</th><th scope="col">需要核对的代价</th></tr></thead><tbody>
+<tr><th scope="row">随机访问、顺序扫描、持续尾插</th><td>动态数组</td><td>迁移、预留空间、中间修改成本。</td></tr>
+<tr><th scope="row">已知位置的局部增删</th><td>链表</td><td>定位成本、节点分配、局部性。</td></tr>
+<tr><th scope="row">反复取出优先级最高的元素</th><td>堆</td><td>不支持高效的任意键查询；整体未排序。</td></tr>
+<tr><th scope="row">有序查找、上下界、范围遍历</th><td>平衡搜索树</td><td>树节点与平衡维护开销。</td></tr>
+<tr><th scope="row">大量按键查找、不要求顺序</th><td>哈希表</td><td>哈希分布、负载、扩桶与空间。</td></tr>
+</tbody></table></div>
+<p>实现到具体语言时，还要加上对象构造、资源所有权、异常和并发约束。C++ 中的 vector、deque、list、map 和 unordered_map 如何映射到这些结构，以及它们的迭代器与引用保证，继续阅读<a href="../cpp-interview-roadmap/index.html#stl">STL 容器与算法</a>。需要跨扩容、删除或重排保存对象身份时，阅读<a href="../cpp-stable-handles/index.html">稳定句柄与对象身份</a>。</p>
+</section>

@@ -1,0 +1,170 @@
+<section id="concurrency" aria-labelledby="concurrency-title">
+<h3 id="concurrency-title">8. 并发与同步</h3>
+<p>本章关注 C++ 的同步保证和接口用法；线程如何调度、锁如何阻塞与唤醒，见<a href="../operating-systems/index.html#process-thread">进程与线程</a>及<a href="../operating-systems/index.html#locks">锁与 futex</a>。</p>
+<div class="note-lesson" id="shared-state-foundation">
+<h4>8.1 数据竞争与同步关系</h4>
+<p><strong>线程</strong>是程序中的一条执行路径，多条线程可以访问同一对象。典型<strong>数据竞争</strong>是：不同线程访问同一内存位置，至少一次写入、至少一次不是原子操作，而且缺少同步建立的先后关系；这属于 UB。</p>
+<p><strong>happens-before（先行发生）</strong>是语言用来保证访问先后与可见性的关系，不是肉眼观察到的时间先后。它可由线程内顺序和锁、join 等同步操作连接起来；例如线程完成后，另一线程成功 join 再读取它写好的结果。对象还必须活到最后一次访问之后。</p>
+<p><strong>同步工具：</strong>互斥锁让一组操作由单个线程独占执行；原子操作把一次访问或读改写作为不可分割的操作；条件变量让线程等待某个共享条件。单个计数安全，不表示“余额与库存同时更新”这类多对象规则也自动安全。</p>
+</div>
+
+<div class="note-lesson" id="q36">
+<h4>8.2 thread、join 与 detach</h4>
+<p><strong>std::thread</strong> 对象管理与执行线程的关联。成功构造 <code>std::thread worker(f);</code> 后，f 在新线程执行；线程函数结束和管理对象完成清理是两件事。</p>
+<div class="note-table-wrap" role="region" aria-label="线程对象生命周期" tabindex="0"><table><caption>线程对象生命周期</caption><thead><tr><th scope="col">操作/状态</th><th scope="col">含义</th></tr></thead><tbody><tr><td>joinable</td><td>仍关联一个需要 join 或 detach 的线程；线程函数结束后也可能仍为 true。</td></tr><tr><td>join</td><td>等待完成并解除关联；线程完成与 join 返回之间建立同步。</td></tr><tr><td>detach</td><td>解除管理关系，不终止线程；被借用资源的生命周期仍需保证。</td></tr><tr><td>析构</td><td>std::thread 析构时若仍 joinable，会调用 terminate，不自动 join。</td></tr></tbody></table></div>
+<p><strong>线程异常：</strong>异常不会跳到创建线程处的 catch。可在线程内部捕获，用 exception_ptr 保存异常，或用 promise 写入结果/异常、future 等待并取得它；未捕获异常逃出线程入口会进入终止处理。</p>
+<details class="note-example-details"><summary>代码示例：join 后读取线程结果</summary>
+<figure class="note-example">
+    <figcaption>join 返回后再读取线程写入的结果</figcaption>
+    <pre tabindex="0" aria-label="join 返回后再读取线程写入的结果"><code class="language-cpp" data-example="thread-join">#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+int main() {
+    int result = 0;
+    std::thread worker([&amp;result] { result = 42; });
+    worker.join();
+    std::cout &lt;&lt; result &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>42</code></pre>
+</figure>
+</details><details class="note-deep-dive"><summary>async 与 jthread</summary>
+
+<p><strong>std::async</strong> 安排任务并返回 future；默认策略可能延迟到等待结果时执行，不保证新建线程。<strong>jthread</strong>（C++20）析构时对可连接线程请求停止并 join；停止仍需工作代码协作响应。</p>
+
+</details>
+</div>
+
+<div class="note-lesson" id="q37">
+<h4>8.3 互斥锁、临界区与死锁</h4>
+<p><strong>互斥锁</strong>一次只允许一个线程持有，锁内操作共享状态的范围称为<strong>临界区</strong>。对同一 mutex 的解锁与后续成功加锁建立同步，使先前写入可见。所有冲突访问都须遵守这套规则，不能只给写入方加锁。</p>
+<div class="note-table-wrap" role="region" aria-label="RAII 锁管理" tabindex="0"><table><caption>RAII 锁管理</caption><thead><tr><th scope="col">类型</th><th scope="col">适用情况</th></tr></thead><tbody><tr><td>lock_guard</td><td>简单作用域持锁，析构时解锁。</td></tr><tr><td>unique_lock</td><td>支持延迟加锁、手工解锁与移动；用于条件变量等待。</td></tr><tr><td>scoped_lock（C++17）</td><td>可同时管理多把锁，采用避免相互锁定死锁的加锁方式。</td></tr></tbody></table></div>
+<p><strong>死锁</strong>是参与者互相等待而无法继续，例如线程一持 A 等 B、线程二持 B 等 A。统一加锁顺序，或用 scoped_lock 一起取得需要的不同锁，可避免这类循环等待。recursive_mutex 只允许同一线程重复加锁，不能解决不同线程之间的等待环。</p>
+<details class="note-example-details"><summary>代码示例：两个线程在同一临界区更新计数</summary>
+<figure class="note-example">
+<figcaption>把读取、加一和写回一起放进临界区</figcaption>
+<pre tabindex="0" aria-label="把读取、加一和写回一起放进临界区"><code class="language-cpp" data-example="mutex-counter">#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+
+int main() {
+    int count = 0;
+    std::mutex mutex;
+    auto increment = [&amp;] {
+        for (int i = 0; i &lt; 1000; ++i) {
+            std::lock_guard&lt;std::mutex&gt; guard(mutex);
+            ++count;
+        }
+    };
+    std::thread first(increment);
+    std::thread second(increment);
+    first.join();
+    second.join();
+    std::cout &lt;&lt; count &lt;&lt; &#x27;\n&#x27;;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>2000</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-lock-protocol"><summary>经典问题：写入时加了锁，读取时不加锁，能保证共享变量安全吗？</summary>
+<p>不能只凭写入方持锁保证安全。冲突访问须参与同一同步协议，或由 join 等关系安排先后；读取绕过协议仍可能形成数据竞争。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q38">
+<h4>8.4 条件变量</h4>
+<p><strong>条件变量</strong>用于等待共享状态满足条件，通知本身不保存业务状态。必须将状态与互斥锁配合使用，而不是依赖“恰好收到一次通知”。</p>
+<ol class="note-mechanism"><li>持锁检查谓词，即“队列非空”等布尔条件；不满足时，wait 原子地释放锁并进入等待。</li><li>生产者在同一锁下修改状态，然后通知等待者。</li><li>等待者醒来后重新取得锁并检查谓词；成立才继续，否则再次等待。</li></ol>
+<pre class="note-snippet" tabindex="0"><code>cv.wait(lock, [&amp;] { return closed || !queue.empty(); });</code></pre>
+<p><strong>重复检查：</strong>wait 可能没有对应通知也返回，这叫虚假唤醒；取得锁前条件也可能被其他线程改变。notify_one 唤醒一个等待者，notify_all 唤醒所有等待者，醒来后都要重新竞争锁并检查条件。条件已满足时，即使通知先发生，后来进入 wait 的线程也能直接继续。</p>
+<details class="note-example-details"><summary>代码示例：带关闭状态的生产者与消费者</summary>
+<figure class="note-example">
+    <figcaption>队列为空时等待，关闭后先取完已有数据再退出</figcaption>
+    <pre tabindex="0" aria-label="队列为空时等待，关闭后先取完已有数据再退出"><code class="language-cpp" data-example="condition-variable">#include &lt;condition_variable&gt;
+#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;queue&gt;
+#include &lt;thread&gt;
+
+int main() {
+    std::mutex mutex;
+    std::condition_variable ready;
+    std::queue&lt;int&gt; queue;
+    bool closed = false;
+
+    std::thread consumer([&amp;] {
+        for (;;) {
+            std::unique_lock&lt;std::mutex&gt; lock(mutex);
+            ready.wait(lock, [&amp;] { return closed || !queue.empty(); });
+            if (queue.empty()) break; // 谓词成立且队列空，只可能是已关闭。
+            int value = queue.front();
+            queue.pop();
+            lock.unlock();
+            std::cout &lt;&lt; value &lt;&lt; '\n';
+        }
+    });
+
+    {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex);
+        queue.push(42);
+        closed = true;
+    }
+    ready.notify_all();
+    consumer.join();
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>42</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-09"><summary>经典问题：条件变量为什么要反复检查谓词，而不能只依赖一次通知？</summary>
+<p>唤醒不保证条件成立：可能虚假唤醒，也可能被其他线程抢先改变状态。用 <code>wait(lock, predicate)</code> 在锁内循环检查真实状态。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q39">
+<h4>8.5 atomic、volatile 与内存序</h4>
+<p><strong>atomic</strong> 提供不可分割的读取、写入或读改写。对 atomic 计数，fetch_add/++ 将“读取—加一—写回”作为一次原子操作；<code>count = count + 1</code> 却分成独立读和写，可能丢失更新。<strong>volatile</strong> 要求保留实现所规定的可观察访问，常用于平台约定的设备寄存器；不提供线程间原子性或同步。</p>
+<p><strong>内存序</strong>规定线程间能依赖哪些先后与可见性保证。标志本身读写原子，不等于通过这个标志传递的普通数据也自动安全。</p>
+<div class="note-table-wrap" role="region" aria-label="主要内存序" tabindex="0"><table><caption>主要内存序</caption><thead><tr><th scope="col">内存序</th><th scope="col">保证与用途</th></tr></thead><tbody><tr><td>relaxed</td><td>保证该对象的原子操作及相应修改顺序，不为其他普通数据建立发布关系；适用于无额外发布需求的计数等。</td></tr><tr><td>release / acquire</td><td>常见发布方式：acquire 读取相应 release 写出的标志值后建立同步，随后可安全读取发布前写好的普通数据。</td></tr><tr><td>acq_rel</td><td>同时具有 acquire 和 release 的作用，用于原子读改写操作。</td></tr><tr><td>seq_cst</td><td>默认顺序一致操作，增加相关操作的单一总序约束；不自动修复其他未同步普通访问。</td></tr></tbody></table></div>
+<p><strong>发布链：</strong>写普通数据 → release 写标志 → acquire 读到相应标志 → 读普通数据。示例中将标志读写都改为 relaxed，会失去保护普通数据所需的同步关系。</p>
+<p><strong>原子不等于无锁：</strong>有些类型或平台会借助内部锁实现原子操作，可用 is_lock_free 查询；单次操作无锁也不保证整个算法正确。</p>
+<details class="note-deep-dive"><summary>CAS 与 ABA：只比较当前值的局限</summary>
+<p><strong>CAS（比较并交换）</strong>把当前值与预期值比较，相符才写入新值，整个步骤原子完成。C++ 的 compare_exchange_* 失败时会把当前值写回 expected；weak 版本还可能虚假失败，通常放在重试循环中。</p>
+<p><strong>ABA</strong> 指值从 A 变成 B 又回到 A，CAS 只看当前值，察觉不到中途变化。例如地址被释放后复用，地址相同却已是另一个对象。版本号可帮助识别变化，还需安全回收方案保证其他读者不会访问已销毁对象。</p>
+</details>
+<details class="note-example-details"><summary>代码示例：release/acquire 发布普通数据</summary>
+<figure class="note-example">
+    <figcaption>先写普通数据，再用 release/acquire 发布给另一个线程</figcaption>
+    <pre tabindex="0" aria-label="先写普通数据，再用 release/acquire 发布给另一个线程"><code class="language-cpp" data-example="release-acquire">#include &lt;atomic&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+
+int main() {
+    int payload = 0;
+    std::atomic&lt;bool&gt; published{false};
+
+    std::thread reader([&amp;] {
+        while (!published.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+        std::cout &lt;&lt; payload &lt;&lt; '\n';
+    });
+    payload = 42;
+    published.store(true, std::memory_order_release);
+    reader.join();
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>42</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-08"><summary>经典问题：把共享计数声明成 volatile，就能安全执行多线程 ++ 吗？</summary>
+<p>不能。volatile 不建立原子性或同步。共享计数可用 atomic 的 fetch_add，或在互斥锁保护下更新；跨多个变量的约束仍需要完整协议。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q21">
+<span id="shared-ownership-concurrency" class="note-anchor" aria-hidden="true"></span>
+<h4>8.6 shared_ptr 的线程安全</h4>
+<div class="note-table-wrap" role="region" aria-label="分别判断三层安全" tabindex="0"><table><caption>分别判断三层安全</caption><thead><tr><th scope="col">层次</th><th scope="col">规则</th></tr></thead><tbody><tr><td>共享控制块</td><td>不同 shared_ptr 实例可各自进行复制、销毁等所有权操作。</td></tr><tr><td>同一个 shared_ptr 变量</td><td>并发读写仍需同步；C++17 可用对应原子自由函数或锁，C++20 可用 atomic&lt;shared_ptr&lt;T&gt;&gt;。</td></tr><tr><td>目标 T 的内容</td><td>不因 shared_ptr 管理而自动安全，仍需按 T 的访问方式同步。</td></tr></tbody></table></div>
+<p>两个线程各持有同组 shared_ptr，却同时执行 <code>++*p</code>，仍可能对普通 int 产生数据竞争。<code>use_count() == 1</code> 不能作为并发独占访问的可靠判断。</p>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/thread.thread.destr" target="_blank" rel="noreferrer">thread 析构</a> · <a href="https://eel.is/c++draft/thread.condition.condvar" target="_blank" rel="noreferrer">条件变量等待</a> · <a href="https://eel.is/c++draft/atomics.order" target="_blank" rel="noreferrer">内存序</a> · <a href="https://eel.is/c++draft/atomics.types.operations" target="_blank" rel="noreferrer">CAS 操作</a> · <a href="https://eel.is/c++draft/dcl.type.cv" target="_blank" rel="noreferrer">const / volatile</a> · <a href="https://eel.is/c++draft/intro.races" target="_blank" rel="noreferrer">数据竞争</a> · <a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">shared_ptr</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [intro.races] / [atomics.order]（竞争与内存序）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

@@ -1,0 +1,11 @@
+<section id="scope" aria-labelledby="scope-title"><h2 id="scope-title">阅读范围与实现边界</h2>
+<p>从运行时内存全景开始，沿对象创建、布局、引用与可达性，理解回收算法、并发标记、对象移动和内存排查。HotSpot 与 ART 的共同基础只讲一次，对象头、执行模型和分配路径的实现差异在对应知识点旁比较。</p>
+<p>本文实例采用以下版本：<strong>JDK 21 HotSpot 的 G1 / 分代 ZGC</strong>与<strong>AOSP android-14.0.0_r1 的 ConcurrentCopying / Concurrent Mark Compact</strong>。实现细节不等同于 JVM 规范，也不自动适用于其他运行时、模式或版本。</p>
+<p>JVM 规范描述抽象虚拟机，HotSpot 是具体实现，ART 则执行 DEX 字节码；共享 Java 语言与 API 概念，不意味着内存布局完全相同。只复习基础可读第一部分，屏障与移动见第二部分，G1、ART CC / CMC 的流程及平台排查见第三部分。地址与映射基础见<a href="../operating-systems/index.html#virtual-memory">虚拟地址与物理内存</a>；解释、JIT 与 AOT 复用<a href="../compiler-ir/index.html#dynamic-compilation">编译器笔记</a>。</p>
+</section>
+<!-- include: gc-foundations.html -->
+<!-- include: concurrent-gc.html -->
+<!-- include: gc-implementations.html -->
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../jni-references/index.html">JNI：调用边界、引用与生命周期</a></li><li><a href="../compiler-ir/index.html#dynamic-compilation">动态编译与运行时状态</a></li><li><a href="../program-execution/index.html#unwind">异常展开与机器状态恢复</a></li><li><a href="../native-memory-allocation/index.html">原生内存分配</a></li><li><a href="../art-compilation-startup/index.html">ART 编译与 Android 应用启动</a></li></ul>
+</section>

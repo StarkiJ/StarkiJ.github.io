@@ -1,0 +1,188 @@
+<section id="templates" aria-labelledby="templates-title">
+<h3 id="templates-title">6. 模板、类型推导与可调用对象</h3>
+<p>先理解模板推导和可调用对象，再阅读下一章的容器与算法；转发引用建立在<a href="#q22">值类别</a>和<a href="#q23">移动语义</a>之上。</p>
+<div class="note-lesson" id="q32">
+<span id="template-foundation" class="note-anchor" aria-hidden="true"></span><h4>6.1 模板定义、实例化与特化</h4>
+<p><strong>模板</strong>把类型或值留作参数，用同一份描述生成不同版本。例如 <code>template&lt;class T&gt; T add(T a, T b)</code> 可用于 int 或 double。把具体参数代入并形成相应版本，称为<strong>实例化</strong>；编译器先检查不依赖参数的部分，再检查实例中的类型相关操作。</p>
+<p><strong>定义可见性：</strong>隐式实例化通常需要看到模板定义，所以常放头文件。类型集合固定时，可在实现文件中显式实例化指定版本，但不会自动支持任意新类型。</p>
+<p><strong>特化</strong>为特定模板参数另写规则：全特化固定全部参数，如 <code>Box&lt;int&gt;</code>；偏特化匹配一类参数，如 <code>Box&lt;T*&gt;</code>。类模板支持两者，函数模板只能全特化，部分情况通常用重载区分。生成多个版本可能增加编译时间和代码体积。</p>
+<details class="note-example-details"><summary>代码示例：模板参数推导与生成不同类型版本</summary>
+<figure class="note-example">
+    <figcaption>用同一份模板定义处理两种类型</figcaption>
+    <pre tabindex="0" aria-label="用同一份模板定义处理两种类型"><code class="language-cpp" data-example="generic-add">#include &lt;iostream&gt;
+
+template&lt;class T&gt;
+T add(T left, T right) {
+    return left + right;
+}
+
+int main() {
+    std::cout &lt;&lt; add(1, 2) &lt;&lt; '\n';
+    std::cout &lt;&lt; add(1.5, 2.5) &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>3
+4</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-template-definition"><summary>经典问题：模板为什么通常在头文件里给出定义，而普通函数可以只给声明？</summary>
+<p>普通函数可先按声明生成调用，链接时找到已有实现；模板可能需要为新类型生成实例，因此通常要看到定义。也可显式实例化一组固定类型。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q05">
+<h4>6.2 auto、decltype 与 decltype(auto)</h4>
+<p><strong>auto</strong> 让编译器从初始化表达式推导变量类型；<strong>decltype</strong> 获取表达式或指定实体的类型，不执行该表达式。两者规则不同，尤其要留意引用与 const 是否保留。</p>
+<div class="note-table-wrap" role="region" aria-label="类型推导" tabindex="0"><table><caption>类型推导</caption><thead><tr><th scope="col">形式</th><th scope="col">规则</th></tr></thead><tbody><tr><td><code>auto x = expr</code></td><td>按值推导，通常去掉引用和顶层 const；保留指针目标的 const。</td></tr><tr><td><code>auto&amp; x = expr</code></td><td>保留引用语义，目标的 const 也保留。</td></tr><tr><td><code>decltype(name)</code></td><td>对未加括号的变量名/成员访问，取得实体声明类型。</td></tr><tr><td><code>decltype(expr)</code>（其他表达式）</td><td>左值得到 T&，将亡值得到 T&&，纯右值得到 T。</td></tr><tr><td><code>decltype(auto)</code></td><td>对初始化或返回表达式应用 decltype 规则。</td></tr></tbody></table></div>
+<p><strong>括号会改变结果：</strong>n 为 int 变量时，decltype(n) 是 int，decltype((n)) 是 int&amp;。返回局部对象时，<code>decltype(auto)</code> 与 <code>return (local);</code> 可能产生悬垂引用。</p>
+<p><code>std::is_same_v&lt;A,B&gt;</code> 判断两个类型是否相同；<code>static_assert</code> 在条件为假时让编译报错，适合验证推导规则。</p>
+<details class="note-example-details"><summary>代码示例：编译期断言验证推导结果</summary>
+<figure class="note-example">
+    <figcaption>用编译期断言验证类型；程序正常结束即通过</figcaption>
+    <pre tabindex="0" aria-label="用编译期断言验证类型；程序正常结束即通过"><code class="language-cpp" data-example="deduction">#include &lt;type_traits&gt;
+
+int main() {
+    const int n = 5;
+    auto a = n;
+    auto&amp; b = n;
+    decltype(n) c = 6;
+    decltype((n)) d = n;
+    static_assert(std::is_same_v&lt;decltype(a), int&gt;);
+    static_assert(std::is_same_v&lt;decltype(b), const int&amp;&gt;);
+    static_assert(std::is_same_v&lt;decltype(c), const int&gt;);
+    static_assert(std::is_same_v&lt;decltype(d), const int&amp;&gt;);
+}</code></pre>
+    <p class="note-example-result">正常结束，无输出。</p>
+
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q24">
+<h4>6.3 转发引用与 std::forward</h4>
+<p><strong>转发引用</strong>用于接收并保留调用者的左值/右值性质。典型写法是函数模板参数 <code>T&amp;&amp;</code>，其中 T 需要由实参推导，且 T 本身未加 const/volatile：传入 X 左值时 T 推导为 X&amp;，传入 X 右值时 T 为 X。</p>
+<p><strong>引用折叠</strong>处理类型替换后叠加的引用：有 &amp; 就得到左值引用，只有两层都是 &amp;&amp; 才得到右值引用。因此左值传入时，T&amp;&amp; 最终成为 X&amp;。函数内的参数名仍是左值；<code>std::forward&lt;T&gt;</code> 根据推导出的 T，把左值继续当左值，把原右值转回右值再传出。</p>
+<pre class="note-snippet" tabindex="0"><code>template&lt;class T&gt;
+void relay(T&amp;&amp; value) {
+    receive(std::forward&lt;T&gt;(value));
+}</code></pre>
+<p><strong>易错点：</strong>const T&amp;&amp; 不是上述转发引用；类模板中已固定 T 的普通成员参数 T&amp;&amp; 也不是。一律使用 move 会把调用者左值也转为右值。</p>
+<details class="note-example-details"><summary>代码示例：包装函数保留左值与右值调用</summary>
+<figure class="note-example">
+    <figcaption>包装函数保留左值和右值调用方式</figcaption>
+    <pre tabindex="0" aria-label="包装函数保留左值和右值调用方式"><code class="language-cpp" data-example="forwarding">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;utility&gt;
+
+void receive(const std::string&amp;) { std::cout &lt;&lt; &quot;borrow\n&quot;; }
+void receive(std::string&amp;&amp;) { std::cout &lt;&lt; &quot;consume\n&quot;; }
+
+template&lt;class T&gt;
+void relay(T&amp;&amp; value) {
+    receive(std::forward&lt;T&gt;(value));
+}
+
+int main() {
+    std::string name = &quot;C++&quot;;
+    relay(name);
+    relay(std::string(&quot;temporary&quot;));
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>borrow
+consume</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-07"><summary>经典问题：模板包装函数里，为什么直接传参数名会丢失右值性质？</summary>
+<p>命名参数在表达式中是左值。forward 利用模板推导保留的信息恢复原值类别；直接使用名字会丢失右值性质，一律 move 又会错误地转换左值。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q34">
+<h4>6.4 Lambda 与捕获</h4>
+<p><strong>Lambda</strong> 是就地定义函数的表达式，形如 <code>[捕获](参数) { 函数体 }</code>。编译器生成可用 () 调用的对象，称为<strong>闭包</strong>；值捕获把外部数据复制进闭包，引用捕获只借用。<code>[=]</code> 默认按值捕获用到的局部变量，<code>[&amp;]</code> 默认按引用捕获。</p>
+<div class="note-table-wrap" role="region" aria-label="常见捕获" tabindex="0"><table><caption>常见捕获</caption><thead><tr><th scope="col">形式</th><th scope="col">含义与生命周期</th></tr></thead><tbody><tr><td><code>[x]</code></td><td>保存 x 的副本；默认调用运算符为 const，mutable 允许修改闭包内副本。</td></tr><tr><td><code>[&amp;x]</code></td><td>借用 x，不延长其生命周期。</td></tr><tr><td><code>[this]</code></td><td>保存当前对象的指针，不拥有对象。</td></tr><tr><td><code>[*this]</code>（C++17）</td><td>复制当前对象；须满足复制要求。</td></tr><tr><td><code>[p = std::move(owner)]</code>（C++14）</td><td>初始化捕获，可把独占资源移入闭包。</td></tr></tbody></table></div>
+<p><strong>生命周期：</strong>引用捕获和 this 捕获不延长目标生命期；C++17 的 [=] 捕获 this 也只保存指针。<strong>std::function</strong> 用统一函数签名包装不同可调用对象，但 C++17 要求目标可拷贝；捕获 unique_ptr 的闭包通常不满足这一点。</p>
+<details class="note-example-details"><summary>代码示例：值捕获与引用捕获的修改范围</summary>
+<figure class="note-example">
+    <figcaption>值捕获的状态留在闭包里，引用捕获直接修改外部对象</figcaption>
+    <pre tabindex="0" aria-label="值捕获的状态留在闭包里，引用捕获直接修改外部对象"><code class="language-cpp" data-example="lambda-capture">#include &lt;iostream&gt;
+
+int main() {
+    int n = 1;
+    auto by_value = [n]() mutable { return ++n; };
+    auto by_reference = [&amp;n]() { return ++n; };
+    std::cout &lt;&lt; by_value() &lt;&lt; ' ' &lt;&lt; n &lt;&lt; '\n';
+    std::cout &lt;&lt; by_reference() &lt;&lt; ' ' &lt;&lt; n &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>2 1
+2 2</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q35">
+<h4>6.5 编译期分支与结果类型</h4>
+<div class="note-table-wrap" role="region" aria-label="常用能力" tabindex="0"><table><caption>常用能力</caption><thead><tr><th scope="col">工具</th><th scope="col">用途与边界</th></tr></thead><tbody><tr><td><code>if constexpr</code>（C++17）</td><td>在模板中按常量条件选择分支，不实例化已确定丢弃的分支；不能用它在非模板代码中隐藏任意非法代码。</td></tr><tr><td><code>optional&lt;T&gt;</code>（C++17）</td><td>在自身存储中按需构造一个 T，并记录是否有值；无值时 value() 抛异常，value_or 提供回退。</td></tr><tr><td><code>variant&lt;A,B&gt;</code>（C++17）</td><td>保存一种候选值及当前类型状态；get_if 检查并取指定类型，visit 按当前类型调用处理函数。某些替换抛异常后可能无值。</td></tr></tbody></table></div><details class="note-example-details"><summary>代码示例：optional 结果与 if constexpr 分支</summary>
+<figure class="note-example">
+    <figcaption>用 optional 表达失败，用 if constexpr 选择类型相关操作</figcaption>
+    <pre tabindex="0" aria-label="用 optional 表达失败，用 if constexpr 选择类型相关操作"><code class="language-cpp" data-example="optional-constexpr">#include &lt;iostream&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;type_traits&gt;
+
+std::optional&lt;int&gt; digit(char c) {
+    if (c &gt;= '0' &amp;&amp; c &lt;= '9') return c - '0';
+    return std::nullopt;
+}
+template&lt;class T&gt;
+void print(const T&amp; value) {
+    if constexpr (std::is_same_v&lt;T, std::string&gt;) {
+        std::cout &lt;&lt; value.size() &lt;&lt; '\n';
+    } else {
+        std::cout &lt;&lt; value &lt;&lt; '\n';
+    }
+}
+int main() {
+    print(std::string(&quot;C++&quot;));
+    print(digit('7').value_or(-1));
+    print(digit('x').value_or(-1));
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>3
+7
+-1</code></pre>
+</figure>
+</details><details class="note-deep-dive"><summary>后续标准：span、ranges、expected 与协程</summary>
+
+<p><strong>span</strong>（C++20）用起点和长度借用连续元素；<strong>ranges</strong>（C++20）让算法直接操作范围，部分 views 在取元素时才计算筛选、变换结果。它们仍受底层对象生命周期限制。<strong>expected&lt;T,E&gt;</strong>（C++23）保存成功值 T 或错误 E。</p>
+<p><strong>协程</strong>（C++20）能挂起并从保存位置恢复，所需状态由协程帧保存；它不自动创建线程，也不自带异步 I/O 调度器。</p>
+
+</details>
+</div>
+
+<div class="note-lesson" id="q33">
+<h4>6.6 SFINAE 与模板约束</h4>
+<p><strong>SFINAE</strong> 即“替换失败不是错误”。编译器把推导出的类型代入函数声明时，若参数/返回类型等规定位置无法成立，就移除这个候选，继续找其他匹配。例如要求 T::value_type 的声明，对没有该成员的 int 可以替换失败；函数体内部的任意错误不会因此被忽略。</p>
+<p><strong>enable_if_t&lt;条件, T&gt;</strong> 在条件为真时得到 T，为假时没有相应类型，可用来触发上述候选排除。示例用 is_integral_v 检查是否为整数类型。C++20 的 <strong>concepts/requires</strong> 则直接声明模板必须满足的条件，例如支持某个操作，不满足时不参与相应匹配。</p>
+<details class="note-example-details"><summary>代码示例：仅允许整数类型的函数模板</summary>
+<figure class="note-example">
+    <figcaption>只为整数类型提供该函数模板</figcaption>
+    <pre tabindex="0" aria-label="只为整数类型提供该函数模板"><code class="language-cpp" data-example="sfinae">#include &lt;iostream&gt;
+#include &lt;type_traits&gt;
+
+template&lt;class T&gt;
+std::enable_if_t&lt;std::is_integral_v&lt;T&gt;, T&gt; twice(T value) {
+    return value + value;
+}
+
+int main() {
+    std::cout &lt;&lt; twice(3) &lt;&lt; '\n';
+    // twice(3.5); // 没有匹配候选：double 不满足条件。
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>6</code></pre>
+</figure>
+</details>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/temp.deduct" target="_blank" rel="noreferrer">模板替换与推导</a> · <a href="https://eel.is/c++draft/expr.prim.lambda" target="_blank" rel="noreferrer">Lambda</a> · <a href="https://eel.is/c++draft/stmt.if" target="_blank" rel="noreferrer">if constexpr</a> · <a href="https://eel.is/c++draft/optional" target="_blank" rel="noreferrer">optional</a> · <a href="https://eel.is/c++draft/variant" target="_blank" rel="noreferrer">variant</a> · <a href="https://eel.is/c++draft/forward" target="_blank" rel="noreferrer">move 与 forward</a> · <a href="https://eel.is/c++draft/dcl.type.decltype" target="_blank" rel="noreferrer">decltype</a> · <a href="https://eel.is/c++draft/dcl.spec.auto" target="_blank" rel="noreferrer">auto 推导</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [temp.deduct]（模板实参推导）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

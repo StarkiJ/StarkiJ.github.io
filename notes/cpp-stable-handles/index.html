@@ -7,14 +7,15 @@
     <meta name="theme-color" content="#f7faf8">
     <meta property="og:type" content="article">
     <meta property="og:locale" content="zh_CN">
-    <meta property="og:title" content="vector 与稳定句柄 · Starki 笔记">
+    <meta property="og:title" content="稳定句柄：对象身份、重排与生命周期 · Starki 笔记">
     <meta property="og:description" content="区分地址、位置和身份，处理扩容、重排、删除与槽位复用。">
     <meta property="og:url" content="https://starkij.github.io/notes/cpp-stable-handles/index.html">
-    <title>vector 与稳定句柄 · Starki 笔记</title>
+    <title>稳定句柄：对象身份、重排与生命周期 · Starki 笔记</title>
     <link rel="canonical" href="https://starkij.github.io/notes/cpp-stable-handles/index.html">
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
 </head>
 <body class="note-page">
     <a class="note-skip" href="#note-content">跳到正文</a>
@@ -34,27 +35,66 @@
         </div>
     </header>
     <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">vector 与稳定句柄</span></nav>
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">稳定句柄：对象身份、重排与生命周期</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ / 深入专题</p>
-                <h1 id="note-title">vector 与稳定句柄</h1>
+                <p class="eyebrow">C++ / 实践</p>
+                <h1 id="note-title">稳定句柄：对象身份、重排与生命周期</h1>
                 <p class="note-deck">区分地址、位置和身份，处理扩容、重排、删除与槽位复用。</p>
                 <div class="note-meta">
                     <span>Starki</span>
-                    <time datetime="2026-09-08">2026.09.08</time>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-08">2026.09.08</time></span><span>更新 <time datetime="2026-09-18">2026.09.18</time></span></span>
+<!-- generated:note-dates:end -->
                     <span>概念 · 机制 · 经典问题</span>
                 </div>
             </header>
 <!-- generated:reading-guide:start -->
-<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 先掌握容器失效规则，再区分对象的地址、位置和身份。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#stl">STL 容器与算法</a></p></aside>
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 先区分地址、位置和身份，再实现带版本号的句柄与对象池；容器失效与对象生命周期见核心知识。</p><p>相关基础：<a href="../cpp-interview-roadmap/index.html#container-invalidation">容器失效规则</a>、<a href="../cpp-interview-roadmap/index.html#lifetime">存储与生命周期</a></p></aside>
 <!-- generated:reading-guide:end -->
-<div class="note-layout"><nav class="note-toc" aria-label="文章目录"><p>目录</p><ol><li><a href="#invalidation">1. 引用失效与修复</a></li><li><a href="#mapping">2. 句柄与双向映射</a></li><li><a href="#implementation">3. 实现与验证</a></li><li><a href="#boundaries">4. 生命周期与并发边界</a></li></ol></nav><div class="note-body" id="note-content" tabindex="-1"><section id="invalidation" aria-labelledby="invalidation-title"><h2 id="invalidation-title">1. 引用失效与修复</h2>
+<div class="note-layout"><!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
+<ol>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：1. 地址、位置与身份"><a href="#invalidation">1. 地址、位置与身份</a></summary>
+        <ol>
+            <li><a href="#address-invalidation">1.1 扩容后的地址与位置</a></li>
+            <li><a href="#identity-options">1.2 稳定访问方案的选择</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：2. 句柄与双向映射"><a href="#mapping">2. 句柄与双向映射</a></summary>
+        <ol>
+            <li><a href="#slot-generation">2.1 槽位、版本号与双向映射</a></li>
+            <li><a href="#handle-operations">2.2 查询、删除与槽位复用</a></li>
+            <li><a href="#handle-costs">2.3 复杂度、重排与版本上限</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：3. 实现与验证"><a href="#implementation">3. 实现与验证</a></summary>
+        <ol>
+            <li><a href="#pool-exception-safety">3.1 对象类型与异常边界</a></li>
+            <li><a href="#pool-tests">3.2 完整实现与断言覆盖</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：4. 生命周期与并发边界"><a href="#boundaries">4. 生命周期与并发边界</a></summary>
+        <ol>
+            <li><a href="#borrowed-access">4.1 借用指针与并发使用</a></li>
+            <li><a href="#stable-identity">4.2 身份稳定与地址稳定</a></li>
+        </ol>
+    </details></li>
+    <li><a href="#related">延伸阅读</a></li>
+</ol>
+</details></nav>
+<!-- generated:note-toc:end --><div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
+<section id="invalidation" aria-labelledby="invalidation-title"><h2 id="invalidation-title">1. 地址、位置与身份</h2>
+<p>容器可以移动元素，也可以让同一位置装入另一个对象值。本篇从这两种变化出发，设计能够长期保存的对象身份入口。完整容器规则见<a href="../cpp-interview-roadmap/index.html#container-invalidation">迭代器、引用与指针失效</a>。</p>
+<h3 id="address-invalidation">1.1 扩容后的地址与位置</h3>
 <p>vector 元素连续存储。增长导致重新分配时，原存储中的指针、引用与迭代器全部失效；没有重分配的尾部插入不使已有元素引用失效。不能根据“第几次 push_back”猜容量。</p>
 <pre tabindex="0"><code class="language-cpp">std::vector&lt;int&gt; v{1, 2, 3};
 const auto position = std::size_t{0};
 v.push_back(4);
 std::cout &lt;&lt; v[position]; // 扩容后重新定位；前提是位置语义没变</code></pre>
+<h3 id="identity-options">1.2 稳定访问方案的选择</h3>
 <div class="note-table-wrap" role="region" aria-label="可选方案" tabindex="0"><table><caption>可选方案</caption><thead><tr><th scope="col">方案</th><th scope="col">适用前提</th><th scope="col">代价与边界</th></tr></thead><tbody><tr><td>先 reserve，再取得引用</td><td>有可靠容量上界，期间不超限、不做使引用失效的操作</td><td>提前占用空间；reserve 自身也可能重分配</td></tr><tr><td>保存下标，每次重新访问</td><td>只追加，原位置始终代表同一业务对象</td><td>删除、插入和排序会改变位置语义</td></tr><tr><td>vector&lt;unique_ptr&lt;T&gt;&gt;</td><td>需要独立堆对象的稳定地址</td><td>额外分配与间接访问；对象删除后借用指针仍悬垂</td></tr><tr><td>槽位 + generation 句柄</td><td>连续数据需要增长、重排与删除</td><td>额外映射和校验；不对外长期暴露地址</td></tr></tbody></table></div>
 <details class="note-review-question"><summary>经典问题：如何稳定复现扩容失效，而不依赖某个实现的增长倍数？</summary>
 <p>先记录 capacity，填满到 size == capacity，再取得引用；下一次成功 push_back 必须扩容。错误版仅作为检测器样例运行；修复版在增长后重新查找，并断言对象值。不要把失效后的读值当作可预测输出。</p>
@@ -62,18 +102,23 @@ std::cout &lt;&lt; v[position]; // 扩容后重新定位；前提是位置语义
 <p class="note-source">参考：<a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 失效规则</a>。</p>
 </section>
 <section id="mapping" aria-labelledby="mapping-title"><h2 id="mapping-title">2. 句柄与双向映射</h2>
+<h3 id="slot-generation">2.1 槽位、版本号与双向映射</h3>
 <p><strong>句柄</strong>保存稳定槽位编号和版本号 generation；槽位表映射到当前密集数组下标；密集元素记录自己的槽位号，以便搬动后更新反向映射。</p>
 <pre tabindex="0"><code class="language-text">Handle { slot=7, generation=3 }
     → slots[7] { dense=2, generation=3 }
     → dense[2] { value, slot=7 }</code></pre>
+<h3 id="handle-operations">2.2 查询、删除与槽位复用</h3>
 <ol><li>查询：检查槽位存在、未删除、版本一致，再返回当前元素。</li><li>删除：用末尾元素覆盖被删位置，更新被搬元素的槽位映射，再弹出末尾。</li><li>失效：删除槽位的 generation 加一，并加入空闲链表。</li><li>复用：新对象取得该槽位的新版本；旧句柄因版本不符而失败。</li></ol>
+<h3 id="handle-costs">2.3 复杂度、重排与版本上限</h3>
 <p>查询与删除 O(1)，插入摊还 O(1)。删除采用 swap-and-pop，不保留密集数组的顺序；排序或重排必须同步维护映射。槽位表通常随历史同时存活对象数的峰值增长；达到版本上限后退役的槽位仍占空间，也会增加表长。</p>
 <details class="note-review-question"><summary>经典问题：为什么只有下标还不够？</summary>
 <p>删除后下标可能被另一个对象占用，旧 ID 会误认新对象。generation 区分“同一槽位的不同生命期”。计数器若回绕仍可能误认，因此示例到上限就退役槽位。</p>
 </details>
 </section>
 <section id="implementation" aria-labelledby="implementation-title"><h2 id="implementation-title">3. 实现与验证</h2>
+<h3 id="pool-exception-safety">3.1 对象类型与异常边界</h3>
 <p>示例只存 int，使搬动与删除不会因用户类型抛异常。新增元素分配失败时会回滚新槽位。泛型版本还需约束 T 的移动/交换，或设计异常后的映射恢复。</p>
+<h3 id="pool-tests">3.2 完整实现与断言覆盖</h3>
 <p><a href="examples.cpp" download>下载源码（examples.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
 <details class="note-example-details"><summary>完整实现与断言测试</summary>
 <pre tabindex="0"><code class="language-cpp" data-source="examples.cpp">#include &lt;cassert&gt;
@@ -169,12 +214,15 @@ int main() {
 <p>断言覆盖大量增长、显式重排、中间删除、末尾删除、重复删除、槽位复用和越界句柄。</p>
 </section>
 <section id="boundaries" aria-labelledby="boundaries-title"><h2 id="boundaries-title">4. 生命周期与并发边界</h2>
+<h3 id="borrowed-access">4.1 借用指针与并发使用</h3>
 <ul><li>get 返回的是短期借用指针；下一次可能扩容、重排或删除的操作前必须停止使用。需要长期保存的是 Handle。</li><li>句柄只在所属 Pool 的生命周期内有效。跨容器、存档或网络传输需要额外的容器身份与持久 ID。</li><li>版本校验不解决并发：校验后另一线程仍可删除。须在同一把锁内完成查询与使用，或另行设计延迟回收。</li><li>对象重排后应按句柄确认身份；仅检查地址是否相同不能证明指向同一个业务对象。</li></ul>
+<h3 id="stable-identity">4.2 身份稳定与地址稳定</h3>
 <details class="note-review-question"><summary>经典问题：稳定句柄是否让 T* 永远稳定？</summary>
 <p>没有。稳定的是访问对象的身份入口。每次通过句柄重新定位，并在受保护的访问期间使用临时指针，才避免持有旧地址。</p>
 </details>
 </section>
 <section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
-<ul><li><a href="../cpp-interview-roadmap/index.html#q28">核心知识：vector 失效</a></li></ul>
+<ul><li><a href="../cpp-interview-roadmap/index.html#container-invalidation">核心知识：容器失效规则</a></li><li><a href="../cpp-interview-roadmap/index.html#concurrency">核心知识：并发与同步</a></li></ul>
 </section>
+<!-- generated:note-body:end -->
 </div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

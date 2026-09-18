@@ -1,0 +1,108 @@
+<section id="engineering" aria-labelledby="engineering-title">
+<h3 id="engineering-title">9. 编译、链接与调试</h3>
+<div class="note-lesson" id="q40">
+<span id="translation-foundation" class="note-anchor" aria-hidden="true"></span><h4>9.1 翻译单元、声明与定义</h4>
+<p><strong>典型构建流程：</strong>预处理展开头文件和宏 → 编译生成汇编 → 汇编生成目标文件 → 链接成程序或库。一个 cpp 连同包含内容形成<strong>翻译单元</strong>。链接器按符号记录把函数/变量的引用与定义对应起来，并修正相关地址。</p>
+<p><strong>声明</strong>说明名字和类型，例如 <code>extern int count;</code>；<strong>定义</strong>建立变量或提供函数体，例如 <code>int count = 0;</code>。这里不带初始化器的 extern 变量声明不提供定义；对应定义可以在同一翻译单元，也可以在另一个翻译单元。<strong>ODR（单一定义规则）</strong>约束同一实体允许有哪些定义；普通外部链接变量、非 inline 函数通常只应在一处定义。</p>
+<div class="note-table-wrap" role="region" aria-label="常见链接错误" tabindex="0"><table><caption>常见链接错误</caption><thead><tr><th scope="col">错误</th><th scope="col">检查方向</th></tr></thead><tbody><tr><td>undefined reference / unresolved external symbol</td><td>实现是否参与构建、依赖库是否链接、声明定义是否匹配、模板是否实例化、工具相关的链接顺序。</td></tr><tr><td>multiple definition</td><td>是否在头文件定义普通外部链接实体并被多个翻译单元包含；是否违反单一定义规则 ODR。</td></tr></tbody></table></div>
+<p><strong>库：</strong>静态库通常在链接时提供所需目标代码；动态库通过加载或运行时的动态链接机制使用。两者均需考虑 ABI、版本和依赖，不能仅概括为性能优劣。</p>
+<details class="note-example-details"><summary>多文件示例：共享声明、唯一的定义与模板实例化</summary>
+<h4>counter.hpp</h4>
+<pre tabindex="0"><code class="language-cpp" data-source="linking/counter.hpp"></code></pre>
+<h4>counter.cpp</h4>
+<pre tabindex="0"><code class="language-cpp" data-source="linking/counter.cpp"></code></pre>
+<h4>main.cpp</h4>
+<pre tabindex="0"><code class="language-cpp" data-source="linking/main.cpp"></code></pre>
+<pre tabindex="0"><code class="language-text">g++ -std=c++17 counter.cpp main.cpp -o demo</code></pre>
+</details>
+<p>counter.hpp 提供声明与模板定义；counter.cpp 提供 count 与 tick 的唯一定义；main.cpp 使用它们并实例化 twice&lt;int&gt;。头文件不独立链接。源码：<a href="linking/counter.hpp" download>counter.hpp</a> · <a href="linking/counter.cpp" download>counter.cpp</a> · <a href="linking/main.cpp" download>main.cpp</a>。</p>
+<details class="note-review-question"><summary>经典问题：省略 counter.cpp，或把 int count = 0 放进头文件会怎样？</summary>
+<p>前者缺少 count/tick 的定义，通常链接失败；后者被两个 cpp 包含后产生重复外部定义，违反 ODR。头文件防重不能跨翻译单元去重。若把 twice 的定义移到 cpp，则还需要为使用的类型显式实例化；只留下模板声明不会自动产生任意类型版本。</p>
+</details>
+<p>实践与延伸：<a href="../program-execution/index.html">程序执行：装载、调用与异常展开</a>。</p>
+<h4 id="extern-declarations">extern：先区分声明、定义与链接</h4>
+<pre tabindex="0"><code class="language-cpp">// 以下每一行单独解释，均假设处于命名空间作用域。
+extern int count;       // 变量声明，没有提供定义
+int count = 0;          // 变量定义
+extern int total = 1;   // 仍然是定义：带有初始化器
+int tick();            // 函数声明，通常已具有外部链接
+extern int tick();     // 显式写 extern，不改变它为 C 语言链接
+
+static int local = 0;
+extern int local;      // 重声明此前可见的实体，保留它的内部链接</code></pre>
+<p><code>extern</code> 是存储类说明符；它不等于“定义必须在其他文件”，也不等于“无论前文如何都强制外部链接”。变量声明是否是定义、实体具有什么链接，要结合初始化器、作用域和此前声明判断。链接允许跨翻译单元引用，也不自动保证符号被动态库导出。</p>
+<h4 id="language-linkage">extern "C"：给 C++ 声明指定 C 语言链接</h4>
+<p><code>extern "C"</code> 是 C++ 的<strong>语言链接说明</strong>，与单独的 extern 不是一回事。它让相应函数类型及具有外部链接的函数 / 变量名字采用 C 语言链接。常见 ABI 下，这避免按 C++ 重载规则修饰函数符号名，使 C++ 调用者能链接到 C 编译器产生的实现；具体符号拼写仍由平台工具链决定。</p>
+<p>它可以包住函数定义，函数体仍按 C++ 编译；不是“把这一段改用 C 语法编译”。同名的 C 链接函数也不能靠 C++ 参数重载来区分。互操作接口还需选择双方能表示的数据、匹配布局和调用约定，并约定所有权与错误处理；加上这几个字符不会自动让 <code>std::string</code> 或 C++ 异常跨越任意 C 边界。</p>
+<div class="note-table-wrap" role="region" aria-label="extern 与语言链接对照" tabindex="0"><table><caption>名字相近，解决的问题不同</caption><thead><tr><th scope="col">写法</th><th scope="col">这里说明什么</th><th scope="col">不能推导什么</th></tr></thead><tbody><tr><td>extern int count;</td><td>不带初始化器的变量声明</td><td>定义一定在其他文件、符号一定导出</td></tr><tr><td>extern int tick();</td><td>带存储类说明符的函数声明</td><td>它会采用 C 语言链接</td></tr><tr><td>extern "C" int tick();</td><td>C++ 中指定 C 语言链接的函数声明</td><td>实现由 C 编译器编译、任意 C++ 类型均可互操作</td></tr></tbody></table></div>
+<details class="note-example-details"><summary>混合编译示例：用 C 编译实现，用 C++ 编译调用者</summary>
+<p>把下面三段分别保存为对应文件，放在同一目录。头文件用 <code>__cplusplus</code> 保护语言链接说明，使 C 编译器不必解析 C++ 语法。</p>
+<h4>c_api.h</h4>
+<pre tabindex="0"><code class="language-cpp" data-linkage-example="c_api.h">#ifndef C_API_H
+#define C_API_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+int sum_ints(int a, int b);
+extern int call_count;
+#ifdef __cplusplus
+}
+#endif
+#endif</code></pre>
+<h4>c_api.c</h4>
+<pre tabindex="0"><code class="language-c" data-linkage-example="c_api.c">#include "c_api.h"
+int call_count = 0;
+int sum_ints(int a, int b) {
+    ++call_count;
+    return a + b;
+}</code></pre>
+<h4>main.cpp</h4>
+<pre tabindex="0"><code class="language-cpp" data-linkage-example="main.cpp">#include "c_api.h"
+#include &lt;cassert&gt;
+int main() {
+    const int result = sum_ints(19, 23);
+    assert(result == 42);
+    assert(call_count == 1);
+}</code></pre>
+<pre tabindex="0"><code class="language-text">gcc -std=c11 -Wall -Wextra -c c_api.c -o c_api.o
+g++ -std=c++17 -Wall -Wextra -c main.cpp -o main.o
+g++ c_api.o main.o -o mixed_demo</code></pre>
+<p>链接后运行 mixed_demo；断言通过时程序正常退出。若只去掉头文件中的 C 语言链接包装，C++ 调用者通常会寻找经过 C++ 名字修饰的 sum_ints，无法与 C 目标文件中的符号匹配。若缺少 c_api.o，则即使语言链接正确仍会缺定义：这是两个不同原因。</p>
+</details>
+<p>JNI 中的导出入口与显式注册如何使用这一区别，见<a href="../jni-references/index.html#native-registration">本地方法注册</a>。</p>
+<p class="note-source">规则依据：<a href="https://eel.is/c++draft/dcl.stc" target="_blank" rel="noreferrer">存储类说明符</a> · <a href="https://eel.is/c++draft/basic.def" target="_blank" rel="noreferrer">声明与定义</a> · <a href="https://eel.is/c++draft/dcl.link" target="_blank" rel="noreferrer">语言链接</a>。</p>
+</div>
+
+<div class="note-lesson" id="q03">
+<h4>9.2 static 的不同含义</h4>
+<p><strong>链接</strong>决定不同位置的声明能否指向同一实体：内部链接把实体限制在本翻译单元，外部链接允许跨翻译单元引用；它与名字在源码中是否可见的“作用域”不同。命名空间用于组织名字，如 std::vector 中的 std；文件最外层也属于命名空间作用域。</p>
+<div class="note-table-wrap" role="region" aria-label="static 按声明位置解释" tabindex="0"><table><caption>static 按声明位置解释</caption><thead><tr><th scope="col">位置</th><th scope="col">含义</th></tr></thead><tbody><tr><td>局部变量</td><td>静态存储期，名字仍在局部可见；需要动态初始化时首次执行到声明处初始化。</td></tr><tr><td>命名空间作用域</td><td>变量或函数具有内部链接。</td></tr><tr><td>类内成员</td><td>数据成员由同一类共享；成员函数没有 this。C++17 inline static 数据成员可在类内定义。</td></tr></tbody></table></div>
+<p><strong>线程安全：</strong>C++11 起局部 static 的初始化具有相应线程安全保证，后续修改不会自动同步。例如多线程调用 <code>static int id = 0; return ++id;</code> 仍可能产生数据竞争。</p>
+</div>
+
+<div class="note-lesson" id="q04">
+<h4>9.3 inline、ODR 与宏</h4>
+<p><strong>inline</strong> 允许符合 ODR 的定义出现在多个翻译单元中，适合头文件定义，但不强制展开调用。外部链接的 inline 函数仍是同一个函数；多份定义须满足代码记号序列一致、相关名字含义一致等条件，不能让不同 cpp 看到不同函数体。</p>
+<p><strong>头文件防重</strong>只避免同一翻译单元重复包含，不能替代跨翻译单元的 ODR。普通外部链接函数通常在头文件声明、在一个 cpp 中定义。</p>
+<p><strong>宏</strong>在预处理时替换代码记号（名称、运算符等）。例如 <code>#define SQUARE(x) ((x) * (x))</code> 将 SQUARE(i++) 展开为 <code>((i++) * (i++))</code>；对同一变量的两次自增未定序（互相没有先后约束），导致 UB。加括号不能避免重复求值，普通函数不会这样展开实参。</p>
+<details class="note-review-question" id="review-10"><summary>经典问题：inline 一定会展开函数调用吗？它与头文件定义有什么关系？</summary>
+<p>不一定展开，编译器决定调用优化。inline 允许满足 ODR 条件的相关定义出现在多个翻译单元；头文件防重只处理单个翻译单元内的重复包含。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q41">
+<h4>9.4 未定义行为与错误定位</h4>
+<p>常见 UB 来源包括未初始化读取、越界、悬垂、释放后使用、有符号溢出和数据竞争。<strong>检测器</strong>为程序加入额外检查，在触发相应访问或操作时报告错误；它们只能覆盖支持的错误类型和实际执行路径。</p>
+<p>先区分编译、链接与运行时问题，保留能复现的输入和构建配置。结合诊断信息、调用栈与对应语言规则判断原因；检测工具只能覆盖其支持的错误类型。</p>
+<details class="note-review-question" id="review-debug-evidence"><summary>经典问题：加一行打印就不崩溃，是否说明已经修好了？</summary>
+<p>不能。打印可能改变时序、布局或优化，使问题暂时隐藏。应定位非法访问或同步错误并修复，再用原始复现与边界验证。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q42">
+<h4>9.5 性能测量与优化</h4>
+<ul><li><strong>先定指标：</strong>吞吐是单位时间完成量，延迟是一次操作的耗时；二者与内存峰值可能存在取舍。性能分析器（profiler）通过定期采样或加入统计代码，找出耗时和分配集中的位置。</li><li><strong>控制变量：</strong>固定输入规模与分布、编译器、优化配置，区分初始化和稳态成本，重复测量观察波动。</li><li><strong>避免无效基准：</strong>保证计算结果可观察，防止循环被消除；不要随意加 volatile，因为它会改变程序的访问约束。</li><li><strong>结合场景判断：</strong>复杂度描述增长趋势，分配、复制、缓存和锁竞争影响实际成本。reserve 可能减少迁移，也会改变内存占用。</li></ul>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.def.odr" target="_blank" rel="noreferrer">ODR 与定义</a> · <a href="https://eel.is/c++draft/intro.execution" target="_blank" rel="noreferrer">求值顺序</a> · <a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">AddressSanitizer</a> · <a href="https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html" target="_blank" rel="noreferrer">UndefinedBehaviorSanitizer</a> · <a href="https://clang.llvm.org/docs/ThreadSanitizer.html" target="_blank" rel="noreferrer">ThreadSanitizer</a> · <a href="https://eel.is/c++draft/dcl.inline" target="_blank" rel="noreferrer">inline</a> · <a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [dcl.link]（语言链接）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

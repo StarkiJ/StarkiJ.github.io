@@ -1,0 +1,131 @@
+<section id="move" aria-labelledby="move-title">
+<h3 id="move-title">5. 拷贝、值类别与移动语义</h3>
+<div class="note-lesson" id="q14">
+<span id="copy-semantics" class="note-anchor" aria-hidden="true"></span>
+<h4>5.1 拷贝语义与特殊成员函数</h4>
+<p><strong>特殊成员函数</strong>包括默认构造、析构、拷贝构造/赋值和移动构造/赋值。编译器按规则自动提供部分操作；<code>= default</code> 请求默认实现，<code>= delete</code> 明确禁用操作。移动表示转交资源，接着阅读本章的<a href="#q22">值类别</a>与<a href="#q23">std::move</a>。</p>
+<div class="note-table-wrap" role="region" aria-label="复制操作" tabindex="0"><table><caption>复制操作</caption><thead><tr><th scope="col">概念</th><th scope="col">含义</th></tr></thead><tbody><tr><td>拷贝构造</td><td>用已有对象建立新对象，例如 <code>T b = a;</code>。</td></tr><tr><td>拷贝赋值</td><td>替换已有对象状态，例如 <code>b = a;</code>，还须处理旧资源与自赋值。</td></tr><tr><td>浅拷贝</td><td>复制成员值；裸指针只复制地址，多个对象可能指向同一资源。</td></tr><tr><td>深拷贝</td><td>建立独立资源副本，修改一份不影响另一份。</td></tr></tbody></table></div>
+<p><strong>资源所有权（谁负责释放）决定复制策略。</strong>独占裸资源的类若保留默认地址拷贝，可能重复释放；交给 vector 等成员管理时，可复用成员的复制行为。</p>
+<p><strong>Rule of Zero</strong> 建议把资源交给成员管理，避免自己编写清理和复制逻辑。<strong>Rule of Three/Five</strong> 提醒手工管理资源时配套考虑析构、拷贝构造/赋值，以及移动构造/赋值。自行声明析构函数会阻止隐式生成移动构造和移动赋值。</p>
+<details class="note-example-details"><summary>代码示例：vector 成员的独立复制</summary>
+<figure class="note-example">
+    <figcaption>让标准库成员管理资源，就可以使用默认拷贝与析构</figcaption>
+    <pre tabindex="0" aria-label="让标准库成员管理资源，就可以使用默认拷贝与析构"><code class="language-cpp" data-example="rule-zero">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+struct Buffer {
+    std::vector&lt;int&gt; data;
+};
+
+int main() {
+    Buffer a{{1, 2}};
+    Buffer b = a;
+    b.data[0] = 9;
+    std::cout &lt;&lt; a.data[0] &lt;&lt; ' ' &lt;&lt; b.data[0] &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>1 9</code></pre>
+</figure>
+</details>
+</div>
+
+
+<div class="note-lesson" id="q22">
+<span id="move-foundation" class="note-anchor" aria-hidden="true"></span><h4>5.2 值类别与引用</h4>
+<p><strong>表达式</strong>是一次求值的语法单位，例如 n、a+b、f()。它既有类型，也有<strong>值类别</strong>；后者区分是否标识对象、是否可参与资源复用，影响引用绑定与拷贝/移动选择。</p>
+<div class="note-table-wrap" role="region" aria-label="表达式的值类别" tabindex="0"><table><caption>表达式的值类别</caption><thead><tr><th scope="col">类别</th><th scope="col">常见示例</th><th scope="col">含义</th></tr></thead><tbody><tr><td>左值 lvalue</td><td>变量名表达式 <code>obj</code></td><td>标识一个对象或函数，具有可识别的身份。</td></tr><tr><td>纯右值 prvalue</td><td><code>42</code>、<code>T{}</code></td><td>用于计算值或初始化对象。</td></tr><tr><td>将亡值 xvalue</td><td><code>std::move(obj)</code></td><td>标识可参与资源复用的对象。</td></tr></tbody></table></div>
+<p>lvalue 与 xvalue 都标识对象或函数，合称<strong>泛左值 glvalue</strong>；prvalue 与 xvalue 合称<strong>右值 rvalue</strong>。类别属于表达式，不是对象永久的属性；同一对象用名字访问是左值，用 std::move 包装后可得到将亡值。</p>
+<p><code>T&amp;</code> 是左值引用；<code>T&amp;&amp;</code> 是右值引用，通常绑定右值；<code>const T&amp;</code> 也能绑定右值。但右值引用变量一旦有名字，通过这个名字访问时仍是左值表达式。</p>
+<p><strong>移动语义</strong>允许目标对象接管源对象的资源，并让源对象保持约定状态。移动构造建立新对象；移动赋值还需处理目标旧资源。成本取决于类型实现，不保证总是常数时间。</p>
+<details class="note-example-details"><summary>代码示例：命名右值引用与重载选择</summary>
+<figure class="note-example">
+    <figcaption>有名字的右值引用变量，在使用这个名字时仍是左值</figcaption>
+    <pre tabindex="0" aria-label="有名字的右值引用变量，在使用这个名字时仍是左值"><code class="language-cpp" data-example="value-category">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;utility&gt;
+
+void inspect(const std::string&amp;) { std::cout &lt;&lt; &quot;lvalue\n&quot;; }
+void inspect(std::string&amp;&amp;) { std::cout &lt;&lt; &quot;rvalue\n&quot;; }
+
+int main() {
+    std::string text = &quot;C++&quot;;
+    std::string&amp;&amp; ref = std::move(text);
+    inspect(ref);
+    inspect(std::move(ref));
+    std::cout &lt;&lt; text &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>lvalue
+rvalue
+C++</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q23">
+<h4>5.3 std::move 与移动后状态</h4>
+<p><strong>std::move 是类型转换，不执行资源转移。</strong>它通常将表达式转为将亡值；是否移动取决于后续重载选择及其实现。</p>
+<pre class="note-snippet" tabindex="0"><code>Item a;
+const Item b;
+Item x = std::move(a);  // 可匹配 Item(Item&amp;&amp;)
+Item y = std::move(b);  // 得到 const Item&amp;&amp;，通常改走拷贝</code></pre>
+<p><strong>const 不会被 move 去掉。</strong>常规移动构造接收非 const 的 <code>T&amp;&amp;</code>，以便调整源状态；const 右值不能绑定它，却可绑定拷贝构造的 <code>const T&amp;</code>。</p>
+<p><strong>移动后状态：</strong>标准库类型通常保持“有效但未指定”，除非另有明确保证。可析构，可执行满足前提的操作；不能假定所有 string/vector 都为空。unique_ptr 移动后为空是其明确保证。</p>
+<details class="note-example-details"><summary>代码示例：const 对象的 move 与实际拷贝</summary>
+<figure class="note-example">
+    <figcaption>同样写 std::move，重载选择仍可能不同</figcaption>
+    <pre tabindex="0" aria-label="同样写 std::move，重载选择仍可能不同"><code class="language-cpp" data-example="move-const">#include &lt;iostream&gt;
+#include &lt;utility&gt;
+
+struct Item {
+    Item() = default;
+    Item(const Item&amp;) { std::cout &lt;&lt; &quot;copy\n&quot;; }
+    Item(Item&amp;&amp;) noexcept { std::cout &lt;&lt; &quot;move\n&quot;; }
+};
+int main() {
+    Item a;
+    const Item b;
+    Item x = std::move(a);
+    Item y = std::move(b);
+    (void)x;
+    (void)y;
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>move
+copy</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-05"><summary>经典问题：为什么 std::move 一个 const 对象，仍可能发生拷贝？</summary>
+<p>move 保留 const，const T&& 通常不能绑定到 T&& 移动构造参数，但可绑定到 const T& 拷贝参数。是否移动必须看实际可用重载。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q25">
+<h4>5.4 拷贝消除、NRVO 与 noexcept</h4>
+<p><strong>拷贝消除</strong>让对象直接构造在最终位置，省掉中间的拷贝或移动。<strong>NRVO（命名返回值优化）</strong>允许把符合条件的具名局部对象直接构造为返回结果；它与下面 C++17 保证的同类型纯右值返回不同。</p>
+<div class="note-table-wrap" role="region" aria-label="返回对象时的构造" tabindex="0"><table><caption>返回对象时的构造</caption><thead><tr><th scope="col">写法</th><th scope="col">C++17 下的规则</th></tr></thead><tbody><tr><td><code>return T{};</code></td><td>此类同类型纯右值可直接构造结果对象，不需要可用的拷贝/移动构造。</td></tr><tr><td><code>return local;</code></td><td>命名返回值优化 NRVO 允许但不强制；未消除时可按规则尝试移动。</td></tr><tr><td><code>return std::move(local);</code></td><td>可能破坏 NRVO 的适用条件，通常不应随手添加。</td></tr></tbody></table></div>
+
+<p><strong>vector 与 noexcept：</strong>重分配时，若移动可能抛异常且类型可拷贝，实现常选择拷贝以维持强异常保证；不抛异常的移动更适合迁移。只有可抛移动、没有可用拷贝时，特定异常保证会减弱。move_if_noexcept 表达类似选择。</p>
+<details class="note-example-details"><summary>代码示例：删除拷贝和移动构造后的同类型纯右值返回</summary>
+<figure class="note-example">
+    <figcaption>C++17 的此类返回不需要调用拷贝或移动构造</figcaption>
+    <pre tabindex="0" aria-label="C++17 的此类返回不需要调用拷贝或移动构造"><code class="language-cpp" data-example="copy-elision">#include &lt;iostream&gt;
+
+struct Result {
+    Result() { std::cout &lt;&lt; &quot;construct\n&quot;; }
+    Result(const Result&amp;) = delete;
+    Result(Result&amp;&amp;) = delete;
+};
+Result make_result() { return Result{}; }
+
+int main() {
+    Result result = make_result();
+    (void)result;
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>construct</code></pre>
+</figure>
+</details>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/class.copy.ctor" target="_blank" rel="noreferrer">拷贝与移动构造</a> · <a href="https://eel.is/c++draft/forward" target="_blank" rel="noreferrer">move 与 forward</a> · <a href="https://eel.is/c++draft/class.copy.elision" target="_blank" rel="noreferrer">拷贝消除</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 扩容相关保证</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [class.copy.elision]（拷贝消除）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

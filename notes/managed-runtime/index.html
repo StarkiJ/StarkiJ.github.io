@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从 JVM / DEX 表示、类加载与初始化，到方法分派、Java 同步和运行时协作，建立 HotSpot 与 ART 的共同基础。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="托管运行时：字节码、类与线程 · Starki 笔记">
+    <meta property="og:description" content="从 JVM / DEX 表示、类加载与初始化，到方法分派、Java 同步和运行时协作，建立 HotSpot 与 ART 的共同基础。">
+    <meta property="og:url" content="https://starkij.github.io/notes/managed-runtime/index.html">
+    <title>托管运行时：字节码、类与线程 · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/managed-runtime/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">编译器与运行时</a><span aria-hidden="true">/</span><span aria-current="page">托管运行时：字节码、类与线程</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">编译器与运行时 / 综述</p>
+                <h1 id="note-title">托管运行时：字节码、类与线程</h1>
+                <p class="note-deck">从 JVM / DEX 表示、类加载与初始化，到方法分派、Java 同步和运行时协作，建立 HotSpot 与 ART 的共同基础。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-14">2026.09.14</time></span><span>更新 <time datetime="2026-09-18">2026.09.18</time></span></span>
+<!-- generated:note-dates:end -->
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 字节码与类、方法调用、线程和同步可按知识点跳读；内存分配、GC 与编译优化在关联笔记展开。</p><p>相关基础：<a href="../program-execution/index.html#call">函数调用与机器栈帧</a>、<a href="../operating-systems/index.html#process-thread">进程与线程</a></p><nav class="note-parts" aria-label="分部直达"><a href="#classes-and-execution">一、程序表示、类型与执行</a><a href="#threads-and-cooperation">二、共享状态与运行时协作</a></nav></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout">
+<!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
+<ol>
+    <li><a href="#scope">阅读范围与实现边界</a></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：一、程序表示、类型与执行"><a href="#classes-and-execution">一、程序表示、类型与执行</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：1. 从字节码到运行时状态"><a href="#bytecode">1. 从字节码到运行时状态</a></summary>
+                <ol>
+                    <li><a href="#representations">文件表示、运行时元数据与对象</a></li>
+                    <li><a href="#stack-vs-registers">同一次加法怎样执行</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：2. 类加载器与类身份"><a href="#class-loading">2. 类加载器与类身份</a></summary>
+                <ol>
+                    <li><a href="#class-identity">同名为什么不一定是同一个类</a></li>
+                    <li><a href="#delegation">委派是查找策略，边界是类型一致性</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：3. 链接、初始化与失败状态"><a href="#class-initialization">3. 链接、初始化与失败状态</a></summary>
+                <ol>
+                    <li><a href="#linking-stages">先区分职责，再讨论发生时机</a></li>
+                    <li><a href="#initialization-triggers">用可观察顺序理解主动使用</a></li>
+                    <li><a href="#loading-failures">按第一次失败定位</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：4. 方法解析、分派与异常"><a href="#method-execution">4. 方法解析、分派与异常</a></summary>
+                <ol>
+                    <li><a href="#dispatch">编译期选签名，运行时选适用目标</a></li>
+                    <li><a href="#managed-exceptions">Java throw 怎样找到处理器</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：二、共享状态与运行时协作"><a href="#threads-and-cooperation">二、共享状态与运行时协作</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：5. Java 内存模型、监视器与线程"><a href="#java-memory-model">5. Java 内存模型、监视器与线程</a></summary>
+                <ol>
+                    <li><a href="#happens-before">内存区域与内存模型回答不同问题</a></li>
+                    <li><a href="#safe-publication">发布对象之前的写入</a></li>
+                    <li><a href="#monitors-and-wait">互斥、等待与唤醒</a></li>
+                    <li><a href="#thread-states">语言状态、内核状态与安全点状态</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：6. 解释、编译与 native 怎样协作"><a href="#runtime-cooperation">6. 解释、编译与 native 怎样协作</a></summary>
+                <ol>
+                    <li><a href="#execution-entries">入口适配与执行状态</a></li>
+                    <li><a href="#runtime-metadata">看似都是“栈信息”，用途并不一样</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><a href="#related">延伸阅读</a></li>
+</ol>
+</details></nav>
+<!-- generated:note-toc:end -->
+<div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
+<section id="scope" aria-labelledby="scope-title"><h2 id="scope-title">阅读范围与实现边界</h2>
+<p>托管运行时先把程序表示变成可用的类型与方法，再协调执行、线程与内存管理。本篇沿字节码、类身份、初始化、调用、同步和执行状态展开；对象如何分配与回收见<a href="../managed-memory-gc/index.html">托管内存</a>，优化机器码如何生成见<a href="../compiler-ir/index.html">编译器</a>。</p>
+<p>共同语义以 Java SE 21 的语言与虚拟机规范为参照，HotSpot 示例限定 JDK 21；Android 对照采用 ART / Android 14 的常规应用场景。ART 使用 DEX，不能直接套用 class 文件、HotSpot 元数据或全部 Java SE API。JDK 虚拟线程也不等同于 Android 平台线程或 Kotlin 协程。</p>
+</section>
+<section class="note-part" id="classes-and-execution" aria-labelledby="classes-and-execution-title">
+<h2 id="classes-and-execution-title">一、程序表示、类型与执行</h2>
+<p class="note-reading-note">本部分解释程序表示、类型身份和调用语义；对象分配与回收机制另见 GC 篇。</p>
+<section id="bytecode" aria-labelledby="bytecode-title"><h3 id="bytecode-title">1. 从字节码到运行时状态</h3>
+<h4 id="representations">文件表示、运行时元数据与对象</h4>
+<p>源码中的类型、方法和字段先编码在文件里；加载后，运行时建立可访问的类型信息和解析状态；调用时再建立当前执行所需的帧。<strong>文件中的类描述、运行时的类信息、Class 对象和某个实例是不同层次。</strong>一个 class 文件通常表示一个类或接口，DEX 可汇集多个类定义及共享的索引表。</p>
+<div class="note-table-wrap" role="region" aria-label="JVM 与 DEX 表示对照" tabindex="0"><table><caption>共同职责与两种表示</caption><thead><tr><th scope="col">职责</th><th scope="col">JVM class / 字节码</th><th scope="col">DEX / ART</th></tr></thead><tbody>
+<tr><td>描述类型与成员</td><td>类名、父类、字段、方法、描述符和属性</td><td>类型、字段、方法等索引及类定义</td></tr>
+<tr><td>保存方法体</td><td>Code 属性中的指令、异常表等；native / abstract 方法没有普通 Code 方法体</td><td>有实现的方法通过 code_item 等结构描述指令与异常处理</td></tr>
+<tr><td>表达计算</td><td>局部变量表与操作数栈</td><td>方法帧中的虚拟寄存器</td></tr>
+<tr><td>进入机器执行</td><td colspan="2">解释器执行表示的语义，或由编译代码实现；逻辑帧不必与机器帧一一对应</td></tr>
+</tbody></table></div>
+<p>JVM 常量池含字面常量、类型和成员的符号信息；加载后的运行时常量池可维护解析结果。DEX 有分别索引字符串、类型、字段、方法的表。常量池不是“所有常量对象的一块堆”：字符串对象、驻留机制与这些表的职责需要分开。</p>
+<p>例如 JVM 方法描述符 <code>(ILjava/lang/String;)V</code>表示显式参数 int、String，返回 void；实例方法的隐含 this 不写在描述符里。泛型 Signature 属性与供链接使用的描述符不是同一概念。JNI 查找成员也需要匹配的名字和描述符。</p>
+<h4 id="stack-vs-registers">同一次加法怎样执行</h4>
+<p>以 <code>static int plusOne(int x) { return x + 1; }</code> 为例。下面是指令语义示意；DEX 用含两个虚拟寄存器的方法帧，最后一个 v1 接收参数，不承诺具体工具一定生成这个序列。</p>
+<pre tabindex="0"><code class="language-text">JVM：局部槽 0 = x，初始操作数栈为空
+iload_0     栈 [x]
+iconst_1    栈 [x, 1]
+iadd        栈 [x + 1]
+ireturn     返回栈顶值
+
+DEX：v1 = x
+add-int/lit8 v0, v1, #1
+return v0</code></pre>
+<p>DEX 的 v0、v1 是字节码层的位置，不是 CPU 的 x0、x1。编译器可以折叠计算、内联调用并重新分配物理寄存器。两种模型都有调用帧，不能由“基于寄存器”推导 ART 没有栈。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html" target="_blank" rel="noreferrer">JVMS：class、描述符与 Code</a> · <a href="https://source.android.com/docs/core/runtime/dex-format" target="_blank" rel="noreferrer">DEX 格式</a> · <a href="https://source.android.com/docs/core/runtime/dalvik-bytecode" target="_blank" rel="noreferrer">DEX 指令与帧</a>。</p>
+</section>
+<section id="class-loading" aria-labelledby="class-loading-title"><h3 id="class-loading-title">2. 类加载器与类身份</h3>
+<h4 id="class-identity">同名为什么不一定是同一个类</h4>
+<p>对普通命名的类和接口，运行时类身份由<strong>二进制名称与定义它的类加载器</strong>共同决定。两个加载器分别定义 demo.Widget，得到的 Class 可以不同；即使字节完全相同，其实例也不能仅因名字相同就互相强转。数组类另按组件类型等规则创建，不能把每个数组都当成由加载器读取的独立文件。</p>
+<p><strong>定义加载器</strong>实际定义这个类型；<strong>发起加载器</strong>发起请求，可以委派其他加载器返回已有类型。共享接口若由父加载器定义，子加载器定义的实现可以实现该接口；若子加载器连接口也重复定义，就可能破坏原本期待的类型兼容。</p>
+<h4 id="delegation">委派是查找策略，边界是类型一致性</h4>
+<pre tabindex="0"><code class="language-text">通常的 ClassLoader.loadClass 思路：
+  查当前加载器是否已经加载
+  → 委派父加载器 / 相应基础加载路径
+  → 未找到时由自己的 findClass 查找并定义
+  → 按请求完成必要的链接工作</code></pre>
+<p>这是常见父优先策略，不是所有加载器永远不可改变的执行顺序。自定义策略仍需遵守类型安全、加载约束与平台限制。线程上下文类加载器是供特定库选择加载来源的约定，并不自动替代所有类引用的解析加载器。</p>
+<p>HotSpot/JDK 21 常见 bootstrap、platform、application 加载路径；Android 常见 BootClassLoader、PathClassLoader、DexClassLoader 等围绕 DEX 查找。它们不能用一套固定目录或内部字段概括。JNI 的 FindClass 又受调用上下文影响，见<a href="../jni-references/index.html#native-registration">注册与查类案例</a>。</p>
+<details class="note-review-question"><summary>复习问题：两个插件同名类强转失败，先查什么？</summary><p>同时记录对象实际 Class、目标 Class 及各自加载器；检查共享接口是否重复打包 / 定义。比较类名或重新 new 一个加载器都不能证明类型一致。类缓存的持有链与卸载见<a href="../managed-memory-gc/index.html#class-lifetime">元数据生命周期</a>。</p></details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3" target="_blank" rel="noreferrer">JVMS：类身份与加载约束</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html" target="_blank" rel="noreferrer">ClassLoader 的默认委派</a> · <a href="https://developer.android.com/reference/dalvik/system/PathClassLoader" target="_blank" rel="noreferrer">Android PathClassLoader</a>。</p>
+</section>
+<section id="class-initialization" aria-labelledby="class-initialization-title"><h3 id="class-initialization-title">3. 链接、初始化与失败状态</h3>
+<h4 id="linking-stages">先区分职责，再讨论发生时机</h4>
+<div class="note-table-wrap" role="region" aria-label="类生命周期阶段" tabindex="0"><table><caption>加载与链接不是执行静态代码块</caption><thead><tr><th scope="col">职责</th><th scope="col">主要工作</th></tr></thead><tbody>
+<tr><td>加载</td><td>取得表示并建立类型</td></tr><tr><td>验证</td><td>检查格式、类型和指令使用约束，确保满足相应运行时规则</td></tr>
+<tr><td>准备</td><td>建立静态字段存储及默认值等运行时状态；不执行普通静态初始化表达式</td></tr>
+<tr><td>解析</td><td>把符号引用关联到相应类型、字段、方法等，并检查访问与链接约束</td></tr>
+<tr><td>初始化</td><td>按规定设置常量值、协调依赖类型并执行需要的类初始化逻辑；JVM 对应 &lt;clinit&gt;</td></tr>
+</tbody></table></div>
+<p>初始化前必须完成验证与准备，但解析可以提前或推迟到使用时；不要画成“全类所有符号必须一次解析完，再初始化”的唯一流水线。<code>&lt;clinit&gt;</code> 的类初始化与 <code>&lt;init&gt;</code> 的实例构造不同，一个类可以创建多个实例而不重复执行类初始化。</p>
+<h4 id="initialization-triggers">用可观察顺序理解主动使用</h4>
+<p>创建实例、调用类声明的静态方法、读写其非编译期常量静态字段等会触发相应初始化；使用子类名称访问继承的静态字段，关键是字段由哪个类声明。类字面量、创建组件类型的数组、读取编译期常量不会仅因此初始化该类。反射是否初始化取决于所用接口，例如 Class.forName 的 initialize 参数。</p>
+<figure class="note-example"><figcaption>完整 Java 示例：InitOrder.java，观察三种使用方式</figcaption>
+<pre tabindex="0"><code class="language-java" data-java-example="InitOrder">public final class InitOrder {
+    static class Parent {
+        static int inherited = initialize();
+        static int initialize() {
+            System.out.println("parent");
+            return 1;
+        }
+    }
+    static class Child extends Parent {
+        static final int CONSTANT = 7;
+        static { System.out.println("child"); }
+        Child() { System.out.println("instance"); }
+    }
+    public static void main(String[] args) {
+        System.out.println(Child.CONSTANT);
+        System.out.println(Child.inherited);
+        new Child();
+    }
+}</code></pre>
+<pre class="note-output" tabindex="0"><code>7
+parent
+1
+child
+instance</code></pre></figure>
+<p>初始化类前要协调父类，以及规范要求初始化的、声明默认方法的相关父接口；不能推广成“所有接口都先初始化”。每个类的初始化协议处理竞争线程、递归请求和失败状态；成功完成初始化的同步保证，不意味着之后修改静态字段自动线程安全。</p>
+<h4 id="loading-failures">按第一次失败定位</h4>
+<p>ClassNotFoundException 常见于显式查找类失败；NoClassDefFoundError 也可能来自链接时找不到定义，或先前初始化失败后的再次使用。普通静态初始化抛出的非 Error 异常通常被包装成 ExceptionInInitializerError；失败类型会进入错误状态，不能依赖下次调用自动重试。先找最早的异常原因，再查后续报错。</p>
+<p>初始化本身也可能因复杂的跨线程 / 跨类等待造成死锁或启动停顿。把耗时 I/O、回调和持锁等待放进静态初始化，影响的是首次使用的整条路径。ART 启动应单独观察这部分成本。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html#jls-12.4" target="_blank" rel="noreferrer">JLS：初始化触发与顺序</a> · <a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.5" target="_blank" rel="noreferrer">JVMS：初始化与错误状态</a>。</p>
+</section>
+<section id="method-execution" aria-labelledby="method-execution-title"><h3 id="method-execution-title">4. 方法解析、分派与异常</h3>
+<h4 id="dispatch">编译期选签名，运行时选适用目标</h4>
+<p><strong>重载</strong>通常在源码编译阶段按表达式类型等规则选择签名；虚方法的<strong>重写分派</strong>则根据实际接收者选择实现。把符号引用解析为方法，与为某次调用选择目标不是同一步。类的虚表、接口分派表及入口缓存属于实现手段。</p>
+<pre tabindex="0"><code class="language-java">class Base { int work() { return 1; } }
+class Derived extends Base { @Override int work() { return 2; } }
+Base receiver = new Derived();
+int result = receiver.work(); // 结果为 2；不因变量写作 Base 就调用 Base.work</code></pre>
+<p>在 JVM 字节码中，invokestatic 用于静态调用；invokevirtual / invokeinterface 支持相应动态分派；invokespecial 用于构造器及某些需特殊处理的调用。invokedynamic 通过引导方法链接调用点，不等于普通虚调用或“每次做反射”。DEX 有自己的 invoke 指令族；不能把 JVM 指令名直接当成 ART 本机入口。</p>
+<p>反射按运行时的类型 / 成员对象发起访问，MethodHandle 表达可调用目标及类型化适配。它们仍受平台访问控制约束，开销受查找、适配、缓存和编译优化影响，不能说反射永远不能优化。普通分派的调用点缓存与去虚拟化见<a href="../compiler-ir/index.html#inline-cache">IC 与类型反馈</a>。</p>
+<h4 id="managed-exceptions">Java throw 怎样找到处理器</h4>
+<ol><li>在当前方法中，根据抛出位置和异常类型寻找适用处理器；JVM 的 Code 异常表描述受保护范围与处理目标。</li><li>找到时转到处理器所需状态；JVM 的处理器入口操作数栈中放异常对象引用，DEX 使用自己的处理器与 move-exception 约定。</li><li>当前帧无匹配处理器时向调用者传播；解释器和编译代码必须维持一致的语言行为。finally、资源关闭及同步释放由相应控制流与运行时协议实现。</li></ol>
+<p>机器帧可因内联少于逻辑调用层数，编译元数据仍须支持定位处理器。Java 异常不直接等于 C++ 的 __cxa_throw；JNI 待处理异常也不是自动在每次 native 指令后展开 C++ 栈。平台边界见<a href="../jni-references/index.html#pending-exceptions">JNI 异常清理</a>。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-6.html" target="_blank" rel="noreferrer">JVMS：调用与 athrow 指令</a> · <a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.3" target="_blank" rel="noreferrer">Code 异常表</a> · <a href="https://source.android.com/docs/core/runtime/dalvik-bytecode" target="_blank" rel="noreferrer">DEX 调用与 move-exception</a>。</p>
+</section>
+</section>
+<section class="note-part" id="threads-and-cooperation" aria-labelledby="threads-and-cooperation-title">
+<h2 id="threads-and-cooperation-title">二、共享状态与运行时协作</h2>
+<p class="note-reading-note">本部分解释共享状态规则，以及解释器、编译代码与 native 调用如何协作；先区分语言保证和实现元数据。</p>
+<section id="java-memory-model" aria-labelledby="java-memory-model-title"><h3 id="java-memory-model-title">5. Java 内存模型、监视器与线程</h3>
+<h4 id="happens-before">内存区域与内存模型回答不同问题</h4>
+<p>堆、栈描述数据由谁保存；<strong>Java Memory Model（JMM）</strong>描述多线程读写允许观察到什么结果，以及编译器 / 处理器重排必须遵守的约束。happens-before 是保证可见性与先后关系的规则，不等于测到的墙钟时间。正确同步的程序可据此推理，不能靠“CPU 缓存迟早刷新”保证正确。</p>
+<div class="note-table-wrap" role="region" aria-label="Java 共享状态的同步规则" tabindex="0"><table><caption>常用规则与不能推导的结论</caption><thead><tr><th scope="col">机制</th><th scope="col">建立的关系</th><th scope="col">边界</th></tr></thead><tbody>
+<tr><td>程序顺序与传递性</td><td>线程内动作及跨线程同步关系可以连成 happens-before 链</td><td>不要求底层所有指令按源码顺序执行</td></tr>
+<tr><td>volatile</td><td>对变量的写与后续相应读建立同步关系，可用于发布之前的写入</td><td>count++ 仍是复合操作；volatile 引用不让被引用对象的所有操作自动同步</td></tr>
+<tr><td>synchronized</td><td>同一 monitor 上的解锁与后续加锁建立同步，互斥保护临界区</td><td>不同锁不自动保护同一不变量</td></tr>
+<tr><td>Thread.start / join</td><td>启动前的动作先于新线程动作；线程终止先于另一线程成功 join 后的动作</td><td>启动线程不保证其后每次共享访问都安全</td></tr>
+<tr><td>final 字段</td><td>正确构造且未提前暴露 this 时有专门的初始化安全规则</td><td>不意味着对象整体不可变；引用指向的可变内容后续仍需同步</td></tr>
+</tbody></table></div>
+<p><strong>Java volatile 与 C++ volatile 不能通用解释。</strong>C++ 的 volatile 不提供相同的线程同步保证。GC 引用屏障负责可达性或移动访问，也不能替代 JMM；具体实现可以复用底层原子指令，但职责不同。</p>
+<h4 id="safe-publication">发布对象之前的写入</h4>
+<figure class="note-example"><figcaption>完整 Java 示例：Publication.java，利用 volatile 发布普通字段</figcaption>
+<pre tabindex="0"><code class="language-java" data-java-example="Publication">public final class Publication {
+    static int value;
+    static volatile boolean ready;
+    public static void main(String[] args) throws InterruptedException {
+        Thread reader = new Thread(() -&gt; {
+            while (!ready) Thread.onSpinWait();
+            System.out.println(value);
+        });
+        reader.start();
+        value = 42;
+        ready = true;
+        reader.join();
+    }
+}</code></pre>
+<pre class="note-output" tabindex="0"><code>42</code></pre></figure>
+<p>推理链是 value=42 → volatile 写 ready → 读到该发布的 ready → 读取 value。删除 volatile 后，忙等不保证结束，也不能保证读到 42。onSpinWait 只是自旋提示，不建立这个同步关系。示例只展示发布规则；实际等待优先用锁、条件或适当的并发工具，避免持续占用 CPU。</p>
+<p>安全发布可使用锁保护、volatile 引用、类初始化等适用机制。双重检查若使用可变共享引用，要同时说明其发布协议，不能只展示两次 if。构造器中注册 this 或启动可访问它的回调，会破坏“构造完成后才暴露”的前提。</p>
+<h4 id="monitors-and-wait">互斥、等待与唤醒</h4>
+<p>对象 monitor 支持可重入互斥；实例 synchronized 方法使用接收者，静态 synchronized 方法使用对应 Class 对象。wait / notify / notifyAll 要持有同一对象的 monitor；wait 释放该 monitor，返回前重新取得它，其他已经持有的锁不因此全部释放。被唤醒不等于条件已经满足，也不等于立刻获得锁。</p>
+<pre tabindex="0"><code class="language-java">synchronized (lock) {
+    while (!condition()) {
+        lock.wait();       // 检查与等待在同一锁协议下；处理 InterruptedException
+    }
+    consume();             // 重新取得锁后再次确认条件
+}</code></pre>
+<p>sleep 不释放所持有的 monitor；notify 发出唤醒后也不会立即释放当前线程的锁。循环检查同时处理虚假唤醒、多个等待者竞争以及条件再次变化。底层轻量锁、膨胀与等待队列属于具体 VM 和版本，不能把旧 HotSpot 的固定“锁升级四阶段”当作 Java / ART 共同保证。</p>
+<h4 id="thread-states">语言状态、内核状态与安全点状态</h4>
+<p>Java Thread.State 包含 NEW、RUNNABLE、BLOCKED、WAITING、TIMED_WAITING、TERMINATED。BLOCKED 特指等待进入 monitor；不等于所有 I/O 阻塞。RUNNABLE 也不保证此刻正在某个 CPU 上执行。OS 的就绪 / 睡眠状态和 VM 内部的托管 / native / 安全点状态是另外的观察层次。</p>
+<p>本篇的例子使用平台线程。JDK 21 的虚拟线程及 Kotlin 协程涉及额外调度关系，不能把它们的数量直接当作内核线程数。通用等待机制见<a href="../operating-systems/index.html#locks">锁与 futex</a>；GC 协调见<a href="../managed-memory-gc/index.html#stw">安全点与根扫描</a>。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html" target="_blank" rel="noreferrer">JLS：线程、锁与内存模型</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait()" target="_blank" rel="noreferrer">Object.wait</a> · <a href="https://developer.android.com/reference/java/lang/Thread.State" target="_blank" rel="noreferrer">Android 线程状态</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html" target="_blank" rel="noreferrer">Thread 与 onSpinWait</a>。</p>
+</section>
+<section id="runtime-cooperation" aria-labelledby="runtime-cooperation-title"><h3 id="runtime-cooperation-title">6. 解释、编译与 native 怎样协作</h3>
+<h4 id="execution-entries">入口适配与执行状态</h4>
+<p>调用者与被调用者不一定使用同一种执行方式：解释器可调用编译代码，编译代码也可调用尚未编译的方法或 native 方法。运行时通过入口与适配代码转换参数位置、维护帧及线程状态，并处理必要的解析、检查与异常。更新方法入口主要影响后续进入方式，不能据此断定已经执行到一半的旧帧全部消失。</p>
+<p>长循环可通过 <a href="../compiler-ir/index.html#osr-deoptimization">OSR</a>在受支持的位置转入编译执行；优化假设失效时可通过反优化恢复可继续执行的状态。它们需要执行位置和活值映射，不只是改一个函数指针。</p>
+<h4 id="runtime-metadata">看似都是“栈信息”，用途并不一样</h4>
+<div class="note-table-wrap" role="region" aria-label="运行时元数据职责" tabindex="0"><table><caption>以一次内联调用中的对象引用为例</caption><thead><tr><th scope="col">信息</th><th scope="col">回答的问题</th><th scope="col">主要讲解位置</th></tr></thead><tbody>
+<tr><td>JVM StackMapTable</td><td>字节码验证时，给定位置允许哪些局部值和操作数栈类型</td><td>class 格式与验证；不是 GC 地址表</td></tr>
+<tr><td>GC 引用位置图，如 HotSpot OopMap</td><td>某个受控机器码位置哪些寄存器 / 槽是活引用</td><td><a href="../managed-memory-gc/index.html#stw">GC 根扫描</a></td></tr>
+<tr><td>反优化恢复信息</td><td>内联了几个逻辑调用；执行位置、局部值和待恢复对象是什么</td><td><a href="../compiler-ir/index.html#deopt-state">编译器状态恢复</a></td></tr>
+<tr><td>CFI / 异常处理信息</td><td>如何恢复上一机器帧，以及语言处理器 / 清理代码在哪里</td><td><a href="../program-execution/index.html#unwind">回溯与异常展开</a></td></tr>
+<tr><td>调试映射</td><td>机器地址对应哪个函数、源码行和内联位置</td><td><a href="../program-execution/index.html#backtrace">符号化与调试</a></td></tr>
+</tbody></table></div>
+<p>这些职责可能在实现中共享部分记录，但不能互换使用。编译器消除局部变量或内联方法后，源码中“有这个变量”不保证物理栈上有同名槽。ART 也需要相应协作信息，编码格式须查其分支；JNI 通过引用句柄和线程转换加入该协议。</p>
+<details class="note-review-question"><summary>复习问题：保存所有通用寄存器，是否足够支持 GC 和反优化？</summary><p>还不够。保存位值没有说明哪些是引用、对应哪个逻辑变量、是否需要重新物化对象，以及恢复到哪个指令位置。运行时必须与编译器约定这些值的语义，而不只是寄存器数量。</p></details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.4" target="_blank" rel="noreferrer">StackMapTable</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/scopeDesc.hpp" target="_blank" rel="noreferrer">HotSpot ScopeDesc</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/compiler/oopMap.hpp" target="_blank" rel="noreferrer">HotSpot OopMap</a>。</p>
+</section>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<ul><li><a href="../program-execution/index.html#call">机器调用与 ABI</a></li><li><a href="../compiler-ir/index.html#osr-deoptimization">OSR 与反优化状态恢复</a></li><li><a href="../managed-memory-gc/index.html#gc-foundations">运行时内存、对象与回收</a></li><li><a href="../jni-references/index.html#native-registration">JNI 注册与类加载器上下文</a></li><li><a href="../art-compilation-startup/index.html#build-artifacts">Android 构建产物与执行入口</a></li></ul>
+</section>
+<!-- generated:note-body:end -->
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

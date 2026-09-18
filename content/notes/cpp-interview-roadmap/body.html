@@ -1,0 +1,46 @@
+<p class="note-reading-note">以 C++17 为主，后续标准单独标注。完整代码示例与经典问题可展开查看。</p>
+
+<section class="note-part" id="language-and-objects" aria-labelledby="language-and-objects-title">
+<h2 id="language-and-objects-title">一、语言基础与对象模型</h2>
+<p>从类型和表达式读到类、继承与动态绑定；对象如何保存数据、如何选择调用目标在这里连起来。</p>
+<!-- include: basics.html -->
+<!-- include: objects.html -->
+</section>
+
+<section class="note-part" id="lifetime-and-resources" aria-labelledby="lifetime-and-resources-title">
+<h2 id="lifetime-and-resources-title">二、生命周期、资源管理与拷贝移动</h2>
+<p>先区分存储、对象和借用，再明确释放责任，最后讨论复制或转交资源时的行为。</p>
+<!-- include: lifetime.html -->
+<!-- include: ownership.html -->
+<!-- include: move.html -->
+</section>
+
+<section class="note-part" id="generic-and-library" aria-labelledby="generic-and-library-title">
+<h2 id="generic-and-library-title">三、泛型编程与标准库</h2>
+<p>先掌握模板、推导和 Lambda，再用这些机制理解容器接口、失效规则与范围算法。底层结构的通用原理见<a href="../data-structures/index.html">数据结构基础</a>，这里关注 C++ 的接口与对象保证。</p>
+<!-- include: templates.html -->
+<!-- include: stl.html -->
+</section>
+
+<section class="note-part" id="concurrent-programming" aria-labelledby="concurrent-programming-title">
+<h2 id="concurrent-programming-title">四、并发与同步</h2>
+<p>沿共享状态、线程生命周期和同步协议阅读，分别判断拥有者、指针变量和目标对象的安全性。</p>
+<!-- include: concurrency.html -->
+</section>
+
+<section class="note-part" id="build-and-debug" aria-labelledby="build-and-debug-title">
+<h2 id="build-and-debug-title">五、构建与调试</h2>
+<p>从翻译单元和链接规则定位构建问题，再区分运行时错误与性能问题。</p>
+<!-- include: engineering.html -->
+</section>
+<section id="references" aria-labelledby="references-title">
+<h2 id="references-title">参考资料</h2>
+<p>C++17 规则以固定工作草案 N4659 为对照，各章列出可检索的节名。eel.is 链接指向持续更新的当前草案，用于延伸查阅；遇到版本差异时先核对 N4659，后续标准仍单独标注。ABI 示例不是 C++ 标准规定的固定布局。</p>
+<ul>
+<li><a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">C++17 固定工作草案 N4659（PDF）</a></li>
+<li><a href="https://eel.is/c++draft/" target="_blank" rel="noreferrer">C++ 公开工作草案</a></li>
+<li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines" target="_blank" rel="noreferrer">C++ Core Guidelines</a></li>
+<li><a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html" target="_blank" rel="noreferrer">Itanium C++ ABI</a></li>
+<li><a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">Clang 检测工具文档</a></li>
+</ul>
+</section>

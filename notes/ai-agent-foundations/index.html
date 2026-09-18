@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="区分任务方法、能力连接与执行支撑，用一个内存报告任务串起 Skills、MCP 和 Harness。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="AI Agent：Skills、MCP 与 Harness · Starki 笔记">
+    <meta property="og:description" content="区分任务方法、能力连接与执行支撑，用一个内存报告任务串起 Skills、MCP 和 Harness。">
+    <meta property="og:url" content="https://starkij.github.io/notes/ai-agent-foundations/index.html">
+    <title>AI Agent：Skills、MCP 与 Harness · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/ai-agent-foundations/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#ai-agent">AI 与 Agent</a><span aria-hidden="true">/</span><span aria-current="page">AI Agent：Skills、MCP 与 Harness</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">AI 与 Agent / 综述</p>
+                <h1 id="note-title">AI Agent：Skills、MCP 与 Harness</h1>
+                <p class="note-deck">区分任务方法、能力连接与执行支撑，用一个内存报告任务串起 Skills、MCP 和 Harness。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-18">2026.09.18</time></span><span>更新 <time datetime="2026-09-18">2026.09.18</time></span></span>
+<!-- generated:note-dates:end -->
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> Agent 执行循环、Skill、MCP 和 Harness 可分别查阅；贯通案例用于核对三者职责及失败边界。</p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
+<ol>
+    <li><a href="#agent-loop">1. 模型、工具与 Agent 执行循环</a></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：2. Skills：组织可复用的任务方法"><a href="#skills">2. Skills：组织可复用的任务方法</a></summary>
+        <ol>
+            <li><a href="#skill-package">2.1 从一段提示到可维护的任务包</a></li>
+            <li><a href="#skill-loading">2.2 按需加载与执行边界</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：3. MCP：连接工具、资源与提示模板"><a href="#mcp">3. MCP：连接工具、资源与提示模板</a></summary>
+        <ol>
+            <li><a href="#mcp-roles">3.1 Host、Client、Server</a></li>
+            <li><a href="#mcp-primitives">3.2 Tools、Resources、Prompts</a></li>
+            <li><a href="#mcp-call">3.3 从发现到一次调用</a></li>
+        </ol>
+    </details></li>
+    <li><a href="#harness">4. Harness：把决策接成可恢复、可验证的执行过程</a></li>
+    <li><a href="#worked-example">5. 用一份内存排查报告串起三者</a></li>
+</ol>
+</details></nav>
+<!-- generated:note-toc:end --><div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
+<section id="agent-loop" aria-labelledby="agent-loop-title"><h2 id="agent-loop-title">1. 模型、工具与 Agent 执行循环</h2>
+<p>本文用 <strong>Agent</strong> 表示能围绕任务，在模型决策、工具执行与结果观察之间继续推进的系统。模型负责根据上下文提出文本或行动；实际读取文件、执行程序、保存状态的能力由外围系统提供。一次生成工具调用参数，不等于工具已经执行成功。</p>
+<pre tabindex="0"><code class="language-text">用户目标 + 已有状态
+  → 组织本轮上下文
+  → 模型提出回答或工具调用
+  → 执行系统检查并调用工具
+  → 获得结果 / 错误，更新状态
+  → 检查完成条件：继续、修正、等待输入或结束</code></pre>
+<p>固定 workflow 预先规定大部分步骤；Agent 允许模型依据观察选择更多后续行动，两者可以组合。是否使用大模型、是否调用一次工具、是否有多个角色，都不足以单独说明系统具有什么自主性和可靠性。</p>
+<p>下面区分三个常混用的概念：<strong>Skill 提供可复用任务方法，MCP 规定能力连接与交互协议，Harness 负责让任务在实际环境中运行</strong>。Skills 采用 Agent Skills 格式作例子；MCP 协议细节固定引用 <strong>2025-11-25</strong> 版本；Harness 是工程术语，不假定所有产品有同一模块边界。</p>
+</section>
+
+<section id="skills" aria-labelledby="skills-title"><h2 id="skills-title">2. Skills：组织可复用的任务方法</h2>
+<h3 id="skill-package">2.1 从一段提示到可维护的任务包</h3>
+<p>按 Agent Skills 格式，一个技能以目录组织，核心是 <code>SKILL.md</code>：开头的 YAML 元信息声明名称和用途，正文说明任务步骤、所需上下文与产出要求。目录还可包含脚本、参考资料和资源文件；不是每个 Skill 都必须带可执行代码。</p>
+<pre tabindex="0"><code class="language-text">memory-review/
+  SKILL.md
+  references/report-fields.md
+  scripts/summarize.py        （可选）
+  assets/report-template.md  （可选）</code></pre>
+<p>下面是自行编写的最小示意，实际技能还要根据环境说明输入格式与验证方式：</p>
+<pre tabindex="0"><code class="language-markdown">---
+name: memory-review
+description: 根据内存报告比较增长趋势、检查持有关系并整理可验证的排查结论。
+---
+先确认报告来自同一构建、相同业务阶段与可比较的采样条件。
+读取报告字段说明，区分存活量、分配量与进程驻留量。
+为每项结论保留数据来源；证据不足时列出还需要采集的信息。
+输出报告后检查数字、引用与结论是否一致。</code></pre>
+<h3 id="skill-loading">2.2 按需加载与执行边界</h3>
+<p>宿主可以先让模型看到技能名称和描述，匹配任务后再读完整指令，最后按需读取资料或运行脚本。这种渐进加载减少无关上下文；“技能可用”不等于其全部文件已加载，也不等于脚本已经执行。</p>
+<p>Skill 没有自动创造工具能力：写着“读取远程报告”的步骤，仍需要一个真实可用的读取接口。技能也不是模型权重训练；它提供运行时上下文和方法，实际效果取决于宿主怎样加载、执行和验证。</p>
+<p class="note-source">格式依据：<a href="https://agentskills.io/specification" target="_blank" rel="noreferrer">Agent Skills：SKILL.md、目录与渐进加载</a>。</p>
+</section>
+
+<section id="mcp" aria-labelledby="mcp-title"><h2 id="mcp-title">3. MCP：连接工具、资源与提示模板</h2>
+<h3 id="mcp-roles">3.1 Host、Client、Server</h3>
+<p><strong>MCP（Model Context Protocol）</strong>规范宿主与能力服务之间的消息交互。以 2025-11-25 版架构为例，host 是面向用户、组织模型与功能的应用；host 内的 client 管理与某个 server 的连接；server 暴露约定能力，可包装本地程序或远程服务。模型通常经宿主间接使用这些能力，不是直接向操作系统执行任意文字。</p>
+<pre tabindex="0"><code class="language-text">Host（用户界面、模型调用与任务管理）
+  ├─ MCP Client A ↔ Server A：报告查询
+  └─ MCP Client B ↔ Server B：项目资料
+
+Server 的后端可以再调用数据库 / HTTP API / 本地文件接口。
+MCP 标准化边界消息，不替代这些后端的业务实现。</code></pre>
+<p class="note-source">参考：<a href="https://modelcontextprotocol.io/specification/2025-11-25/architecture" target="_blank" rel="noreferrer">MCP 2025-11-25：架构与职责</a>。</p>
+<h3 id="mcp-primitives">3.2 Tools、Resources、Prompts</h3>
+<div class="note-table-wrap" role="region" aria-label="MCP 服务能力" tabindex="0"><table><caption>同一个 server 可以提供不同种类的能力</caption><thead><tr><th scope="col">能力</th><th scope="col">表达什么</th><th scope="col">示意</th></tr></thead><tbody><tr><td>Tools</td><td>有名称、参数约束和结果的可调用操作</td><td>按报告 ID 查询内存统计</td></tr><tr><td>Resources</td><td>供宿主读取并放入上下文的数据或内容</td><td>报告字段说明、项目资料</td></tr><tr><td>Prompts</td><td>带参数的可复用消息模板</td><td>选择一种报告解读任务模板</td></tr></tbody></table></div>
+<p>规范常用“tools 由模型选择、resources 由应用管理、prompts 由用户选择”来区分使用方式；具体产品界面仍由 host 实现。并非每个 server 都提供三类，也不能把资源内容当作新的系统指令；它是需要按来源和用途处理的数据。</p>
+<p class="note-source">能力定义：<a href="https://modelcontextprotocol.io/specification/2025-11-25/server/resources" target="_blank" rel="noreferrer">Resources</a> · <a href="https://modelcontextprotocol.io/specification/2025-11-25/server/prompts" target="_blank" rel="noreferrer">Prompts</a> · <a href="https://modelcontextprotocol.io/specification/2025-11-25/server/tools" target="_blank" rel="noreferrer">Tools</a>。</p>
+<h3 id="mcp-call">3.3 从发现到一次调用</h3>
+<ol><li>client 发送 <code>initialize</code>，交换协议版本、能力和实现信息；成功后发送 <code>notifications/initialized</code>。</li><li>在已协商的能力范围内，用 <code>tools/list</code> 发现工具及参数 schema。工具名不直接说明权限或实际后端。</li><li>宿主把适用工具暴露给模型，根据模型提出的参数与执行规则发送 <code>tools/call</code>。</li><li>server 返回结果，宿主关联请求 ID，把必要观察交给模型；遇到错误则按类型处理。</li></ol>
+<p>下面的 read_memory_report 是虚构业务工具，消息形状来自该版协议；假设初始化已完成且 server 已公布对应 schema：</p>
+<pre tabindex="0"><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "read_memory_report",
+    "arguments": { "report_id": "run-0042" }
+  }
+}</code></pre>
+<p>JSON-RPC 层错误与工具执行失败需要区分：不支持的方法或无效请求属于协议处理问题；工具结果可以用 <code>isError</code> 表示业务操作失败。成功收到消息也不证明报告存在、字段完整或结论正确，仍需检查具体返回内容。</p>
+<p>该版本的标准传输包括 <strong>stdio</strong> 和 <strong>Streamable HTTP</strong>。本地子进程可经 stdin/stdout 交换消息，远程服务可经 HTTP 交互；stdio 的 stdout 不能混入普通日志。MCP 不等于一个 REST endpoint，也不等于模型厂商的 function calling：后者描述模型如何提出工具调用，宿主可以把它适配为 MCP，也可以直接调用普通函数。</p>
+<p class="note-source">参考：<a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle" target="_blank" rel="noreferrer">初始化与能力协商</a> · <a href="https://modelcontextprotocol.io/specification/2025-11-25/server/tools" target="_blank" rel="noreferrer">工具发现、调用与错误</a> · <a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/transports" target="_blank" rel="noreferrer">传输方式</a>。</p>
+</section>
+
+<section id="harness" aria-labelledby="harness-title"><h2 id="harness-title">4. Harness：把决策接成可恢复、可验证的执行过程</h2>
+<p>本文将 <strong>Agent Harness</strong>理解为围绕模型运行的执行支撑层：组织上下文，调度工具，记录任务状态，处理失败，并判断何时继续或停止。不同项目也可能把这些职责拆到 SDK、运行器、宿主和编排服务中；没有一份通用协议强制它们必须同属一个模块。</p>
+<div class="note-table-wrap" role="region" aria-label="Harness 的工程职责" tabindex="0"><table><caption>从能调用工具到能完成任务</caption><thead><tr><th scope="col">职责</th><th scope="col">需要回答的问题</th></tr></thead><tbody><tr><td>上下文组织</td><td>当前目标、资料、技能和历史中，哪些信息应提供给下一步？</td></tr><tr><td>工具调度</td><td>参数是否有效，哪些调用可以并行，超时与取消怎样处理？</td></tr><tr><td>状态与恢复</td><td>哪些步骤已完成，输出保存在哪里，重启后如何从证据继续？</td></tr><tr><td>权限与执行范围</td><td>当前身份允许访问什么，哪些副作用需要宿主规则约束？</td></tr><tr><td>结果验证</td><td>文件是否真的生成、数据是否对应来源、测试是否通过？</td></tr><tr><td>停止条件</td><td>任务完成、预算用尽、依赖失败或需要用户信息时如何结束？</td></tr></tbody></table></div>
+<p>工具调用超时尤其需要区分“未执行”和“可能执行但结果未返回”。读操作可按条件重试，写操作则要考虑幂等标识或查询既有结果；简单地把同一动作再执行一次，可能制造重复记录。长任务的进度文件应记录可核对的产物和未完成项，不能仅保存一句“已经差不多完成”。</p>
+<pre tabindex="0"><code class="language-text">一种执行框架的概念伪代码：
+载入目标、约束、已验证的进度
+循环直到完成或达到停止条件：
+    构造上下文，取得模型提出的下一步
+    若需要工具：校验范围与参数 → 执行 → 保存结果 / 错误
+    若声称完成：检查实际产物与验收条件
+    保存可以用于恢复的状态
+输出结果，以及确实尚未解决的限制</code></pre>
+<p>验证可以由程序检查、测试或人工判断完成，不必再次由模型自评。模型说“测试已通过”与执行记录中真的有通过结果，是两类证据。长期运行的可靠性来自状态、执行与验证配合，不能仅靠一条“请坚持完成”的提示。</p>
+<p class="note-source">工程案例：<a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank" rel="noreferrer">Anthropic：长任务中的进度、环境与验证</a>。本节的职责划分是便于学习的工程归纳，不是该术语的唯一标准定义。</p>
+</section>
+
+<section id="worked-example" aria-labelledby="worked-example-title"><h2 id="worked-example-title">5. 用一份内存排查报告串起三者</h2>
+<p>任务示例：“读取两次同负载内存报告，分析增长原因，生成一份带证据的本地说明。”假设用户已提供报告标识及可访问范围：</p>
+<ol><li><strong>Harness</strong>记录目标、输入与输出位置，提供可用的资料和工具。</li><li>系统匹配 <strong>memory-review Skill</strong>，按说明检查构建与采样是否可比；缺少关键字段就补充取证。</li><li>模型提出查询报告；host 经 <strong>MCP client</strong>调用 server 的读取工具，取得数据与来源。</li><li>模型结合技能方法分析；必要时调用本地统计脚本。该脚本可以直接执行，也可以由 MCP 工具包装。</li><li><strong>Harness</strong>保存报告，检查文件存在、数字与来源对应，并记录仍无法解释的变化；满足完成条件后交付。</li></ol>
+<p>如果查询返回“无权访问”，修改 Skill 的措辞不会自动取得数据权限；如果工具已返回完整数据但分析方法错误，应改任务方法或推理；如果文件生成后任务中断且无法续做，应检查状态记录和恢复机制。先确定故障发生在哪一层，才知道该修改哪个组件。</p>
+<div class="note-table-wrap" role="region" aria-label="Skills MCP Harness 对照" tabindex="0"><table><caption>三个问题，三种职责</caption><thead><tr><th scope="col">概念</th><th scope="col">重点问题</th><th scope="col">典型载体</th></tr></thead><tbody><tr><td>Skill</td><td>这类任务按什么方法完成？</td><td>指令、参考资料、可选脚本和模板</td></tr><tr><td>MCP</td><td>宿主与能力服务按什么格式发现、调用和返回？</td><td>协议消息、schema、client / server</td></tr><tr><td>Harness</td><td>下一步怎样实际执行、恢复、验证和停止？</td><td>任务循环、状态存储、调度与检查逻辑</td></tr></tbody></table></div>
+<details class="note-review-question"><summary>复习问题：没有 MCP 能否使用 Skill？有 MCP 是否就有 Agent？</summary><p>Skill 可以只指导本地阅读、普通函数或脚本，不必依赖 MCP。MCP server 也可以被固定流程调用，不必让模型自主规划；它本身不保证任务规划、状态恢复或结果正确。三者可以组合，各自也可以独立存在。</p></details>
+<details class="note-review-question"><summary>复习问题：Skill 与 MCP prompt 是否完全一样？</summary><p>它们都可能提供可复用指令，但组织和接口不同：Agent Skills 定义任务包的文件结构与加载方式，MCP prompts 定义服务如何向宿主提供消息模板。某系统可以用 MCP 暴露与技能相关的内容，仍不代表两份规范相互等价。</p></details>
+</section>
+<!-- generated:note-body:end -->
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

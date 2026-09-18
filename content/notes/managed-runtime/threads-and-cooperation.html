@@ -1,0 +1,64 @@
+<section class="note-part" id="threads-and-cooperation" aria-labelledby="threads-and-cooperation-title">
+<h2 id="threads-and-cooperation-title">二、共享状态与运行时协作</h2>
+<p class="note-reading-note">本部分解释共享状态规则，以及解释器、编译代码与 native 调用如何协作；先区分语言保证和实现元数据。</p>
+<section id="java-memory-model" aria-labelledby="java-memory-model-title"><h3 id="java-memory-model-title">5. Java 内存模型、监视器与线程</h3>
+<h4 id="happens-before">内存区域与内存模型回答不同问题</h4>
+<p>堆、栈描述数据由谁保存；<strong>Java Memory Model（JMM）</strong>描述多线程读写允许观察到什么结果，以及编译器 / 处理器重排必须遵守的约束。happens-before 是保证可见性与先后关系的规则，不等于测到的墙钟时间。正确同步的程序可据此推理，不能靠“CPU 缓存迟早刷新”保证正确。</p>
+<div class="note-table-wrap" role="region" aria-label="Java 共享状态的同步规则" tabindex="0"><table><caption>常用规则与不能推导的结论</caption><thead><tr><th scope="col">机制</th><th scope="col">建立的关系</th><th scope="col">边界</th></tr></thead><tbody>
+<tr><td>程序顺序与传递性</td><td>线程内动作及跨线程同步关系可以连成 happens-before 链</td><td>不要求底层所有指令按源码顺序执行</td></tr>
+<tr><td>volatile</td><td>对变量的写与后续相应读建立同步关系，可用于发布之前的写入</td><td>count++ 仍是复合操作；volatile 引用不让被引用对象的所有操作自动同步</td></tr>
+<tr><td>synchronized</td><td>同一 monitor 上的解锁与后续加锁建立同步，互斥保护临界区</td><td>不同锁不自动保护同一不变量</td></tr>
+<tr><td>Thread.start / join</td><td>启动前的动作先于新线程动作；线程终止先于另一线程成功 join 后的动作</td><td>启动线程不保证其后每次共享访问都安全</td></tr>
+<tr><td>final 字段</td><td>正确构造且未提前暴露 this 时有专门的初始化安全规则</td><td>不意味着对象整体不可变；引用指向的可变内容后续仍需同步</td></tr>
+</tbody></table></div>
+<p><strong>Java volatile 与 C++ volatile 不能通用解释。</strong>C++ 的 volatile 不提供相同的线程同步保证。GC 引用屏障负责可达性或移动访问，也不能替代 JMM；具体实现可以复用底层原子指令，但职责不同。</p>
+<h4 id="safe-publication">发布对象之前的写入</h4>
+<figure class="note-example"><figcaption>完整 Java 示例：Publication.java，利用 volatile 发布普通字段</figcaption>
+<pre tabindex="0"><code class="language-java" data-java-example="Publication">public final class Publication {
+    static int value;
+    static volatile boolean ready;
+    public static void main(String[] args) throws InterruptedException {
+        Thread reader = new Thread(() -&gt; {
+            while (!ready) Thread.onSpinWait();
+            System.out.println(value);
+        });
+        reader.start();
+        value = 42;
+        ready = true;
+        reader.join();
+    }
+}</code></pre>
+<pre class="note-output" tabindex="0"><code>42</code></pre></figure>
+<p>推理链是 value=42 → volatile 写 ready → 读到该发布的 ready → 读取 value。删除 volatile 后，忙等不保证结束，也不能保证读到 42。onSpinWait 只是自旋提示，不建立这个同步关系。示例只展示发布规则；实际等待优先用锁、条件或适当的并发工具，避免持续占用 CPU。</p>
+<p>安全发布可使用锁保护、volatile 引用、类初始化等适用机制。双重检查若使用可变共享引用，要同时说明其发布协议，不能只展示两次 if。构造器中注册 this 或启动可访问它的回调，会破坏“构造完成后才暴露”的前提。</p>
+<h4 id="monitors-and-wait">互斥、等待与唤醒</h4>
+<p>对象 monitor 支持可重入互斥；实例 synchronized 方法使用接收者，静态 synchronized 方法使用对应 Class 对象。wait / notify / notifyAll 要持有同一对象的 monitor；wait 释放该 monitor，返回前重新取得它，其他已经持有的锁不因此全部释放。被唤醒不等于条件已经满足，也不等于立刻获得锁。</p>
+<pre tabindex="0"><code class="language-java">synchronized (lock) {
+    while (!condition()) {
+        lock.wait();       // 检查与等待在同一锁协议下；处理 InterruptedException
+    }
+    consume();             // 重新取得锁后再次确认条件
+}</code></pre>
+<p>sleep 不释放所持有的 monitor；notify 发出唤醒后也不会立即释放当前线程的锁。循环检查同时处理虚假唤醒、多个等待者竞争以及条件再次变化。底层轻量锁、膨胀与等待队列属于具体 VM 和版本，不能把旧 HotSpot 的固定“锁升级四阶段”当作 Java / ART 共同保证。</p>
+<h4 id="thread-states">语言状态、内核状态与安全点状态</h4>
+<p>Java Thread.State 包含 NEW、RUNNABLE、BLOCKED、WAITING、TIMED_WAITING、TERMINATED。BLOCKED 特指等待进入 monitor；不等于所有 I/O 阻塞。RUNNABLE 也不保证此刻正在某个 CPU 上执行。OS 的就绪 / 睡眠状态和 VM 内部的托管 / native / 安全点状态是另外的观察层次。</p>
+<p>本篇的例子使用平台线程。JDK 21 的虚拟线程及 Kotlin 协程涉及额外调度关系，不能把它们的数量直接当作内核线程数。通用等待机制见<a href="../operating-systems/index.html#locks">锁与 futex</a>；GC 协调见<a href="../managed-memory-gc/index.html#stw">安全点与根扫描</a>。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html" target="_blank" rel="noreferrer">JLS：线程、锁与内存模型</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait()" target="_blank" rel="noreferrer">Object.wait</a> · <a href="https://developer.android.com/reference/java/lang/Thread.State" target="_blank" rel="noreferrer">Android 线程状态</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html" target="_blank" rel="noreferrer">Thread 与 onSpinWait</a>。</p>
+</section>
+<section id="runtime-cooperation" aria-labelledby="runtime-cooperation-title"><h3 id="runtime-cooperation-title">6. 解释、编译与 native 怎样协作</h3>
+<h4 id="execution-entries">入口适配与执行状态</h4>
+<p>调用者与被调用者不一定使用同一种执行方式：解释器可调用编译代码，编译代码也可调用尚未编译的方法或 native 方法。运行时通过入口与适配代码转换参数位置、维护帧及线程状态，并处理必要的解析、检查与异常。更新方法入口主要影响后续进入方式，不能据此断定已经执行到一半的旧帧全部消失。</p>
+<p>长循环可通过 <a href="../compiler-ir/index.html#osr-deoptimization">OSR</a>在受支持的位置转入编译执行；优化假设失效时可通过反优化恢复可继续执行的状态。它们需要执行位置和活值映射，不只是改一个函数指针。</p>
+<h4 id="runtime-metadata">看似都是“栈信息”，用途并不一样</h4>
+<div class="note-table-wrap" role="region" aria-label="运行时元数据职责" tabindex="0"><table><caption>以一次内联调用中的对象引用为例</caption><thead><tr><th scope="col">信息</th><th scope="col">回答的问题</th><th scope="col">主要讲解位置</th></tr></thead><tbody>
+<tr><td>JVM StackMapTable</td><td>字节码验证时，给定位置允许哪些局部值和操作数栈类型</td><td>class 格式与验证；不是 GC 地址表</td></tr>
+<tr><td>GC 引用位置图，如 HotSpot OopMap</td><td>某个受控机器码位置哪些寄存器 / 槽是活引用</td><td><a href="../managed-memory-gc/index.html#stw">GC 根扫描</a></td></tr>
+<tr><td>反优化恢复信息</td><td>内联了几个逻辑调用；执行位置、局部值和待恢复对象是什么</td><td><a href="../compiler-ir/index.html#deopt-state">编译器状态恢复</a></td></tr>
+<tr><td>CFI / 异常处理信息</td><td>如何恢复上一机器帧，以及语言处理器 / 清理代码在哪里</td><td><a href="../program-execution/index.html#unwind">回溯与异常展开</a></td></tr>
+<tr><td>调试映射</td><td>机器地址对应哪个函数、源码行和内联位置</td><td><a href="../program-execution/index.html#backtrace">符号化与调试</a></td></tr>
+</tbody></table></div>
+<p>这些职责可能在实现中共享部分记录，但不能互换使用。编译器消除局部变量或内联方法后，源码中“有这个变量”不保证物理栈上有同名槽。ART 也需要相应协作信息，编码格式须查其分支；JNI 通过引用句柄和线程转换加入该协议。</p>
+<details class="note-review-question"><summary>复习问题：保存所有通用寄存器，是否足够支持 GC 和反优化？</summary><p>还不够。保存位值没有说明哪些是引用、对应哪个逻辑变量、是否需要重新物化对象，以及恢复到哪个指令位置。运行时必须与编译器约定这些值的语义，而不只是寄存器数量。</p></details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.4" target="_blank" rel="noreferrer">StackMapTable</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/scopeDesc.hpp" target="_blank" rel="noreferrer">HotSpot ScopeDesc</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/compiler/oopMap.hpp" target="_blank" rel="noreferrer">HotSpot OopMap</a>。</p>
+</section>
+</section>

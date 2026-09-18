@@ -1,13 +1,43 @@
 {
   "targets": [
-    { "name": "shared-ptr", "sources": ["cpp-shared-ptr/examples.cpp"] },
-    { "name": "stable-handles", "sources": ["cpp-stable-handles/examples.cpp"] },
-    { "name": "memory-diagnostics", "sources": ["cpp-memory-diagnostics/examples.cpp"] },
-    { "name": "object-layout", "sources": ["cpp-interview-roadmap/layout.cpp"] },
-    { "name": "stl-ordering", "sources": ["cpp-interview-roadmap/stl-ordering.cpp"] },
-    { "name": "linking", "sources": ["cpp-interview-roadmap/linking/counter.cpp", "cpp-interview-roadmap/linking/main.cpp"] }
+    {
+      "name": "shared-ptr",
+      "sources": [
+        "cpp-shared-ptr/examples.cpp"
+      ]
+    },
+    {
+      "name": "stable-handles",
+      "sources": [
+        "cpp-stable-handles/examples.cpp"
+      ]
+    },
+    {
+      "name": "object-layout",
+      "sources": [
+        "cpp-interview-roadmap/layout.cpp"
+      ]
+    },
+    {
+      "name": "vtable-layout",
+      "sources": [
+        "cpp-interview-roadmap/vtable-layout.cpp"
+      ],
+      "expected": "2\n10 20"
+    },
+    {
+      "name": "stl-ordering",
+      "sources": [
+        "cpp-interview-roadmap/stl-ordering.cpp"
+      ]
+    },
+    {
+      "name": "linking",
+      "sources": [
+        "cpp-interview-roadmap/linking/counter.cpp",
+        "cpp-interview-roadmap/linking/main.cpp"
+      ]
+    }
   ],
-  "excluded": {
-    "cpp-memory-diagnostics/invalid-reference.cpp": "用于演示悬垂引用和 ASan 诊断，包含故意触发的未定义行为，不纳入正常运行测试。"
-  }
+  "excluded": {}
 }

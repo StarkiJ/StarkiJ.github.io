@@ -1,0 +1,31 @@
+<section id="isa-microarchitecture" aria-labelledby="isa-microarchitecture-title"><h2 id="isa-microarchitecture-title">1. ISA 与微架构解决不同问题</h2>
+<p><strong>指令集架构（ISA）</strong>规定软件可见的寄存器、指令编码、运算和异常等行为；<strong>微架构</strong>决定处理器内部怎样取指、流水执行、预测分支、转发数据和组织缓存。RISC-V、x86-64、AArch64 都是 ISA 家族或执行状态的名称，并不指定某颗 CPU 的流水级数、频率或实际性能。</p>
+<p>RISC-V 流水线用于分析一种处理器实现，x86-64 与 AArch64 的对比关注软件可见的指令集规则，不能用指令集名称推断流水线或性能。函数参数和寄存器保存属于平台 ABI，另见<a href="../program-execution/index.html#x86-aarch64">x86-64 / AArch64 native 调用约定</a>；一次 load 的地址转换和缓存访问见<a href="../operating-systems/index.html#memory-access-flow">访存流程</a>。</p>
+<p class="note-source">参考：<a href="https://docs.riscv.org/reference/isa/v20250508/unpriv/intro.html" target="_blank" rel="noreferrer">RISC-V 非特权 ISA 概览</a> · <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html" target="_blank" rel="noreferrer">Intel 64 软件开发手册</a> · <a href="https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/the-a64-isa-and-compilers" target="_blank" rel="noreferrer">Arm：A64 ISA</a>。</p>
+</section>
+
+<section id="riscv-pipeline" aria-labelledby="riscv-pipeline-title"><h2 id="riscv-pipeline-title">2. RISC-V 流水线与冒险</h2>
+<p>RISC-V 规定指令行为，不规定处理器必须有几级流水线。教学中常用 <strong>IF → ID → EX → MEM → WB</strong> 分解一条指令：取指、译码并读寄存器、运算或算地址、访问数据存储、写回结果。这是分析时序的模型，不是每颗 RISC-V CPU 的硬件结构。例如 CV32E40P 实际采用四阶段流水线，部分运算结果在 EX 阶段写回。</p>
+<div class="note-table-wrap" role="region" aria-label="流水线冒险与处理" tabindex="0"><table><caption>追问时先指出依赖，再说明处理路径</caption><thead><tr><th scope="col">冒险</th><th scope="col">例子</th><th scope="col">常见处理</th></tr></thead><tbody><tr><td>数据冒险</td><td>后一条指令读取前一条尚未写回的寄存器；load 后立即使用尤需检查结果何时可用</td><td>从产生结果的阶段旁路转发；来不及时暂停依赖指令，插入气泡</td></tr><tr><td>控制冒险</td><td>分支方向尚未确定，后续取指可能来自错误路径</td><td>预测并继续取指；确定方向后冲刷错误路径，或在分支确定前等待</td></tr><tr><td>结构冒险</td><td>两条指令在同周期争用同一个端口或功能部件</td><td>增加资源、分时使用或让某一级暂停</td></tr></tbody></table></div>
+<pre tabindex="0"><code class="language-asm">lw  x5, 0(x10)       // x5 的值要等数据访问完成
+add x6, x5, x7      // 紧跟着使用 x5：可能产生 load-use 暂停</code></pre>
+<p>转发能缩短很多 RAW（先写后读）等待，但不能把尚未返回的 load 数据提前变出来。在常见五阶段教学模型里，上例通常需要一个气泡；实际暂停周期取决于存储延迟、流水级划分与转发路径。RISC-V 没有架构规定的分支延迟槽；冲刷错误路径时，必须保证这些指令不提交寄存器或内存副作用。分析具体 CPU 时，应画出它自己的级间寄存器、有效位、暂停和冲刷信号。</p>
+<details class="note-review-question"><summary>面试追问：RISC-V 一定是五级流水线，转发后就不会暂停吗？</summary><p>都不一定。ISA 不固定流水级数；转发只在值已经产生且有可用旁路时有效。紧随 load 的消费者、未命中的存储访问或多周期运算仍可能让流水线等待。先说明目标核的时序，再判断具体指令序列。</p></details>
+<p class="note-source">参考：<a href="https://docs.riscv.org/reference/isa/v20250508/unpriv/intro.html" target="_blank" rel="noreferrer">RISC-V 非特权 ISA 概览</a> · <a href="https://docs.openhwgroup.org/projects/cv32e40p-user-manual/en/cv32e40p_v1.3.2/pipeline.html" target="_blank" rel="noreferrer">OpenHW CV32E40P：四阶段流水线与冒险实例</a>。</p>
+</section>
+<section id="x86-aarch64" aria-labelledby="x86-aarch64-title"><h2 id="x86-aarch64-title">3. x86-64 与 AArch64 的 ISA 对比</h2>
+<p>“x86 与 ARM”范围太宽。这里固定为 64 位的 <strong>x86-64</strong> 与 <strong>AArch64</strong>，只比较指令集可见的行为；程序怎样传参、保存寄存器和对齐栈，须另选目标平台的 ABI。</p>
+<div class="note-table-wrap" role="region" aria-label="x86-64 与 AArch64 ISA 对比" tabindex="0"><table><caption>比较指令集，不用名称推断性能</caption><thead><tr><th scope="col">维度</th><th scope="col">x86-64</th><th scope="col">AArch64</th></tr></thead><tbody><tr><td>指令编码</td><td>指令长度可变</td><td>A64 指令为固定 32 位编码</td></tr><tr><td>常见整数通用寄存器</td><td>16 个 64 位寄存器（含 RSP），另有 RIP 与标志状态</td><td>x0–x30 共 31 个；SP 和 PC 另有特殊用途</td></tr><tr><td>普通内存运算</td><td>多种指令可直接使用内存操作数，例如 <code>add rax, [rdi]</code></td><td>通常先用 <code>ldr</code> 把数据载入寄存器，再用 <code>add</code> 运算</td></tr><tr><td>普通调用与返回指令</td><td><code>call</code> 把返回地址压入栈；<code>ret</code> 从栈取回</td><td><code>bl</code> 把返回地址写入 x30（LR）；<code>ret</code> 通常从 LR 返回</td></tr></tbody></table></div>
+<p>这些是软件可见规则，不表示 x86-64 处理器一定比 AArch64 慢，也不表示 AArch64 不会把指令拆成内部操作。实际性能还受微架构、缓存、分支预测、编译器和工作负载影响。若面试追问函数序言或参数位置，再切换到<a href="../program-execution/index.html#x86-aarch64">System V AMD64 与 AAPCS64 调用约定</a>，不要把 ISA 与 ABI 混为一谈。</p>
+<details class="note-review-question"><summary>面试追问：两边都有 64 位寄存器，为什么同一个 C 函数生成的汇编不同？</summary><p>源语言语义相同，目标 ISA 的指令与寄存器不同；目标平台 ABI 还分别规定参数、返回值和保存责任。优化器也可能内联调用或省略传统栈帧。先区分这三层，再读具体汇编。</p></details>
+<p class="note-source">参考：<a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html" target="_blank" rel="noreferrer">Intel 64 软件开发手册</a> · <a href="https://developer.arm.com/community/arm-community-blogs/b/architectures-and-processors-blog/posts/the-a64-isa-and-compilers" target="_blank" rel="noreferrer">Arm：A64 指令编码</a>。</p>
+</section>
+<section id="cache-coherence" aria-labelledby="cache-coherence-title"><h2 id="cache-coherence-title">4. 缓存一致性、内存排序与伪共享</h2>
+<p>以下讨论多核普通共享内存。<strong>缓存一致性</strong>协调同一缓存行在多个核上的副本，使写入与其他核的访问按协议衔接；它不保证不同地址的全部访问都以程序书写顺序被观察到。CPU 与编译器仍可能重排，程序需要语言层的同步规则。</p>
+<h3 id="memory-ordering">4.1 内存排序与语言同步</h3>
+<p>例如线程 A 先填写 <code>data</code>，再发布 <code>ready</code>；线程 B 观察到 ready 后读取 data。C++ 要通过匹配的 release/acquire 等操作建立同步，Java 可用符合 JMM 规则的 volatile 发布；仅把两个变量放进共享缓存，不会自动建立 happens-before。具体语言规则见<a href="../cpp-interview-roadmap/index.html#concurrency">C++ 并发</a>与<a href="../managed-runtime/index.html#java-memory-model">Java 内存模型</a>。</p>
+<p><strong>CPU 内存屏障</strong>约束指定访问之间的顺序，具体保证取决于指令和内存类型；它不等于把所有缓存刷回内存。<a href="../managed-memory-gc/index.html#barriers">GC 读写屏障</a>则维护引用与回收算法的不变量，内部可能使用排序机制，但两者解决的问题不同。</p>
+<h3 id="false-sharing">4.2 伪共享</h3>
+<p><strong>伪共享</strong>是缓存行粒度造成的性能问题：两个线程在不同核上频繁写各自独立的计数器，如果它们恰好处于同一缓存行，仍可能反复争用该行。程序可以没有数据竞争，却受到这种额外开销影响。按线程聚合、减少共享写入或适度隔离热字段可缓解问题；缓存行大小依平台，填充也会增加空间占用，不能把“所有字段补齐 64 字节”作为通用规则。</p>
+<p class="note-source">参考：<a href="https://docs.kernel.org/core-api/wrappers/memory-barriers.html" target="_blank" rel="noreferrer">Linux 内存屏障与一致性说明</a> · <a href="https://docs.kernel.org/kernel-hacking/false-sharing.html" target="_blank" rel="noreferrer">Linux：伪共享的成因与取舍</a>。内核接口不直接替代 C++ / Java 的同步契约。</p>
+</section>

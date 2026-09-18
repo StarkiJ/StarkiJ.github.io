@@ -8,9 +8,10 @@ export const notes = content.categories.flatMap(category => category.notes);
 const excludedGames = ["games/missile-game/", "games/t-rex-runner/", "games/cyber-woodenfish/"];
 
 export function relative(file) { return path.relative(workspace, file).split(path.sep).join("/"); }
+export function isNoteSource(file) { return relative(file).startsWith("content/notes/"); }
 export function isOwnedPage(file) {
     const name = relative(file);
-    return name.endsWith(".html") && name !== "404.html" && !excludedGames.some(prefix => name.startsWith(prefix));
+    return name.endsWith(".html") && name !== "404.html" && !isNoteSource(file) && !excludedGames.some(prefix => name.startsWith(prefix));
 }
 export function escapeHtml(value) {
     return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");

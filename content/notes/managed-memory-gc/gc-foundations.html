@@ -1,0 +1,113 @@
+<section class="note-part" id="gc-foundations" aria-labelledby="gc-foundations-title">
+<h2 id="gc-foundations-title">一、运行时内存、对象与回收基础</h2>
+<p class="note-reading-note">本部分从<a href="../operating-systems/index.html#virtual-memory">虚拟内存与驻留</a>进入运行时内存、对象与回收；只复习共同基础可集中阅读本部分。</p>
+
+<section id="runtime-memory" aria-labelledby="runtime-memory-title">
+<h3 id="runtime-memory-title">1. 运行时内存全景</h3>
+<p>一次方法调用需要保存执行状态，创建对象需要取得存储，访问字段需要知道类型与布局。HotSpot 与 ART 都要解决这些问题。先按<strong>内存承担什么职责、由谁持有、何时可以回收</strong>建立共同模型，再看具体实现使用哪些区域和数据结构。</p>
+<h4 id="memory-roles">从职责认识内存</h4>
+<div class="note-table-wrap" role="region" aria-label="托管运行时的内存职责" tabindex="0">
+<table><caption>内存职责与实现边界</caption><thead><tr><th scope="col">职责</th><th scope="col">保存什么</th><th scope="col">HotSpot 与 ART 的理解方式</th></tr></thead><tbody>
+<tr><td>线程执行状态</td><td>当前执行位置、调用帧、局部值、返回与异常处理所需状态</td><td>均有解释、编译和 native 执行相关状态；逻辑调用帧不必与物理栈帧一一对应</td></tr>
+<tr><td>托管对象堆</td><td>对象实例与数组；引用把它们连接成对象图</td><td>按各自分配器和收集器组织空间；TLAB 是其中的分配缓冲，不是独立于堆的内存区</td></tr>
+<tr><td>类与方法元数据</td><td>类型关系、字段布局、方法信息、解析数据及方法关联的运行时反馈</td><td>HotSpot 有 Metaspace 等管理结构，MethodData 反馈也在其中分配；ART 的类、方法与 profiling 存储组织不同，不能整套称为 Metaspace</td></tr>
+<tr><td>编译代码与辅助信息</td><td>生成的机器码，以及随代码保存的根扫描、反优化等元数据</td><td>HotSpot Code Cache 与 ART 的 JIT / AOT 相关存储有各自的组织和生命周期；不能据代码缓存名称推断所有类型反馈也保存在这里，详见<a href="../compiler-ir/index.html#code-cache">代码与反馈的区别</a></td></tr>
+<tr><td>native 存储与映射</td><td>本地库申请的缓冲、运行时内部结构、文件映射等</td><td>可能通过分配器、显式释放或其他协议管理；只有一个 Java 包装对象消失，不保证外部资源已经释放</td></tr>
+</tbody></table></div>
+<p>上表是职责划分，不能直接相加得到进程内存。<strong>进程内存包含运行时的各类存储</strong>，不是与堆、栈并列的额外区域。类元数据、编译代码也可能使用 native 存储；Class、String 等对象本身仍属于托管对象。</p>
+<h4 id="jvm-and-dex-frames">JVM 数据区与 DEX 执行模型</h4>
+<p>栈帧保存一次调用所需的执行状态，GC 需要按当前执行位置识别其中的引用。JVM 的局部变量与操作数栈、DEX 的虚拟寄存器及运行时帧适配，统一见<a href="../managed-runtime/index.html#bytecode">字节码与执行模型</a>和<a href="../managed-runtime/index.html#runtime-cooperation">执行状态与元数据</a>；这里关注这些存储中的对象引用如何参与根扫描。</p>
+<h4 id="memory-accounting">容量、使用量与物理占用</h4>
+<p>预留地址范围表示为后续使用留出虚拟地址；已提交容量表示运行时已提交使用的部分，并不等于所有页面都已驻留。已分配空间可能包含尚未回收的垃圾，存活量则要结合某轮存活判定理解。RSS 统计进程驻留页，PSS 按比例分摊共享页；比较它们时要保持采样时机和统计范围一致。</p>
+<p>观察内存时至少分清：<strong>预留地址范围、已提交容量、已分配空间、回收后存活量、进程 RSS/PSS</strong>。对象失去引用、GC 回收对象存储、运行时把页面归还操作系统是不同事件。GC 后堆使用量下降，进程物理占用未必立即下降；虚拟地址连续也不要求物理页连续。地址与驻留基础见<a href="../operating-systems/index.html#virtual-memory">虚拟内存</a>，分配器缓存见<a href="../native-memory-allocation/index.html#free">free 与页面归还</a>。</p>
+</section>
+
+<section id="allocation" aria-labelledby="allocation-title">
+<h3 id="allocation-title">2. 对象创建与分配路径</h3>
+<h4 id="object-creation">从创建请求到可用对象</h4>
+<p>把一次普通对象创建拆成几个职责：取得所需类型信息并满足类初始化要求，计算对象大小与对齐，取得存储，建立默认字段值和对象头，再执行构造逻辑。具体检查可能提前完成，零初始化也可能批量进行；这不是每次 new 都按同一条慢路径调用一遍的承诺。</p>
+<p><strong>分配存储与执行构造器是两件事。</strong>局部变量保存对象引用，也不表示对象存储就位于局部栈帧。优化器还可能消除不影响可观察行为的分配：JDK 21 HotSpot C2 的标量替换可把对象拆成独立值，不能简单背成“逃逸分析一定把对象搬到栈上”；推导与恢复条件见<a href="../compiler-ir/index.html#escape-analysis">逃逸分析与标量替换</a>。</p>
+<h4 id="tlab">指针递增、CAS 与 TLAB</h4>
+<p>连续空闲区可以用<strong>指针递增（bump pointer）</strong>分配：检查剩余空间，交付旧 top，再推进 top。若多个线程共享 top，必须用 CAS 等同步协议避免交付重叠区域；若空闲空间分散，分配器也可能查找空闲块。分配路径取决于当前空间组织，不能把所有对象创建都概括为一次 malloc。</p>
+<p><strong>CAS（Compare-And-Swap，比较并交换）</strong>把“比较当前值是否等于预期值，若相等则写入新值”作为一个原子操作。用它更新共享 top 时，竞争失败的线程需要重新读取和检查剩余空间。原子操作保护的是这次状态更新，不能保证高竞争下没有重试成本，也不保证整个分配慢路径无锁。</p>
+<p><strong>TLAB（Thread-Local Allocation Buffer）</strong>把一段堆空间交给某个分配线程使用。命中时由该线程推进自己的 top，减少每个小对象都争用共享分配状态的成本。这里“线程本地”修饰的是<strong>分配权</strong>：对象以后仍能被其他线程引用，也仍受 GC 管理。</p>
+<pre tabindex="0"><code class="language-text">创建请求：已取得类型与所需大小
+  → 请求适合 TLAB，且当前缓冲足够？
+      是：取得当前 top，推进 top，完成必要的对象初始化
+      否：进入运行时分配路径
+          → 尝试补充 TLAB，或在 TLAB 外分配
+          → 按策略扩展可用空间、等待 / 请求 GC、重试
+          → 仍无法满足请求时报告分配失败</code></pre>
+<p>这是一条职责示意，省略了插桩、采样和具体同步步骤。TLAB 外分配不一定使用同一种 CAS 循环；缓冲不够也不必立刻丢弃剩余空间。CAS 的原子性依赖底层实现，普通“先比较再赋值”代码不能替代原子指令，JIT 也可以直接生成相应 intrinsic 的机器码。</p>
+<div class="note-table-wrap" role="region" aria-label="两种运行时的 TLAB 路径" tabindex="0">
+<table><caption>相同分配思路，不同慢路径</caption><thead><tr><th scope="col">实现</th><th scope="col">核对入口</th><th scope="col">应保留的边界</th></tr></thead><tbody>
+<tr><td>JDK 21 HotSpot</td><td>MemAllocator 的 TLAB 分配、补充与外部分配</td><td>剩余空间和浪费策略影响是否补充缓冲；后续请求交给所选堆实现处理</td></tr>
+<tr><td>Android 14 ART</td><td>Heap::AllocObjectWithAllocator、TryToAllocate</td><td>先结合对象条件与 allocator 选择路径；RegionTLAB / TLAB 与大对象等路径不同</td></tr>
+</tbody></table></div>
+<details class="note-review-question"><summary>复习问题：TLAB 内创建的对象为什么还能跨线程使用？</summary><p>TLAB 只让分配时推进指针的操作由一个线程完成，不限制对象后续的引用关系。跨线程共享仍要遵守语言的同步与发布规则；分配安全不等于对象字段访问自动线程安全。</p></details>
+<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/gc/shared/memAllocator.cpp" target="_blank" rel="noreferrer">HotSpot MemAllocator</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/heap-inl.h" target="_blank" rel="noreferrer">ART 对象分配</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot 逃逸分析与标量替换</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/opto/library_call.cpp" target="_blank" rel="noreferrer">C2 原子操作 intrinsic</a>。</p>
+</section>
+
+<section id="object-layout" aria-labelledby="object-layout-title">
+<h3 id="object-layout-title">3. 对象布局、引用与身份</h3>
+<p>理解对象布局时，先分出<strong>运行时管理信息、实例字段和对齐填充</strong>；数组还需要长度等信息。类型信息帮助运行时解释字段和方法，锁、身份哈希及 GC 又需要维护各自状态。具体信息可能位于对象头、类型元数据或外部表中，不保证全部常驻对象头。</p>
+<div class="note-table-wrap" role="region" aria-label="HotSpot 与 ART 对象表示" tabindex="0">
+<table><caption>本文版本的对象头与引用表示</caption><thead><tr><th scope="col">比较项</th><th scope="col">JDK 21 HotSpot</th><th scope="col">Android 14 ART</th></tr></thead><tbody>
+<tr><td>基本对象头</td><td>oopDesc 中的 Mark Word 与 Klass 指针或压缩 Klass 表示</td><td>mirror::Object 中的 klass_ 类引用与 monitor_ 状态字</td></tr>
+<tr><td>管理状态</td><td>Mark Word 按状态编码锁、身份哈希等信息，字段用途随状态变化</td><td>monitor_ 通过 LockWord 解释锁、哈希等状态；不能直接套用 HotSpot 的位布局</td></tr>
+<tr><td>堆引用</td><td>G1 可使用 compressed oops；对象引用压缩与类指针压缩是不同配置，不能推广到所有收集器</td><td>HeapReference 使用 32 位存储与相应转换规则；不等同于普通 native 指针</td></tr>
+<tr><td>对象大小</td><td colspan="2">由头部、继承与实例字段、数组数据及对齐共同决定；需核对架构、配置和版本，不能把固定字节数当成语言保证</td></tr>
+</tbody></table></div>
+<p><strong>对象身份、引用编码、对象地址和物理页不是同一个概念。</strong>压缩引用需要解码才能得到可用地址；类型指针用于查找类型，不是对象自己的地址。移动 GC 可改变地址，但语言层多个引用仍须指向同一个对象，见<a href="#forwarding">转发与身份</a>。</p>
+<p>直接引用与句柄体现不同的间接访问方式：句柄增加一层运行时管理的关联，直接引用也可能需要解码或屏障。JNI 的 jobject 应通过 JNI 接口使用，不能当作对象地址解引用；其 local / global 生命周期见<a href="../jni-references/index.html#references">JNI 引用</a>。</p>
+<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/oops/oop.hpp" target="_blank" rel="noreferrer">HotSpot oopDesc</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/oops/markWord.hpp" target="_blank" rel="noreferrer">HotSpot Mark Word</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/mirror/object.h" target="_blank" rel="noreferrer">ART Object</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/lock_word.h" target="_blank" rel="noreferrer">ART LockWord</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/mirror/object_reference.h" target="_blank" rel="noreferrer">ART HeapReference</a>。</p>
+</section>
+
+<section id="roots" aria-labelledby="roots-title">
+<h3 id="roots-title">4. 可达性、GC Roots 与引用类型</h3>
+<h4 id="reachability">从根出发寻找对象</h4>
+<p><strong>追踪式 GC</strong>从根集合沿对象引用寻找可达对象，再处理不可达对象。它依据可达关系，不依据“变量名还在不在”，也不要求对象引用图没有环。GC 线程之外执行应用代码的线程常称为 mutator。</p>
+<div class="note-table-wrap" role="region" aria-label="根或根访问路径" tabindex="0"><table><caption>根或根访问路径</caption><thead><tr><th scope="col">场景</th><th scope="col">为什么必须保留</th></tr></thead><tbody><tr><td>线程当前栈帧、寄存器中的活引用</td><td>方法后续还可能使用该对象</td></tr><tr><td>JNI local / global 强引用</td><td>native 代码仍可能通过有效引用访问对象</td></tr><tr><td>运行时持有的类、线程和其他内部根</td><td>运行时自身仍需要这些对象</td></tr><tr><td>已加载且可达的类的静态字段</td><td>通过类对象和相关运行时根可继续到达字段指向的对象</td></tr></tbody></table></div>
+<p>具体根集合由运行时实现与线程状态决定；弱引用需要特殊处理，不等价于普通强根。移动 GC 还需识别并修正引用，不能简单扫描任意整数并把“像地址”的值都移动。</p>
+<details class="note-review-question"><summary>经典问题：两个对象互相引用，GC 是否一定回收不了？</summary><p>追踪式 GC 可以回收整个不可达环。只要没有从根到达这个环的强可达路径，就不因互相引用而保留。引用计数通过增减计数跟踪持有关系，单纯的强引用计数无法自行识别不可达环；二者的存活判断依据不同。</p></details>
+<h4 id="reference-strength">强、软、弱、虚引用</h4>
+<p>要问的是<strong>对象当前通过什么路径可达</strong>。同一个对象同时被普通变量与 WeakReference 引用时，只要普通变量仍形成活的强可达路径，弱引用就不会使该对象被提前回收。</p>
+<div class="note-table-wrap" role="region" aria-label="Java 引用类型的共同语义" tabindex="0"><table><caption>Java 引用语义：HotSpot 与 ART 可共用的基础</caption><thead><tr><th scope="col">种类</th><th scope="col">对存活的影响</th><th scope="col">使用边界</th></tr></thead><tbody>
+<tr><td>强引用</td><td>仍然强可达的对象必须保留</td><td>“对象之间存在强引用”不等于“从根强可达”；无用但持续可达会形成托管内存泄漏</td></tr>
+<tr><td>SoftReference</td><td>仅软可达时，GC 可响应内存需求清除软引用</td><td>不能把它当作具有固定容量和淘汰时机的缓存；具体回收策略随实现变化</td></tr>
+<tr><td>WeakReference</td><td>不会阻止仅弱可达对象进入后续回收处理</td><td>不是“每次 GC 必定清掉所有弱引用”；使用 get() 的结果时检查 null，并用局部强引用保存本次结果</td></tr>
+<tr><td>PhantomReference</td><td>用于跟踪相应可达性变化，配合 ReferenceQueue 处理通知</td><td>get() 始终返回 null；入队不能证明对象存储已归还操作系统</td></tr>
+</tbody></table></div>
+<p>ReferenceQueue 通知与实际资源清理需要应用自己的处理逻辑。保留被注册的 Reference 对象；队列不会仅因注册动作而替应用保活它。GC 管理堆存储，文件、连接、native 缓冲等资源仍应优先显式关闭，例如使用 AutoCloseable / try-with-resources。</p>
+<p>JDK 21 中 finalize 已弃用并计划移除，不能作为可靠的资源释放时机。Cleaner 可承接部分兜底清理，但执行时机不确定，清理动作也不能反过来强持有被清理对象。Android 上相关 API 的可用版本要另行核对；不要把 HotSpot 的实现队列与线程安排当作两种运行时的共同协议。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ref/package-summary.html" target="_blank" rel="noreferrer">Java 引用与队列语义</a> · <a href="https://developer.android.com/reference/java/lang/ref/package-summary" target="_blank" rel="noreferrer">Android java.lang.ref</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ref/Cleaner.html" target="_blank" rel="noreferrer">Cleaner 的生命周期要求</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#finalize()" target="_blank" rel="noreferrer">finalize 的弃用说明</a>。</p>
+<h4 id="class-lifetime">类、反射与元数据生命周期</h4>
+<p>类也涉及生命周期：类加载器、Class 对象、实例，以及缓存中的 Method / Field 等反射对象可能组成持有链。长期缓存这些对象可能间接保留类加载器及其元数据。排查时沿真实引用链取证，不能仅凭“实例数量归零”认定类已经卸载；卸载支持与时机依运行时、收集器和类的种类而定。</p>
+<p>反射允许在运行时取得类型与成员信息，反射对象本身也要纳入上述持有关系。成员访问仍受相应平台的访问控制约束；本节关注生命周期，类身份、加载和初始化统一见<a href="../managed-runtime/index.html#class-loading">托管运行时基础</a>，本节保留持有链与卸载视角。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html#jls-12.7" target="_blank" rel="noreferrer">JLS：类与接口卸载</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/AccessibleObject.html" target="_blank" rel="noreferrer">Java 反射访问控制</a>。</p>
+</section>
+
+<section id="collectors" aria-labelledby="collectors-title">
+<h3 id="collectors-title">5. 清扫、整理、复制与分代</h3>
+<div class="note-table-wrap" role="region" aria-label="算法侧重点" tabindex="0"><table><caption>算法侧重点</caption><thead><tr><th scope="col">方式</th><th scope="col">机制</th><th scope="col">典型代价</th></tr></thead><tbody><tr><td>标记清扫</td><td>标记活对象，回收未标记对象</td><td>可能留下外部碎片</td></tr><tr><td>标记整理</td><td>标记后移动活对象并更新引用</td><td>整理与引用更新成本</td></tr><tr><td>复制</td><td>将选定区域的活对象搬到目标区域，回收旧区域</td><td>需目标空间；成本与活对象量相关</td></tr><tr><td>分代</td><td>按对象存活特征划分收集范围</td><td>维护跨代引用；不能漏掉老对象指向年轻对象的边</td></tr></tbody></table></div>
+<p>先区分如何寻找活对象、如何回收存储以及是否移动对象，再看收集范围和并发安排。复制不自动意味着全程暂停；并发正确性见第二部分，G1 与 ART 的阶段安排见第三部分。</p>
+<p>经典半空间复制模型把一半空间留作目标，便于解释预留成本，但实际收集器不必始终只使用整个堆的一半。活对象多少、目标空间是否足够、扫描与更新引用的工作量，都会影响收益；不能给三类算法排一个与负载无关的固定“效率高低”顺序。</p>
+</section>
+
+<section id="generations" aria-labelledby="generations-title">
+<h3 id="generations-title">6. 分代、收集范围与记忆集</h3>
+<h4 id="object-aging">分代假说与对象晋升</h4>
+<p>分代利用对象寿命的经验规律：许多对象很快变得无用，已经存活较久的对象往往还会继续存活。于是可以更频繁地回收新分配对象所在范围，让长寿对象少参与昂贵的重复扫描。这是针对负载的优化依据，不是每个程序都必然满足的定律。</p>
+<p>以传统分代布局作例子：新对象进入 Eden，年轻代回收把需要保留的对象复制到 Survivor 或晋升到老年代；后续回收可交换 Survivor 的角色。年龄是经历存活判定的计数，不是墙钟时间。晋升还受目标空间、年龄策略及对象大小等条件影响，不保证所有对象都先经过固定次数 Survivor。</p>
+<p>G1 以 region 承载 Eden、Survivor、Old 等角色，同一代不必在地址上连续；具体流程见<a href="#hotspot-g1">G1 实例</a>。ART 的分代模式按其收集器协议划定年轻收集范围，不能直接套用固定 Eden:S0:S1 比例，也不能仅凭 RegionSpace 名称推导出与 G1 相同的分代规则。</p>
+<h4 id="remembered-sets">记忆集与卡表分别记录什么</h4>
+<pre tabindex="0"><code class="language-text">根 → 老对象 A → 年轻对象 B
+本轮只回收年轻范围：
+  若只检查根直接指向的年轻对象，就可能漏掉 B
+  还需要找到收集范围外指向范围内的引用</code></pre>
+<p><strong>记忆集（remembered set）</strong>记录收集范围外指向范围内的引用信息，避免局部回收时重新遍历所有外部对象。卡表可作为粗粒度记录手段；它与记忆集不必是同一结构。标脏、重扫及并发协作统一见<a href="#card-table">卡表与写屏障</a>。</p>
+<p>Young GC 只回收选定的年轻范围，但仍需根和跨代引用信息。Full GC 涉及更广收集范围；某实现仍会利用卡表扫描免收集空间或并发修改，不应简单说“Full 一定不用卡表”。GC 可因分配压力、目标堆占用、显式请求或运行时策略触发，最耗时阶段可能是根/卡扫描、对象扫描或复制等，要读阶段计时。</p>
+<details class="note-review-question"><summary>经典问题：扩大堆后，GC 必然更少且更快吗？</summary><p>频率可能下降，但一次收集的活对象和扫描范围可能变大，物理压力也可能增加。应一起比较每秒 GC 次数、暂停分位数、总 CPU、复制字节、回收收益和 RSS/PSS；Young 与 Full 不存在固定耗时倍数。</p></details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html" target="_blank" rel="noreferrer">G1 分代布局与收集范围</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/gc/g1/g1RemSet.hpp" target="_blank" rel="noreferrer">G1 记忆集</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/accounting/card_table.h" target="_blank" rel="noreferrer">ART 卡表</a>。</p>
+</section>
+</section>

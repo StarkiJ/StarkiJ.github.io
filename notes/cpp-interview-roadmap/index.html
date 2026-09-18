@@ -15,6 +15,7 @@
     <link rel="icon" href="../../images/head.jpg">
     <link rel="stylesheet" href="../../styles.css">
     <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
 </head>
 <body class="note-page">
     <a class="note-skip" href="#note-content">跳到正文</a>
@@ -37,41 +38,151 @@
         <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#cpp">C++</a><span aria-hidden="true">/</span><span aria-current="page">C++ 核心知识</span></nav>
         <article aria-labelledby="note-title">
             <header class="note-header">
-                <p class="eyebrow">C++ / 基础综述</p>
+                <p class="eyebrow">C++ / 综述</p>
                 <h1 id="note-title">C++ 核心知识</h1>
-                <p class="note-deck">语言基础、对象模型、资源管理、STL、模板与并发。</p>
+                <p class="note-deck">按语言与对象、生命周期与资源、泛型与标准库、并发、构建与调试五部分梳理 C++。</p>
                 <div class="note-meta">
                     <span>Starki</span>
-                    <time datetime="2026-09-09">2026.09.09</time>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-09">2026.09.09</time></span><span>更新 <time datetime="2026-09-18">2026.09.18</time></span></span>
+<!-- generated:note-dates:end -->
                     <span>示例使用 C++17</span>
                 </div>
             </header>
             <!-- generated:reading-guide:start -->
-<aside class="note-reading-guide" aria-label="阅读建议"><p><strong>阅读建议</strong> 按章节复习语言机制；需要完整实现或排查流程时，再读对应专题。</p></aside>
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 按五部分查阅语言与工程规则；shared_ptr 与稳定句柄的完整实现分别见实践笔记。</p><nav class="note-parts" aria-label="分部直达"><a href="#language-and-objects">一、语言基础与对象模型</a><a href="#lifetime-and-resources">二、生命周期、资源管理与拷贝移动</a><a href="#generic-and-library">三、泛型编程与标准库</a><a href="#concurrent-programming">四、并发与同步</a><a href="#build-and-debug">五、构建与调试</a></nav></aside>
 <!-- generated:reading-guide:end -->
 <div class="note-layout">
-                <nav class="note-toc" aria-label="文章目录">
-<p>目录</p>
+                <!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
 <ol>
-<li><a href="#basics">1. 语言基础</a></li>
-<li><a href="#lifetime">2. 存储与生命周期</a></li>
-<li><a href="#objects">3. 类与对象模型</a></li>
-<li><a href="#ownership">4. 资源管理与智能指针</a></li>
-<li><a href="#move">5. 值类别与移动语义</a></li>
-<li><a href="#stl">6. STL 容器与算法</a></li>
-<li><a href="#templates">7. 模板与类型推导</a></li>
-<li><a href="#concurrency">8. 并发与同步</a></li>
-<li><a href="#engineering">9. 编译、链接与调试</a></li>
-<li><a href="#references">参考资料</a></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：一、语言基础与对象模型"><a href="#language-and-objects">一、语言基础与对象模型</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：1. 语言基础"><a href="#basics">1. 语言基础</a></summary>
+                <ol>
+                    <li><a href="#values-and-objects">1.1 类型、对象与变量</a></li>
+                    <li><a href="#q06">1.2 初始化与赋值</a></li>
+                    <li><a href="#q01">1.3 指针、引用与参数传递</a></li>
+                    <li><a href="#q02">1.4 const 与 constexpr</a></li>
+                    <li><a href="#arrays-and-strings">1.5 数组、指针与字符串</a></li>
+                    <li><a href="#integer-boundaries">1.6 整数提升、转换与溢出</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：2. 类与对象模型"><a href="#objects">2. 类与对象模型</a></summary>
+                <ol>
+                    <li><a href="#class-foundation">2.1 类、封装与 this</a></li>
+                    <li><a href="#inheritance-foundation">2.2 继承与基类子对象</a></li>
+                    <li><a href="#q13">2.3 构造与析构顺序</a></li>
+                    <li><a href="#q15">2.4 虚函数与动态绑定</a></li>
+                    <li><a href="#q16">2.5 虚析构与构造析构期间的虚调用</a></li>
+                    <li><a href="#member-call-validity">2.6 重载、隐藏与成员调用</a></li>
+                    <li><a href="#q17">2.7 对象切片</a></li>
+                    <li><a href="#q12">2.8 对象布局、对齐与 sizeof</a></li>
+                    <li><a href="#vtable-layout">2.9 虚表布局与多继承调用</a></li>
+                    <li><a href="#q07">2.10 类型转换、explicit 与 nullptr</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：二、生命周期、资源管理与拷贝移动"><a href="#lifetime-and-resources">二、生命周期、资源管理与拷贝移动</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：3. 存储与生命周期"><a href="#lifetime">3. 存储与生命周期</a></summary>
+                <ol>
+                    <li><a href="#scope-storage-lifetime">3.1 作用域、存储期与生命周期</a></li>
+                    <li><a href="#q09">3.2 new、delete 与原始存储</a></li>
+                    <li><a href="#pointer-states">3.3 空指针、野指针与悬垂指针</a></li>
+                    <li><a href="#q10">3.4 悬垂引用与非拥有型视图</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：4. 资源管理与智能指针"><a href="#ownership">4. 资源管理与智能指针</a></summary>
+                <ol>
+                    <li><a href="#q11">4.1 所有权、RAII 与异常安全</a></li>
+                    <li><a href="#q18">4.2 unique_ptr：独占所有权</a></li>
+                    <li><a href="#q19">4.3 shared_ptr：共享所有权</a></li>
+                    <li><a href="#q20">4.4 weak_ptr 与循环引用</a></li>
+                    <li><a href="#leak-boundaries">4.5 内存泄漏与长期持有</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：5. 拷贝、值类别与移动语义"><a href="#move">5. 拷贝、值类别与移动语义</a></summary>
+                <ol>
+                    <li><a href="#q14">5.1 拷贝语义与特殊成员函数</a></li>
+                    <li><a href="#q22">5.2 值类别与引用</a></li>
+                    <li><a href="#q23">5.3 std::move 与移动后状态</a></li>
+                    <li><a href="#q25">5.4 拷贝消除、NRVO 与 noexcept</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：三、泛型编程与标准库"><a href="#generic-and-library">三、泛型编程与标准库</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：6. 模板、类型推导与可调用对象"><a href="#templates">6. 模板、类型推导与可调用对象</a></summary>
+                <ol>
+                    <li><a href="#q32">6.1 模板定义、实例化与特化</a></li>
+                    <li><a href="#q05">6.2 auto、decltype 与 decltype(auto)</a></li>
+                    <li><a href="#q24">6.3 转发引用与 std::forward</a></li>
+                    <li><a href="#q34">6.4 Lambda 与捕获</a></li>
+                    <li><a href="#q35">6.5 编译期分支与结果类型</a></li>
+                    <li><a href="#q33">6.6 SFINAE 与模板约束</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：7. STL 容器与算法"><a href="#stl">7. STL 容器与算法</a></summary>
+                <ol>
+                    <li><a href="#q26">7.1 容器、迭代器与算法</a></li>
+                    <li><a href="#q27">7.2 vector 的大小、容量与扩容</a></li>
+                    <li><a href="#deque-storage">7.3 deque 的分段存储与链表接口</a></li>
+                    <li><a href="#q29">7.4 map、set 与无序关联容器</a></li>
+                    <li><a href="#q28">7.5 迭代器、引用与指针失效</a></li>
+                    <li><a href="#q31">7.6 push_back 与 emplace_back</a></li>
+                    <li><a href="#q30">7.7 范围算法与比较器</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：四、并发与同步"><a href="#concurrent-programming">四、并发与同步</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：8. 并发与同步"><a href="#concurrency">8. 并发与同步</a></summary>
+                <ol>
+                    <li><a href="#shared-state-foundation">8.1 数据竞争与同步关系</a></li>
+                    <li><a href="#q36">8.2 thread、join 与 detach</a></li>
+                    <li><a href="#q37">8.3 互斥锁、临界区与死锁</a></li>
+                    <li><a href="#q38">8.4 条件变量</a></li>
+                    <li><a href="#q39">8.5 atomic、volatile 与内存序</a></li>
+                    <li><a href="#q21">8.6 shared_ptr 的线程安全</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：五、构建与调试"><a href="#build-and-debug">五、构建与调试</a></summary>
+        <ol>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：9. 编译、链接与调试"><a href="#engineering">9. 编译、链接与调试</a></summary>
+                <ol>
+                    <li><a href="#q40">9.1 翻译单元、声明与定义</a></li>
+                    <li><a href="#extern-declarations">extern：先区分声明、定义与链接</a></li>
+                    <li><a href="#language-linkage">extern &quot;C&quot;：给 C++ 声明指定 C 语言链接</a></li>
+                    <li><a href="#q03">9.2 static 的不同含义</a></li>
+                    <li><a href="#q04">9.3 inline、ODR 与宏</a></li>
+                    <li><a href="#q41">9.4 未定义行为与错误定位</a></li>
+                    <li><a href="#q42">9.5 性能测量与优化</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><a href="#references">参考资料</a></li>
 </ol>
-</nav>
+</details></nav>
+<!-- generated:note-toc:end -->
                 <div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
 <p class="note-reading-note">以 C++17 为主，后续标准单独标注。完整代码示例与经典问题可展开查看。</p>
 
+<section class="note-part" id="language-and-objects" aria-labelledby="language-and-objects-title">
+<h2 id="language-and-objects-title">一、语言基础与对象模型</h2>
+<p>从类型和表达式读到类、继承与动态绑定；对象如何保存数据、如何选择调用目标在这里连起来。</p>
 <section id="basics" aria-labelledby="basics-title">
-<h2 id="basics-title">1. 语言基础</h2>
+<h3 id="basics-title">1. 语言基础</h3>
 <div class="note-lesson" id="values-and-objects">
-<span id="language-foundation" class="note-anchor" aria-hidden="true"></span><h3>1.1 类型、对象与变量</h3>
+<span id="language-foundation" class="note-anchor" aria-hidden="true"></span><h4>1.1 类型、对象与变量</h4>
 <p><strong>类型</strong>规定数据如何表示、允许哪些操作；<strong>对象</strong>是程序中用于存放值、具有类型和生命周期的存储实例。<code>int n = 10;</code> 建立一个 int 对象，用名字 n 访问它，并把初值设为 10。变量可以表示对象，也可以是引用。</p>
 <p><code>int copy = n;</code> 建立独立副本；<code>int&amp; ref = n;</code> 为原对象建立别名；<code>int* ptr = &amp;n;</code> 保存其地址。改变 ref 就是改变 n，改变 copy 则不影响 n。</p>
 <p><strong>未定义行为（UB）</strong>表示标准不规定程序结果，可能崩溃，也可能暂时表现正常。后文的越界、悬垂等问题都要按这个含义理解。</p>
@@ -83,7 +194,7 @@
 </div>
 
 <div class="note-lesson" id="q06">
-<h3>1.2 初始化与赋值</h3>
+<h4>1.2 初始化与赋值</h4>
 <p><strong>初始化</strong>建立对象的初始状态；<strong>赋值</strong>修改已有对象。类对象的初始化可能调用构造函数来建立状态，之后的赋值则由赋值运算符处理。</p>
 <div class="note-table-wrap" role="region" aria-label="常见初始化形式（C++17）" tabindex="0"><table><caption>常见初始化形式（C++17）</caption><thead><tr><th scope="col">写法</th><th scope="col">含义</th></tr></thead><tbody><tr><td><code>int x;</code>（普通局部变量）</td><td>默认初始化，没有确定的初始值，不可直接读取。</td></tr><tr><td><code>int x{};</code></td><td>得到值为 0 的 int。</td></tr><tr><td><code>int x = 3;</code></td><td>用 3 初始化 x；不是对已有 x 赋值。</td></tr><tr><td><code>int x{3.5};</code></td><td>窄化转换，编译错误。</td></tr><tr><td><code>T obj();</code></td><td>函数声明，不是对象定义。</td></tr></tbody></table></div>
 <p><strong>列表初始化</strong>使用花括号，拒绝可能丢失值的窄化转换。类的非空列表初始化优先考虑 initializer_list 构造函数，即接收一组元素的构造函数。例如可变长数组 vector：<code>vector&lt;int&gt; a(3, 7)</code> 是三个 7，<code>vector&lt;int&gt; b{3, 7}</code> 是两个元素 3 和 7。</p>
@@ -91,11 +202,12 @@
 </div>
 
 <div class="note-lesson" id="q01">
-<h3>1.3 指针、引用与参数传递</h3>
+<h4>1.3 指针、引用与参数传递</h4>
 <p><strong>指针</strong>保存目标地址，<code>&amp;n</code> 取 n 的地址，<code>*p</code> 访问 p 指向的对象；<strong>引用</strong>为目标建立别名。<code>sizeof</code> 取得类型或对象表示所需的字节数。</p>
 <div class="note-table-wrap" role="region" aria-label="指针与引用" tabindex="0"><table><caption>指针与引用</caption><thead><tr><th scope="col">比较项</th><th scope="col">指针 T*</th><th scope="col">引用 T&</th></tr></thead><tbody><tr><td>含义</td><td>保存地址的对象</td><td>已有对象或函数的别名</td></tr><tr><td>空值</td><td>可以为空，使用前按需要检查</td><td>应绑定有效目标，但之后仍可能悬垂</td></tr><tr><td>重新绑定</td><td>可以改变指向</td><td>不能重新绑定；赋值修改目标对象</td></tr><tr><td>sizeof</td><td>指针类型的大小</td><td>被引用类型的大小，不能据此推断底层实现</td></tr></tbody></table></div>
 <p><strong>参数传递：</strong>传值建立独立参数；传指针复制地址，通过地址可以修改目标，但修改形参指针不会改变调用者的指针变量；传引用直接借用调用者对象。需要重设调用者的指针时可传 <code>T*&amp;</code>，也可返回新指针。</p>
 <p><strong>接口选择：</strong>int、double、指针等小类型常传值；只读大对象用 <code>const T&amp;</code>，表示不通过该参数修改目标；要修改对象用 <code>T&amp;</code>；目标允许不存在时可用 <code>T*</code>，以空指针表示。</p>
+<p>指针保存了地址，并不代表目标始终可用。初始化、判空与生命周期的区别，见<a href="#pointer-states">空指针、野指针与悬垂指针</a>。</p>
 <details class="note-example-details"><summary>代码示例：副本、别名与三种传参方式</summary>
 <figure class="note-example">
     <figcaption>从副本、引用和指针观察同一个值的变化</figcaption>
@@ -143,7 +255,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q02">
-<h3>1.4 const 与 constexpr</h3>
+<h4>1.4 const 与 constexpr</h4>
 <p><strong>const</strong>限制通过该声明修改对象，但初值可以在运行时确定。<strong>constexpr 变量</strong>要求初值是常量表达式，即可按语言规则在编译时确定的表达式；constexpr 函数既可用于编译期求值，也可在运行时调用。</p>
 <div class="note-table-wrap" role="region" aria-label="const 的限定位置" tabindex="0"><table><caption>const 的限定位置</caption><thead><tr><th scope="col">声明</th><th scope="col">限制</th></tr></thead><tbody><tr><td><code>const int* p</code></td><td>不能通过 p 修改目标；p 可改变指向（底层 const）。</td></tr><tr><td><code>int* const p = &amp;n</code></td><td>p 不可改变指向；可通过 p 修改非 const 的 n（顶层 const）。</td></tr><tr><td><code>const int* const p = &amp;n</code></td><td>指向和通过它对目标的修改都受限。</td></tr></tbody></table></div>
 
@@ -151,7 +263,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="arrays-and-strings">
-<h3>1.5 数组、指针与字符串</h3>
+<h4>1.5 数组、指针与字符串</h4>
 <p><strong>数组</strong>连续保存固定数量的同类型元素；<strong>指针</strong>不自带元素数量。多数表达式中数组转换为首元素指针，但对数组直接使用 sizeof 时不发生这种转换。函数形参 <code>int a[]</code> 被调整为 <code>int* a</code>。</p>
 <p><strong>C 风格字符串</strong>用 <code>'\0'</code> 标记结束，长度不含终止字符。<code>const char* p = "Hello";</code> 指向不可修改的字符串字面量；<code>char text[] = "Hello";</code> 创建可写副本。C++17 不允许把该字面量赋给 char*。strlen 扫描到终止符，范围内没有有效终止符就可能越界；std::string 则自己保存字符并维护长度。</p>
 <pre class="note-snippet" tabindex="0"><code>char text[] = &quot;Hello&quot;;       // 6 个字符，包含 &#x27;\0&#x27;
@@ -184,7 +296,7 @@ hello</code></pre>
 </div>
 
 <div class="note-lesson" id="integer-boundaries">
-<h3>1.6 整数提升、转换与溢出</h3>
+<h4>1.6 整数提升、转换与溢出</h4>
 <p><strong>整数提升：</strong>char、short 等较窄整数参与许多运算前，若 int 可表示其全部值就提升为 int，否则提升为 unsigned int。计算后存回窄类型，还会发生转换。</p>
 <p><strong>溢出规则：</strong>N 位无符号算术按模 2<sup>N</sup> 计算，转换回该无符号类型也按此规则取值，例如转回 8 位无符号类型时，256 变为 0。有符号算术超出类型范围是 UB，不能依赖回绕。<code>std::numeric_limits&lt;T&gt;</code> 可查询类型范围。</p>
 <p><strong>混合比较：</strong>通常算术转换可能把负数转成很大的无符号值。比较有符号下标与容器 size 时，应先处理负值。容量计算、整数翻转等应在乘加前检查范围。</p>
@@ -209,57 +321,12 @@ int main() {
 </details>
 </div>
 <p class="note-source">相关规则：<a href="https://eel.is/c++draft/dcl.init" target="_blank" rel="noreferrer">初始化</a> · <a href="https://eel.is/c++draft/intro.object" target="_blank" rel="noreferrer">对象</a> · <a href="https://eel.is/c++draft/basic.compound" target="_blank" rel="noreferrer">指针与引用</a> · <a href="https://eel.is/c++draft/lex.string" target="_blank" rel="noreferrer">字符串字面量</a> · <a href="https://eel.is/c++draft/conv.prom" target="_blank" rel="noreferrer">整数提升</a> · <a href="https://eel.is/c++draft/expr.post.incr" target="_blank" rel="noreferrer">后置自增</a> · <a href="https://eel.is/c++draft/basic.fundamental" target="_blank" rel="noreferrer">整数类型范围</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [dcl.init]（初始化）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
 </section>
-
-<section id="lifetime" aria-labelledby="lifetime-title">
-<h2 id="lifetime-title">2. 存储与生命周期</h2>
-<div class="note-lesson" id="scope-storage-lifetime">
-<span id="q08" class="note-anchor" aria-hidden="true"></span><h3>2.1 作用域、存储期与生命周期</h3>
-<p><strong>作用域</strong>规定名字在源码中的可见范围；<strong>存储期</strong>规定承载对象的存储保留多久；<strong>生命周期</strong>规定对象何时建立与销毁。保存一个地址不会自动延长目标对象的生命周期。</p>
-<div class="note-table-wrap" role="region" aria-label="存储期" tabindex="0"><table><caption>存储期</caption><thead><tr><th scope="col">种类</th><th scope="col">典型对象</th><th scope="col">管理方式</th></tr></thead><tbody><tr><td>自动存储期</td><td>普通局部对象</td><td>离开相应作用域时自动销毁。</td></tr><tr><td>静态存储期</td><td>全局变量、static 变量</td><td>存储贯穿程序执行；初始化时机取决于具体规则。</td></tr><tr><td>线程存储期</td><td>thread_local 对象</td><td>每线程独立实例，存储与线程相联系。</td></tr><tr><td>动态存储期</td><td>new 创建的对象</td><td>由 delete 或资源拥有者安排清理。</td></tr></tbody></table></div>
-<p><strong>栈与堆</strong>是常见存储实现：栈用于维护函数调用及部分局部数据；堆用于动态分配。分配器负责取得和归还存储。局部 vector 对象通常具有自动存储期，它的元素则由分配器动态保存；局部变量也可能放在寄存器中或被优化消除。</p>
-</div>
-
-<div class="note-lesson" id="q09">
-<h3>2.2 new、delete 与原始存储</h3>
-<p><strong>new 表达式：</strong>取得合适存储 → 初始化对象 → 返回指针。<strong>delete 表达式：</strong>销毁对象 → 释放存储。operator new 主要负责分配，不能与完整 new 表达式混为一谈。</p>
-<div class="note-table-wrap" role="region" aria-label="分配与释放配对" tabindex="0"><table><caption>分配与释放配对</caption><thead><tr><th scope="col">取得方式</th><th scope="col">释放方式</th><th scope="col">是否调用类的构造 / 析构</th></tr></thead><tbody><tr><td><code>new T</code></td><td><code>delete p</code></td><td>是</td></tr><tr><td><code>new T[n]</code></td><td><code>delete[] p</code></td><td>是，针对数组元素</td></tr><tr><td><code>malloc</code></td><td><code>free</code></td><td>否，只管理原始存储</td></tr></tbody></table></div>
-<p><strong>失败处理：</strong>普通 new 分配失败时通常抛出 <code>std::bad_alloc</code> 异常；malloc 和 <code>new (std::nothrow)</code> 的分配失败返回空指针。若已分配存储但对象构造失败，通常调用匹配的释放函数归还存储。</p>
-<p><strong>placement new</strong> 用 <code>new (buffer) T(args)</code> 在已有字节空间中构造对象，不再另找存储。调用者须保证大小和对齐，并分别安排对象析构与存储归还。普通 delete/free 可接受空指针，但不能重复释放，也不会把其他指针副本自动清空。</p>
-</div>
-
-<div class="note-lesson" id="q10">
-<h3>2.3 悬垂引用与非拥有型视图</h3>
-<p><strong>悬垂</strong>是访问句柄仍存在，而目标对象已失效。常见来源：返回局部对象引用、释放后继续用旧指针、容器重分配后使用旧引用。</p>
-<p><strong>string_view</strong>用起点和长度描述字符范围，不复制、不拥有字符。<code>std::string_view v = std::string("abc");</code> 中的临时 string 在语句结束后销毁，v 随即悬垂。</p>
-<p><strong>临时对象</strong>通常在创建它的完整表达式结束时销毁，例如上一例的分号处。直接写 <code>const std::string&amp; r = std::string("abc");</code> 可将该临时对象的生命期延长到 r 的生命期；这个效果不能靠后续引用继续传递，也不适用于返回局部对象引用。</p>
-<details class="note-example-details"><summary>代码示例：string 与 string_view 的拥有关系</summary>
-<figure class="note-example">
-    <figcaption>拥有者先存在，视图才有可用的字符范围</figcaption>
-    <pre tabindex="0" aria-label="拥有者先存在，视图才有可用的字符范围"><code class="language-cpp" data-example="view">#include &lt;iostream&gt;
-#include &lt;string&gt;
-#include &lt;string_view&gt;
-
-int main() {
-    std::string owner = &quot;hello&quot;;
-    std::string_view view = owner;
-    std::cout &lt;&lt; view.substr(0, 2) &lt;&lt; '\n';
-    // 后续若 owner 销毁或重新分配，旧 view 可能失效。
-}</code></pre>
-    <p class="note-example-result">运行结果：</p>
-    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>he</code></pre>
-</figure>
-</details><details class="note-review-question" id="review-02"><summary>经典问题：为什么返回一个指向局部 string 的 string_view 会出错？</summary>
-<p>局部 string 返回前被销毁，string_view 不拥有字符，之后访问其中字符已不合法。应返回拥有数据的 string，或保证底层拥有者覆盖视图的全部使用期。</p>
-</details>
-</div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a> · <a href="https://eel.is/c++draft/basic.life" target="_blank" rel="noreferrer">对象生命周期</a> · <a href="https://eel.is/c++draft/expr.new" target="_blank" rel="noreferrer">new 表达式</a> · <a href="https://eel.is/c++draft/expr.delete" target="_blank" rel="noreferrer">delete 表达式</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-raii" target="_blank" rel="noreferrer">RAII 建议</a>。</p>
-</section>
-
 <section id="objects" aria-labelledby="objects-title">
-<h2 id="objects-title">3. 类与对象模型</h2>
+<h3 id="objects-title">2. 类与对象模型</h3>
 <div class="note-lesson" id="class-foundation">
-<h3>3.1 类、封装与 this</h3>
+<h4>2.1 类、封装与 this</h4>
 <p><strong>类</strong>是用户定义的类型，把数据成员和成员函数组织在一起。<strong>封装</strong>通过访问控制维护对象必须满足的条件（不变量），例如余额不得为负。</p>
 <p>public 允许外部访问；private 限制为本类及友元访问；protected 还允许派生类按规则访问。<strong>友元</strong>是用 friend 授予访问权限的指定函数或类。struct 默认 public，class 默认 private，默认继承访问也有这个差别。</p>
 <ul><li><strong>非静态成员与 this：</strong>每个对象有自己的数据成员；this 是成员函数内指向当前调用对象的指针，<code>this-&gt;x</code> 访问该对象的 x。</li><li><strong>static 成员：</strong>数据成员由同一类共享；成员函数没有 this，不能直接访问某个对象的非静态成员。</li><li><strong>构造函数：</strong>与类同名、无返回类型，在对象建立时初始化状态；冒号后的初始化列表指定基类和成员怎样初始化。</li><li><strong>析构函数：</strong>写作 <code>~T()</code>，在对象销毁时执行清理。</li></ul>
@@ -291,7 +358,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="inheritance-foundation">
-<h3>3.2 继承与基类子对象</h3>
+<h4>2.2 继承与基类子对象</h4>
 <p><strong>继承</strong>让派生类在基类基础上扩展。派生对象内包含基类那一部分状态，称为<strong>基类子对象</strong>。公开继承表示可按基类接口使用派生对象；基类可访问且无歧义时，派生类指针/引用可转换为基类指针/引用。<strong>组合</strong>则把另一个类型的对象作为成员，表达“包含”关系。</p>
 <p><strong>静态类型</strong>是编译时看到的类型，<strong>动态类型</strong>是实际完整对象的类型。<code>Base&amp; ref = derived;</code> 中，ref 的静态接口是 Base，实际对象可以是 Derived。非虚成员按静态类型选择；要让同一接口随实际类型选择实现，需要后面的虚函数机制。</p>
 <p><strong>虚继承</strong>用于共享基类子对象。例如 B、C 都继承 A，D 又继承 B、C，形成菱形；若 B、C 都用 virtual 继承 A，D 中只有一份共享的 A，称为虚基类子对象，由最派生类 D 初始化。</p>
@@ -323,7 +390,7 @@ default</code></pre>
 </div>
 
 <div class="note-lesson" id="q13">
-<h3>3.3 构造与析构顺序</h3>
+<h4>2.3 构造与析构顺序</h4>
 <p><strong>构造顺序：</strong>虚基类（由最派生类初始化）→ 直接非虚基类（声明顺序）→ 非静态成员（声明顺序）→ 构造函数体。初始化列表的书写顺序不改变这一规则。</p>
 <p><strong>正常析构：</strong>先执行当前类析构函数体，再逆序销毁成员和基类。构造失败时，完整对象的析构不会执行，但已构造的成员和基类会清理。</p>
 <p><strong>初始化与赋值：</strong>引用、const 标量及无可用默认构造的成员，须在进入构造函数体前得到合适初始化。函数体中的赋值不能替代这一步。</p>
@@ -355,36 +422,8 @@ body
 </details>
 </div>
 
-<div class="note-lesson" id="q14">
-<h3>3.4 拷贝语义与特殊成员函数</h3>
-<p><strong>特殊成员函数</strong>包括默认构造、析构、拷贝构造/赋值和移动构造/赋值。编译器按规则自动提供部分操作；<code>= default</code> 请求默认实现，<code>= delete</code> 明确禁用操作。移动表示转交资源，详见第 5 节。</p>
-<div class="note-table-wrap" role="region" aria-label="复制操作" tabindex="0"><table><caption>复制操作</caption><thead><tr><th scope="col">概念</th><th scope="col">含义</th></tr></thead><tbody><tr><td>拷贝构造</td><td>用已有对象建立新对象，例如 <code>T b = a;</code>。</td></tr><tr><td>拷贝赋值</td><td>替换已有对象状态，例如 <code>b = a;</code>，还须处理旧资源与自赋值。</td></tr><tr><td>浅拷贝</td><td>复制成员值；裸指针只复制地址，多个对象可能指向同一资源。</td></tr><tr><td>深拷贝</td><td>建立独立资源副本，修改一份不影响另一份。</td></tr></tbody></table></div>
-<p><strong>资源所有权（谁负责释放）决定复制策略。</strong>独占裸资源的类若保留默认地址拷贝，可能重复释放；交给 vector 等成员管理时，可复用成员的复制行为。</p>
-<p><strong>Rule of Zero</strong> 建议把资源交给成员管理，避免自己编写清理和复制逻辑。<strong>Rule of Three/Five</strong> 提醒手工管理资源时配套考虑析构、拷贝构造/赋值，以及移动构造/赋值。自行声明析构函数会阻止隐式生成移动构造和移动赋值。</p>
-<details class="note-example-details"><summary>代码示例：vector 成员的独立复制</summary>
-<figure class="note-example">
-    <figcaption>让标准库成员管理资源，就可以使用默认拷贝与析构</figcaption>
-    <pre tabindex="0" aria-label="让标准库成员管理资源，就可以使用默认拷贝与析构"><code class="language-cpp" data-example="rule-zero">#include &lt;iostream&gt;
-#include &lt;vector&gt;
-
-struct Buffer {
-    std::vector&lt;int&gt; data;
-};
-
-int main() {
-    Buffer a{{1, 2}};
-    Buffer b = a;
-    b.data[0] = 9;
-    std::cout &lt;&lt; a.data[0] &lt;&lt; ' ' &lt;&lt; b.data[0] &lt;&lt; '\n';
-}</code></pre>
-    <p class="note-example-result">运行结果：</p>
-    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>1 9</code></pre>
-</figure>
-</details>
-</div>
-
 <div class="note-lesson" id="q15">
-<h3>3.5 虚函数与动态绑定</h3>
+<h4>2.4 虚函数与动态绑定</h4>
 <p><strong>虚函数</strong>用 virtual 声明，允许派生类为同一接口提供新实现，这称为<strong>覆盖</strong>。通过基类指针或引用调用时，按实际对象类型选择相应实现，称为<strong>动态绑定</strong>；同一接口呈现不同行为，就是这里的运行时多态。覆盖函数即使不再写 virtual，仍然是虚函数。</p>
 
 <pre class="note-snippet" tabindex="0"><code>struct Base {
@@ -401,10 +440,11 @@ ref.Base::name();  // &quot;Base&quot;：显式限定，抑制虚分派</code></
 <p><strong>常见实现机制：</strong>虚表（vtable）保存虚函数入口等分派信息；对象中的虚指针（vptr）指向适用虚表。一次典型虚调用的过程是：</p>
 <ol class="note-mechanism"><li>编译期根据静态接口确定要调用的虚函数。</li><li>运行时从目标对象取得适用的虚表信息。</li><li>找到该虚函数对应的入口，以正确的对象地址调用覆盖实现。</li></ol>
 <p>同类完整对象通常共享适用的虚表；多继承可能需要多个虚指针和 this 地址调整。<strong>ABI</strong> 是对象布局、传参等二进制接口约定，虚表细节依 ABI 而定。标准规定调用结果，不强制虚表布局；编译器能确定目标时可省掉查表，直接调用，称为去虚拟化。</p>
+<p>先掌握这里的调用规则；读完对象布局后，可继续看<a href="#vtable-layout">具体虚表表项与多继承调用示意</a>。</p>
 <p><strong>override</strong> 让编译器检查是否真的覆盖了基类虚函数，例如漏写成员函数末尾的 const 会导致不匹配。<strong>final</strong> 禁止该虚函数继续被覆盖，也可放在类上禁止继续派生。</p>
 <p><strong>纯虚函数</strong>写作 <code>virtual void f() = 0;</code>，表示留待具体派生类实现的接口。仍有纯虚函数没有得到具体覆盖实现的类是<strong>抽象类</strong>，不能直接创建对象；<code>= 0</code> 不是把函数地址设为空。</p>
 <details class="note-deep-dive"><summary>覆盖的匹配规则与默认实参</summary>
-<p>函数参数以及末尾的 const/volatile、引用限定须匹配。引用限定写在成员函数末尾，用 &amp; 或 &amp;&amp; 限制调用对象的值类别，见第 5 节。返回类型通常相同，也允许符合条件的类指针或引用由基类类型变为派生类型，称为协变返回；对象值或智能指针不适用。</p>
+<p>函数参数以及末尾的 const/volatile、引用限定须匹配。引用限定写在成员函数末尾，用 &amp; 或 &amp;&amp; 限制调用对象的值类别，见<a href="#q22">值类别与引用</a>。返回类型通常相同，也允许符合条件的类指针或引用由基类类型变为派生类型，称为协变返回；对象值或智能指针不适用。</p>
 <p>默认实参在编译时按静态声明补齐，函数实现才参与动态分派。因此经 Base* 调用时，即使执行 Derived 的实现，省略的参数也取自 Base 的声明。</p>
 </details>
 <p class="note-source">参考：<a href="https://eel.is/c++draft/class.virtual" target="_blank" rel="noreferrer">虚函数规则</a>、<a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vtable" target="_blank" rel="noreferrer">Itanium C++ ABI</a>。</p>
@@ -445,7 +485,8 @@ default</code></pre>
 </div>
 
 <div class="note-lesson" id="q16">
-<h3>3.6 虚析构与构造析构期间的虚调用</h3>
+<span id="virtual-destruction" class="note-anchor" aria-hidden="true"></span>
+<h4>2.5 虚析构与构造析构期间的虚调用</h4>
 <p><strong>经基类指针删除派生对象：</strong>在本文 C++17 范围内，基类析构必须为虚函数，否则行为未定义。允许这种销毁方式的接口通常使用 public 虚析构；禁止这种方式时，可用 protected 非虚析构。</p>
 <p>构造/析构期间的虚调用只分派到当前正在构造/析构的类层次，不进入尚未构造或已经销毁的派生部分。构造函数本身不能声明为 virtual。纯虚析构仍须提供函数体，因为销毁派生对象时仍会执行基类析构。</p>
 <details class="note-example-details"><summary>代码示例：不同生命周期阶段的分派与销毁</summary>
@@ -479,7 +520,7 @@ Derived
 </div>
 
 <div class="note-lesson" id="member-call-validity">
-<h3>3.7 重载、隐藏与成员调用</h3>
+<h4>2.6 重载、隐藏与成员调用</h4>
 <div class="note-table-wrap" role="region" aria-label="同名函数的不同关系" tabindex="0"><table><caption>同名函数的不同关系</caption><thead><tr><th scope="col">概念</th><th scope="col">发生的事情</th></tr></thead><tbody><tr><td>重载</td><td>同名函数通过不同参数列表区分，调用时选择匹配版本；普通函数不能仅凭返回值区分重载。</td></tr><tr><td>覆盖</td><td>派生类提供匹配的基类虚函数实现，参与动态分派。</td></tr><tr><td>隐藏</td><td>派生类同名声明可能遮住基类的一组重载；可用 <code>using Base::f;</code> 引入。</td></tr></tbody></table></div>
 <p><strong>空指针调用：</strong>非静态成员调用要求有效目标对象，即使函数体不读取字段也不能据此认为空指针调用合法。静态成员不需要 this，宜直接写 <code>Type::function()</code>。</p>
 <details class="note-review-question" id="review-null-member"><summary>经典问题：非静态成员函数不读取字段，能否通过空指针调用？</summary>
@@ -488,13 +529,13 @@ Derived
 </div>
 
 <div class="note-lesson" id="q17">
-<h3>3.8 对象切片</h3>
+<h4>2.7 对象切片</h4>
 <p><strong>对象切片：</strong><code>Derived d; Base b = d;</code> 只复制基类部分，b 是独立的 Base 对象。需要保留多态行为时，使用引用或合适的指针，不能按值放入 <code>vector&lt;Base&gt;</code>。</p>
 
 </div>
 
 <div class="note-lesson" id="q12">
-<h3>3.9 对象布局、对齐与 sizeof</h3>
+<h4>2.8 对象布局、对齐与 sizeof</h4>
 <p><strong>对齐</strong>要求对象起始地址满足特定倍数，例如 <code>alignof(int) == 4</code> 时地址须是 4 的倍数。编译器在成员间插入填充以满足各自对齐，并在尾部补齐，使数组中下一个对象也正确对齐。<code>offsetof(S, i)</code> 查询成员 i 相对 S 起点的字节偏移，须用于符合布局要求的类型。</p>
 <p>例如在 char 大小/对齐为 1、int 为 4、short 为 2 字节且采用默认布局的常见 ABI 下，<code>struct S { char c; int i; short s; };</code> 常见成员偏移为 0、4、8，总大小为 12。具体结果须结合类型布局和 ABI，用 sizeof、alignof，以及适用类型的 offsetof 验证。</p>
 <p><strong>注意：</strong>sizeof 通常不求值其表达式操作数；string/vector 的对象大小不包含其全部动态存储。调整成员顺序可能减少填充，但会改变 ABI；压紧布局（packing）限制成员对齐以减少填充，也可能带来未对齐访问和性能问题。</p>
@@ -527,24 +568,192 @@ int main() {
 <p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/gcc/Structure-Layout-Pragmas.html" target="_blank" rel="noreferrer">GCC packing 扩展</a>。</p>
 </div>
 
+<div class="note-lesson" id="vtable-layout">
+<h4>2.9 虚表布局与多继承调用</h4>
+<p>下面采用<strong>遵循 Itanium C++ ABI 的常见 x86-64 布局</strong>，假设启用 RTTI、没有虚继承；这不是所有编译器通用的内存格式。RTTI 是运行时类型信息，供 dynamic_cast 等机制识别实际类型。示意省略普通数据成员与填充，表中的位置相对于虚指针指向的<strong>地址点（address point）</strong>。</p>
+<p><strong>单继承：</strong>源码中的 Base 先声明虚函数 f，再声明虚析构；Derived 覆盖 f。一个构造完成的 Derived 对象，其 Base 部分使用指向 Derived 虚表的 vptr：</p>
+<pre tabindex="0" aria-label="单继承虚表结构示意"><code class="language-text">Derived 对象
+  Base 部分的 vptr ───────────┐
+                             │   Derived 的虚表
+                             │   [-2] offset-to-top = 0
+                             │   [-1] typeinfo for Derived
+                             └─→ [ 0] Derived::f
+                                 [ 1] Derived 完整对象析构入口
+                                 [ 2] Derived 删除析构入口</code></pre>
+<p><strong>读表要点：</strong>vptr 指向地址点，不一定指向整张表开头；offset-to-top 表示从当前基类部分回到完整对象的位移。该 ABI 将虚析构分成“销毁完整对象”和“销毁后再释放存储”两个入口，并不表示执行两次析构。覆盖替换对应入口，新增虚函数可增加表项。</p>
+<p><strong>多继承：</strong>源码中 Joined 同时继承 Left 和 Right，并覆盖 left、right。以下以 Left 为主基类、Right 位于正偏移 d 的布局为例；两个入口最终访问同一个 Joined 对象。</p>
+<pre tabindex="0" aria-label="多继承对象与两组虚表示意"><code class="language-text">Joined 对象
+  +0  Left 部分  [vptr] ─→ 主虚表地址点
+  +d  Right 部分 [vptr] ─→ 次虚表地址点
+
+主虚表：offset-to-top = 0，typeinfo = Joined
+次虚表：offset-to-top = -d，typeinfo = Joined
+
+Right* p = &amp;joined;     // 指向 +d 处的 Right 部分
+p-&gt;right()
+  → 次虚表中的 right 入口
+  → thunk：把 this 从 Right* 调整回 Joined*
+  → Joined::right()</code></pre>
+<p><strong>thunk</strong> 是调整参数后再跳转到实现的短入口。固定偏移取决于实际布局；虚继承还可能使用额外的虚基类偏移和虚调用偏移，不能直接套用上图。构造/析构期间也不能假定始终使用最终派生类的虚表，调用规则见<a href="#virtual-destruction">虚析构与生命周期阶段</a>。</p>
+<p><a href="vtable-layout.cpp" download>下载源码（vtable-layout.cpp）</a>。程序用正常虚调用和断言验证单继承、多继承的分派，不通过强制转换读取虚表。GCC 可用 <code>g++ -std=c++17 -fdump-lang-class -c vtable-layout.cpp</code> 生成类布局报告，对照 Base、Derived、Left、Right、Joined 的表项；报告格式和偏移以目标编译器为准。</p>
+<details class="note-example-details"><summary>完整示例：两种基类接口访问同一个派生对象</summary>
+<pre tabindex="0"><code class="language-cpp" data-source="vtable-layout.cpp">#include &lt;cassert&gt;
+#include &lt;iostream&gt;
+
+struct Base {
+    virtual int f() const { return 1; }
+    virtual ~Base() = default;
+};
+
+struct Derived : Base {
+    int f() const override { return 2; }
+};
+
+struct Left {
+    virtual int left() const { return 1; }
+    virtual ~Left() = default;
+};
+
+struct Right {
+    virtual int right() const { return 2; }
+    virtual ~Right() = default;
+};
+
+struct Joined : Left, Right {
+    int left() const override { return 10; }
+    int right() const override { return 20; }
+};
+
+int main() {
+    Derived derived;
+    Base&amp; base = derived;
+    assert(base.f() == 2);
+
+    Joined joined;
+    Left* left = &amp;joined;
+    Right* right = &amp;joined;
+    assert(left-&gt;left() == 10);
+    assert(right-&gt;right() == 20);
+    // Recover the complete object through either polymorphic base.
+    // No assumptions about byte offsets or vtable representation are needed.
+    assert(dynamic_cast&lt;void*&gt;(left) == static_cast&lt;void*&gt;(&amp;joined));
+    assert(dynamic_cast&lt;void*&gt;(right) == static_cast&lt;void*&gt;(&amp;joined));
+    assert(dynamic_cast&lt;Left*&gt;(right) == left);
+
+    std::cout &lt;&lt; base.f() &lt;&lt; &#x27;\n&#x27;;
+    std::cout &lt;&lt; left-&gt;left() &lt;&lt; &#x27; &#x27; &lt;&lt; right-&gt;right() &lt;&lt; &#x27;\n&#x27;;
+}</code></pre>
+</details>
+<details class="note-review-question"><summary>经典问题：一个含虚函数的对象，一定只有一个虚指针吗？</summary>
+<p>不能这样断言。常见多继承布局中，不同多态基类部分可有各自的虚指针；经不同基类调用还可能需要调整 this。说明具体 ABI 与继承结构后，再讨论对象大小和虚表数量。</p>
+</details>
+<p class="note-source">参考：<a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vtable" target="_blank" rel="noreferrer">Itanium C++ ABI：虚表布局</a> · <a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vcall" target="_blank" rel="noreferrer">虚调用与调整入口</a> · <a href="https://gcc.gnu.org/onlinedocs/gcc/Developer-Options.html" target="_blank" rel="noreferrer">GCC 布局转储选项</a>。</p>
+</div>
+
 <div class="note-lesson" id="q07">
-<h3>3.10 类型转换、explicit 与 nullptr</h3>
+<h4>2.10 类型转换、explicit 与 nullptr</h4>
 <p><strong>类型转换</strong>改变值的表示或访问对象的类型。编译器自动完成的转换称为隐式转换；程序员用 cast 等写出的称为显式转换。继承层次中，派生转基类叫向上转型，基类转派生叫向下转型。</p>
 <div class="note-table-wrap" role="region" aria-label="显式转换" tabindex="0"><table><caption>显式转换</caption><thead><tr><th scope="col">操作</th><th scope="col">用途与限制</th></tr></thead><tbody><tr><td><code>static_cast</code></td><td>常规类型转换、向上转型等；向下转型不做运行时类型检查。</td></tr><tr><td><code>dynamic_cast</code></td><td>多态层次的运行时检查；常见向下/交叉转换需要多态源类型。指针失败返回空，引用失败抛 bad_cast。</td></tr><tr><td><code>const_cast</code></td><td>调整 const/volatile 限定；不使原本 const 的对象变得可写。</td></tr><tr><td><code>reinterpret_cast</code></td><td>低层次表示/指针转换；不自动保证后续访问符合对齐、类型与生命周期规则。</td></tr></tbody></table></div>
 <p>含有或继承虚函数的类是<strong>多态类型</strong>。dynamic_cast 利用运行时类型信息（RTTI）检查转换是否符合实际对象的继承关系；交叉转换是在同一完整对象的不同基类部分之间转换。</p>
 <p><strong>explicit</strong> 限制某些隐式转换：<code>explicit T(int)</code> 允许 <code>T t(3)</code>，阻止 <code>T t = 3</code>。<strong>nullptr</strong> 是专用空指针值；在 <code>f(int)</code> 与 <code>f(int*)</code> 重载中，<code>f(0)</code> 选整数版本，<code>f(nullptr)</code> 选指针版本。</p>
 </div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/class.base.init" target="_blank" rel="noreferrer">构造顺序</a> · <a href="https://eel.is/c++draft/class.copy.ctor" target="_blank" rel="noreferrer">拷贝与移动构造</a> · <a href="https://eel.is/c++draft/class.virtual" target="_blank" rel="noreferrer">虚函数</a> · <a href="https://eel.is/c++draft/class.cdtor" target="_blank" rel="noreferrer">构造/析构期间的虚调用</a> · <a href="https://eel.is/c++draft/class.pre" target="_blank" rel="noreferrer">类</a> · <a href="https://eel.is/c++draft/class.derived" target="_blank" rel="noreferrer">继承</a> · <a href="https://eel.is/c++draft/class.abstract" target="_blank" rel="noreferrer">抽象类</a> · <a href="https://eel.is/c++draft/expr.cast" target="_blank" rel="noreferrer">显式转换</a> · <a href="https://eel.is/c++draft/basic.align" target="_blank" rel="noreferrer">内存对齐</a>。</p>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/class.base.init" target="_blank" rel="noreferrer">构造顺序</a> · <a href="https://eel.is/c++draft/class.virtual" target="_blank" rel="noreferrer">虚函数</a> · <a href="https://eel.is/c++draft/class.cdtor" target="_blank" rel="noreferrer">构造/析构期间的虚调用</a> · <a href="https://eel.is/c++draft/class.pre" target="_blank" rel="noreferrer">类</a> · <a href="https://eel.is/c++draft/class.derived" target="_blank" rel="noreferrer">继承</a> · <a href="https://eel.is/c++draft/class.abstract" target="_blank" rel="noreferrer">抽象类</a> · <a href="https://eel.is/c++draft/expr.cast" target="_blank" rel="noreferrer">显式转换</a> · <a href="https://eel.is/c++draft/basic.align" target="_blank" rel="noreferrer">内存对齐</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [class.virtual]（虚函数）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
 </section>
 
+<section class="note-part" id="lifetime-and-resources" aria-labelledby="lifetime-and-resources-title">
+<h2 id="lifetime-and-resources-title">二、生命周期、资源管理与拷贝移动</h2>
+<p>先区分存储、对象和借用，再明确释放责任，最后讨论复制或转交资源时的行为。</p>
+<section id="lifetime" aria-labelledby="lifetime-title">
+<h3 id="lifetime-title">3. 存储与生命周期</h3>
+<div class="note-lesson" id="scope-storage-lifetime">
+<span id="q08" class="note-anchor" aria-hidden="true"></span><h4>3.1 作用域、存储期与生命周期</h4>
+<p><strong>作用域</strong>规定名字在源码中的可见范围；<strong>存储期</strong>规定承载对象的存储保留多久；<strong>生命周期</strong>规定对象何时建立与销毁。保存一个地址不会自动延长目标对象的生命周期。</p>
+<div class="note-table-wrap" role="region" aria-label="存储期" tabindex="0"><table><caption>存储期</caption><thead><tr><th scope="col">种类</th><th scope="col">典型对象</th><th scope="col">管理方式</th></tr></thead><tbody><tr><td>自动存储期</td><td>普通局部对象</td><td>离开相应作用域时自动销毁。</td></tr><tr><td>静态存储期</td><td>全局变量、static 变量</td><td>存储贯穿程序执行；初始化时机取决于具体规则。</td></tr><tr><td>线程存储期</td><td>thread_local 对象</td><td>每线程独立实例，存储与线程相联系。</td></tr><tr><td>动态存储期</td><td>new 创建的对象</td><td>由 delete 或资源拥有者安排清理。</td></tr></tbody></table></div>
+<p><strong>栈与堆</strong>是常见存储实现：栈用于维护函数调用及部分局部数据；堆用于动态分配。分配器负责取得和归还存储。局部 vector 对象通常具有自动存储期，它的元素则由分配器动态保存；局部变量也可能放在寄存器中或被优化消除。</p>
+</div>
+
+<div class="note-lesson" id="q09">
+<h4>3.2 new、delete 与原始存储</h4>
+<p><strong>new 表达式：</strong>取得合适存储 → 初始化对象 → 返回指针。<strong>delete 表达式：</strong>销毁对象 → 释放存储。operator new 主要负责分配，不能与完整 new 表达式混为一谈。</p>
+<div class="note-table-wrap" role="region" aria-label="分配与释放配对" tabindex="0"><table><caption>分配与释放配对</caption><thead><tr><th scope="col">取得方式</th><th scope="col">释放方式</th><th scope="col">是否调用类的构造 / 析构</th></tr></thead><tbody><tr><td><code>new T</code></td><td><code>delete p</code></td><td>是</td></tr><tr><td><code>new T[n]</code></td><td><code>delete[] p</code></td><td>是，针对数组元素</td></tr><tr><td><code>malloc</code></td><td><code>free</code></td><td>否，只管理原始存储</td></tr></tbody></table></div>
+<p><strong>失败处理：</strong>普通 new 分配失败时通常抛出 <code>std::bad_alloc</code> 异常；malloc 和 <code>new (std::nothrow)</code> 的分配失败返回空指针。若已分配存储但对象构造失败，通常调用匹配的释放函数归还存储。</p>
+<p><strong>placement new</strong> 用 <code>new (buffer) T(args)</code> 在已有字节空间中构造对象，不再另找存储。调用者须保证大小和对齐，并分别安排对象析构与存储归还。普通 delete/free 可接受空指针，但不能重复释放，也不会把其他指针副本自动清空。</p>
+</div>
+
+<div class="note-lesson" id="pointer-states">
+<h4>3.3 空指针、野指针与悬垂指针</h4>
+<p>判断指针能否使用，要分别确认它是否初始化、是否指向目标，以及目标是否仍然有效。“野指针”是工程中的俗称，使用范围并不统一；这里用它特指未初始化或没有建立合法指向的指针，并把目标失效后的指针单独称为<strong>悬垂指针（悬空指针）</strong>。</p>
+<div class="note-table-wrap" role="region" aria-label="三种指针状态" tabindex="0"><table><caption>三种指针状态</caption><thead><tr><th scope="col">状态</th><th scope="col">产生方式</th><th scope="col">使用边界与处理</th></tr></thead><tbody>
+<tr><th scope="row">空指针</th><td><code>int* p = nullptr;</code>，明确表示没有目标。</td><td>可判空、赋值；不能解引用。初始化为空让“尚无目标”成为明确状态。</td></tr>
+<tr><th scope="row">野指针</th><td>函数内普通局部变量 <code>int* p;</code> 未初始化，或从无效地址构造指针。</td><td>C++17 下，读取这种未初始化指针的值就可能已是 UB，不能先用 <code>if (p)</code> 验证。先初始化或建立合法指向。</td></tr>
+<tr><th scope="row">悬垂指针 / 引用</th><td>曾指向有效对象，随后对象离开作用域、被释放，或因容器操作失效。</td><td>不能继续访问原目标；借用期须受拥有者生命周期和容器操作约束。</td></tr>
+</tbody></table></div>
+<p><strong>判空不等于验证生命周期。</strong>释放对象不会自动清空各处保存的地址；把一个指针设为 nullptr，也不会修改其他指针副本。不要通过读取或比较已经失效的指针来证明对象仍存在。</p>
+<details class="note-example-details"><summary>代码示例：清空拥有者不会清空借用指针</summary>
+<figure class="note-example">
+<figcaption>只执行有效访问；未初始化读取与释放后使用保留为注释</figcaption>
+<pre tabindex="0" aria-label="指针初始化与借用失效"><code class="language-cpp" data-example="pointer-states">#include &lt;iostream&gt;
+
+int main() {
+    // int* wild;
+    // if (wild) {}       // 错误：先读取了未初始化的指针。
+    int* owner = new int(7);
+    int* borrowed = owner;
+    std::cout &lt;&lt; *borrowed &lt;&lt; '\n';
+    delete owner;
+    owner = nullptr;     // 只修改 owner；borrowed 已悬垂。
+    // *borrowed = 9;    // 错误：释放后使用，不执行。
+    borrowed = nullptr;  // 覆盖旧值，不读取已失效的地址。
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>7</code></pre>
+</figure>
+</details>
+<p>实际资源管理优先使用下一章的<a href="#ownership">RAII 与智能指针</a>；它们管理释放责任，但借用指针仍可能悬垂。容器导致的失效统一见<a href="#container-invalidation">容器失效规则</a>。</p>
+<details class="note-review-question"><summary>经典问题：delete 后设为 nullptr，为什么仍可能发生释放后使用？</summary>
+<p>其他别名可能仍保存旧地址。置空只更新当前变量；修复还需让所有借用在对象销毁前结束，或通过仍有效的拥有者重新取得访问入口。</p>
+</details>
+<p class="note-source">参考：<a href="https://timsong-cpp.github.io/cppwp/n4659/dcl.init#12" target="_blank" rel="noreferrer">C++17：未初始化值</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/basic.stc#4" target="_blank" rel="noreferrer">C++17：存储结束后的指针使用</a>。</p>
+</div>
+
+<div class="note-lesson" id="q10">
+<h4>3.4 悬垂引用与非拥有型视图</h4>
+<p>上一节的悬垂问题同样适用于引用和视图。返回局部对象引用、释放后继续用旧指针、容器重分配后使用旧引用，都需要从目标生命周期解释。</p>
+<p><strong>string_view</strong>用起点和长度描述字符范围，不复制、不拥有字符。<code>std::string_view v = std::string("abc");</code> 中的临时 string 在语句结束后销毁，v 随即悬垂。</p>
+<p><strong>临时对象</strong>通常在创建它的完整表达式结束时销毁，例如上一例的分号处。直接写 <code>const std::string&amp; r = std::string("abc");</code> 可将该临时对象的生命期延长到 r 的生命期；这个效果不能靠后续引用继续传递，也不适用于返回局部对象引用。</p>
+<details class="note-example-details"><summary>代码示例：string 与 string_view 的拥有关系</summary>
+<figure class="note-example">
+    <figcaption>拥有者先存在，视图才有可用的字符范围</figcaption>
+    <pre tabindex="0" aria-label="拥有者先存在，视图才有可用的字符范围"><code class="language-cpp" data-example="view">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+
+int main() {
+    std::string owner = &quot;hello&quot;;
+    std::string_view view = owner;
+    std::cout &lt;&lt; view.substr(0, 2) &lt;&lt; '\n';
+    // 后续若 owner 销毁或重新分配，旧 view 可能失效。
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>he</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-02"><summary>经典问题：为什么返回一个指向局部 string 的 string_view 会出错？</summary>
+<p>局部 string 返回前被销毁，string_view 不拥有字符，之后访问其中字符已不合法。应返回拥有数据的 string，或保证底层拥有者覆盖视图的全部使用期。</p>
+</details>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a> · <a href="https://eel.is/c++draft/basic.life" target="_blank" rel="noreferrer">对象生命周期</a> · <a href="https://eel.is/c++draft/expr.new" target="_blank" rel="noreferrer">new 表达式</a> · <a href="https://eel.is/c++draft/expr.delete" target="_blank" rel="noreferrer">delete 表达式</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#rr-raii" target="_blank" rel="noreferrer">RAII 建议</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [basic.life]（对象生命周期）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
 <section id="ownership" aria-labelledby="ownership-title">
-<h2 id="ownership-title">4. 资源管理与智能指针</h2>
+<h3 id="ownership-title">4. 资源管理与智能指针</h3>
 <div class="note-lesson" id="q11">
-<span id="ownership-foundation" class="note-anchor" aria-hidden="true"></span><h3>4.1 所有权、RAII 与异常安全</h3>
+<span id="ownership-foundation" class="note-anchor" aria-hidden="true"></span><h4>4.1 所有权、RAII 与异常安全</h4>
 <p><strong>所有权</strong>说明谁负责最终释放内存、文件、锁等资源；只使用资源而不负责释放的是借用者。<strong>RAII（资源获取即初始化）</strong>把资源交给对象管理：构造时取得或接管，析构时释放，清理便随对象生命周期自动执行。</p>
 <p><strong>异常与栈展开：</strong>throw 报告异常，程序沿调用关系向外寻找匹配的 catch。在找到的 catch 执行前，沿途退出的作用域会销毁已构造的局部对象，这称为栈展开。RAII 因而能覆盖正常返回和异常退出。</p>
 <div class="note-table-wrap" role="region" aria-label="异常安全保证" tabindex="0"><table><caption>异常安全保证</caption><thead><tr><th scope="col">级别</th><th scope="col">失败后的要求</th></tr></thead><tbody><tr><td>基本保证</td><td>不泄漏资源，对象不变量成立，但值可能改变。</td></tr><tr><td>强保证</td><td>对可观察状态没有影响；可用临时对象完成后再提交。</td></tr><tr><td>无抛出保证</td><td>操作不通过异常报告失败。</td></tr></tbody></table></div>
-<p><strong>noexcept</strong> 声明函数不向调用者传出异常；违反时进入 <code>std::terminate</code> 终止处理。析构通常应保持不抛异常，尤其不能在栈展开时再次抛出。RAII 不保证程序被强制终止时仍完成清理。</p>
+<p><strong>noexcept</strong> 声明函数不向调用者传出异常；违反时进入 <code>std::terminate</code> 终止处理。析构通常应保持不抛异常，尤其不能在栈展开时再次抛出。RAII 不保证程序被强制终止时仍完成清理。调用栈如何找到清理代码，见<a href="../program-execution/index.html#unwind">异常展开机制</a>。</p>
 <details class="note-example-details"><summary>代码示例：异常传播时的自动清理</summary>
 <figure class="note-example">
     <figcaption>向外层 catch 传播异常时，已构造的局部对象先析构</figcaption>
@@ -573,7 +782,7 @@ caught</code></pre>
 </div>
 
 <div class="note-lesson" id="q18">
-<h3>4.2 unique_ptr：独占所有权</h3>
+<h4>4.2 unique_ptr：独占所有权</h4>
 <p><strong>unique_ptr</strong> 表达独占所有权：同一份释放责任只交给一个管理者。它保存指针与删除方式，析构时清理；禁止拷贝，允许用移动转交责任，移动后源指针为空。<code>make_unique&lt;T&gt;(args)</code> 构造 T 并返回管理它的 unique_ptr。</p>
 <div class="note-table-wrap" role="region" aria-label="常用操作" tabindex="0"><table><caption>常用操作</caption><thead><tr><th scope="col">接口</th><th scope="col">效果</th></tr></thead><tbody><tr><td><code>get()</code></td><td>返回借用指针，不转移所有权。</td></tr><tr><td><code>release()</code></td><td>放弃所有权并返回指针，不释放资源；接收方负责后续清理。</td></tr><tr><td><code>reset()</code></td><td>释放当前资源并清空；传入新指针时接管新资源。</td></tr></tbody></table></div>
 <p><strong>接口语义：</strong>按值接收 unique_ptr 通常表示接管；只使用目标对象时可传 <code>T&amp;</code> 或 <code>const T&amp;</code>。自定义删除器可管理其他资源，也可能影响 unique_ptr 的大小。</p>
@@ -600,7 +809,8 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q19">
-<h3>4.3 shared_ptr：共享所有权</h3>
+<span id="shared-ownership" class="note-anchor" aria-hidden="true"></span>
+<h4>4.3 shared_ptr：共享所有权</h4>
 <p><strong>shared_ptr</strong> 允许多个管理者共同拥有一个对象。它们关联一份<strong>控制块</strong>，记录强拥有者数量和删除方式：拷贝增加计数，移动转交已有计数，销毁或 reset 减少计数；强计数降到 0 才销毁目标。复制管理者不复制目标对象。</p>
 <p><strong>控制块不一定与对象同时释放。</strong>weak_ptr 是不增加强计数的观察者，仍有它存在时，目标虽已销毁，控制块还需保留。<code>make_shared&lt;T&gt;(args)</code> 创建对象及共享管理关系，通常合并分配以减少开销；这块存储可能等到弱观察者也消失才归还。</p>
 <p><strong>重复接管：</strong>从同一裸指针独立构造两个 shared_ptr 会产生两份控制块，可能重复释放。需要共享时应复制已有 shared_ptr。</p>
@@ -641,7 +851,7 @@ done</code></pre>
 </div>
 
 <div class="note-lesson" id="q20">
-<h3>4.4 weak_ptr 与循环引用</h3>
+<h4>4.4 weak_ptr 与循环引用</h4>
 <p><strong>weak_ptr</strong>观察共享所有权组，不增加强引用计数。lock 尝试取得临时 shared_ptr；目标已销毁时返回空。expired 只观察某一时刻的状态，实际使用应检查 lock 的结果。</p>
 <p><strong>循环引用：</strong>A 通过 shared_ptr 拥有 B，B 又强拥有 A，外部指针消失后两者强计数仍非零。把仅用于观察的反向关系改为 weak_ptr，可解除强所有权环。</p>
 <details class="note-example-details"><summary>代码示例：父子对象的拥有与观察关系</summary>
@@ -680,18 +890,48 @@ true</code></pre>
 </div>
 
 <div class="note-lesson" id="leak-boundaries">
-<h3>4.5 内存泄漏与长期持有</h3>
+<h4>4.5 内存泄漏与长期持有</h4>
 <p><strong>内存泄漏</strong>是分配的存储没有在应释放时得到释放，常因丢失释放责任或强引用环；<strong>长期持有</strong>则是对象仍被缓存、任务等保存，但业务上已不需要。两者都能造成持续增长，修复方法取决于拥有关系。</p>
 <div class="note-table-wrap" role="region" aria-label="常见原因" tabindex="0"><table><caption>常见原因</caption><thead><tr><th scope="col">类型</th><th scope="col">处理方向</th></tr></thead><tbody><tr><td>丢失释放责任</td><td>用 RAII 明确拥有者，检查 release 和异常路径。</td></tr><tr><td>强引用环</td><td>调整拥有关系，观察关系使用 weak_ptr。</td></tr><tr><td>不必要的长期持有</td><td>清理回调/容器条目，设置缓存淘汰和解绑规则。</td></tr></tbody></table></div>
-<p><strong>智能指针不能判断业务上是否仍需要对象。</strong>只要拥有关系存在，资源就会保留。内存占用上涨也可能来自容量预留、缓存或分配器保留；应结合对象数量、分配来源和引用关系判断。</p>
+<p><strong>智能指针不能判断业务上是否仍需要对象。</strong>只要拥有关系存在，资源就会保留。内存占用上涨也可能来自容量预留、缓存或分配器保留；应结合对象数量、分配来源和引用关系判断。分配器为什么保留空闲块，见<a href="../native-memory-allocation/index.html#free">free 与页面归还</a>。</p>
 </div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/unique.ptr" target="_blank" rel="noreferrer">unique_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">shared_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.weak" target="_blank" rel="noreferrer">weak_ptr</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rr-raii" target="_blank" rel="noreferrer">RAII</a>。</p>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/unique.ptr" target="_blank" rel="noreferrer">unique_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">shared_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.weak" target="_blank" rel="noreferrer">weak_ptr</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#rr-raii" target="_blank" rel="noreferrer">RAII</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [unique.ptr] / [util.smartptr.shared]（智能指针）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
 </section>
-
 <section id="move" aria-labelledby="move-title">
-<h2 id="move-title">5. 值类别与移动语义</h2>
+<h3 id="move-title">5. 拷贝、值类别与移动语义</h3>
+<div class="note-lesson" id="q14">
+<span id="copy-semantics" class="note-anchor" aria-hidden="true"></span>
+<h4>5.1 拷贝语义与特殊成员函数</h4>
+<p><strong>特殊成员函数</strong>包括默认构造、析构、拷贝构造/赋值和移动构造/赋值。编译器按规则自动提供部分操作；<code>= default</code> 请求默认实现，<code>= delete</code> 明确禁用操作。移动表示转交资源，接着阅读本章的<a href="#q22">值类别</a>与<a href="#q23">std::move</a>。</p>
+<div class="note-table-wrap" role="region" aria-label="复制操作" tabindex="0"><table><caption>复制操作</caption><thead><tr><th scope="col">概念</th><th scope="col">含义</th></tr></thead><tbody><tr><td>拷贝构造</td><td>用已有对象建立新对象，例如 <code>T b = a;</code>。</td></tr><tr><td>拷贝赋值</td><td>替换已有对象状态，例如 <code>b = a;</code>，还须处理旧资源与自赋值。</td></tr><tr><td>浅拷贝</td><td>复制成员值；裸指针只复制地址，多个对象可能指向同一资源。</td></tr><tr><td>深拷贝</td><td>建立独立资源副本，修改一份不影响另一份。</td></tr></tbody></table></div>
+<p><strong>资源所有权（谁负责释放）决定复制策略。</strong>独占裸资源的类若保留默认地址拷贝，可能重复释放；交给 vector 等成员管理时，可复用成员的复制行为。</p>
+<p><strong>Rule of Zero</strong> 建议把资源交给成员管理，避免自己编写清理和复制逻辑。<strong>Rule of Three/Five</strong> 提醒手工管理资源时配套考虑析构、拷贝构造/赋值，以及移动构造/赋值。自行声明析构函数会阻止隐式生成移动构造和移动赋值。</p>
+<details class="note-example-details"><summary>代码示例：vector 成员的独立复制</summary>
+<figure class="note-example">
+    <figcaption>让标准库成员管理资源，就可以使用默认拷贝与析构</figcaption>
+    <pre tabindex="0" aria-label="让标准库成员管理资源，就可以使用默认拷贝与析构"><code class="language-cpp" data-example="rule-zero">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+struct Buffer {
+    std::vector&lt;int&gt; data;
+};
+
+int main() {
+    Buffer a{{1, 2}};
+    Buffer b = a;
+    b.data[0] = 9;
+    std::cout &lt;&lt; a.data[0] &lt;&lt; ' ' &lt;&lt; b.data[0] &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>1 9</code></pre>
+</figure>
+</details>
+</div>
+
+
 <div class="note-lesson" id="q22">
-<span id="move-foundation" class="note-anchor" aria-hidden="true"></span><h3>5.1 值类别与引用</h3>
+<span id="move-foundation" class="note-anchor" aria-hidden="true"></span><h4>5.2 值类别与引用</h4>
 <p><strong>表达式</strong>是一次求值的语法单位，例如 n、a+b、f()。它既有类型，也有<strong>值类别</strong>；后者区分是否标识对象、是否可参与资源复用，影响引用绑定与拷贝/移动选择。</p>
 <div class="note-table-wrap" role="region" aria-label="表达式的值类别" tabindex="0"><table><caption>表达式的值类别</caption><thead><tr><th scope="col">类别</th><th scope="col">常见示例</th><th scope="col">含义</th></tr></thead><tbody><tr><td>左值 lvalue</td><td>变量名表达式 <code>obj</code></td><td>标识一个对象或函数，具有可识别的身份。</td></tr><tr><td>纯右值 prvalue</td><td><code>42</code>、<code>T{}</code></td><td>用于计算值或初始化对象。</td></tr><tr><td>将亡值 xvalue</td><td><code>std::move(obj)</code></td><td>标识可参与资源复用的对象。</td></tr></tbody></table></div>
 <p>lvalue 与 xvalue 都标识对象或函数，合称<strong>泛左值 glvalue</strong>；prvalue 与 xvalue 合称<strong>右值 rvalue</strong>。类别属于表达式，不是对象永久的属性；同一对象用名字访问是左值，用 std::move 包装后可得到将亡值。</p>
@@ -723,7 +963,7 @@ C++</code></pre>
 </div>
 
 <div class="note-lesson" id="q23">
-<h3>5.2 std::move 与移动后状态</h3>
+<h4>5.3 std::move 与移动后状态</h4>
 <p><strong>std::move 是类型转换，不执行资源转移。</strong>它通常将表达式转为将亡值；是否移动取决于后续重载选择及其实现。</p>
 <pre class="note-snippet" tabindex="0"><code>Item a;
 const Item b;
@@ -760,7 +1000,7 @@ copy</code></pre>
 </div>
 
 <div class="note-lesson" id="q25">
-<h3>5.3 拷贝消除、NRVO 与 noexcept</h3>
+<h4>5.4 拷贝消除、NRVO 与 noexcept</h4>
 <p><strong>拷贝消除</strong>让对象直接构造在最终位置，省掉中间的拷贝或移动。<strong>NRVO（命名返回值优化）</strong>允许把符合条件的具名局部对象直接构造为返回结果；它与下面 C++17 保证的同类型纯右值返回不同。</p>
 <div class="note-table-wrap" role="region" aria-label="返回对象时的构造" tabindex="0"><table><caption>返回对象时的构造</caption><thead><tr><th scope="col">写法</th><th scope="col">C++17 下的规则</th></tr></thead><tbody><tr><td><code>return T{};</code></td><td>此类同类型纯右值可直接构造结果对象，不需要可用的拷贝/移动构造。</td></tr><tr><td><code>return local;</code></td><td>命名返回值优化 NRVO 允许但不强制；未消除时可按规则尝试移动。</td></tr><tr><td><code>return std::move(local);</code></td><td>可能破坏 NRVO 的适用条件，通常不应随手添加。</td></tr></tbody></table></div>
 
@@ -786,165 +1026,19 @@ int main() {
 </figure>
 </details>
 </div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/forward" target="_blank" rel="noreferrer">move 与 forward</a> · <a href="https://eel.is/c++draft/class.copy.elision" target="_blank" rel="noreferrer">拷贝消除</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 扩容相关保证</a>。</p>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/class.copy.ctor" target="_blank" rel="noreferrer">拷贝与移动构造</a> · <a href="https://eel.is/c++draft/forward" target="_blank" rel="noreferrer">move 与 forward</a> · <a href="https://eel.is/c++draft/class.copy.elision" target="_blank" rel="noreferrer">拷贝消除</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 扩容相关保证</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [class.copy.elision]（拷贝消除）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
 </section>
 
-<section id="stl" aria-labelledby="stl-title">
-<h2 id="stl-title">6. STL 容器与算法</h2>
-<div class="note-lesson" id="q26">
-<span id="stl-foundation" class="note-anchor" aria-hidden="true"></span><h3>6.1 容器、迭代器与算法</h3>
-<p><strong>STL</strong> 通常指标准库的容器、迭代器、算法等通用组件。容器保存元素；迭代器表示访问位置，<code>*it</code> 访问元素，<code>++it</code> 前进一步；算法通过这些位置操作元素，不必知道具体容器类型。</p>
-<p><strong>范围 [first, last)</strong> 包含 first、不包含 last。begin() 指向开头，end() 是不能解引用的尾后位置；空范围二者相等。vector 迭代器支持直接跳到第 n 个位置，list 则沿节点移动；std::sort 要求随机访问迭代器，list 应用自己的 sort 成员。</p>
-<p><strong>复杂度：</strong>n 是元素数，O 描述工作量随 n 增长的量级。“摊还 O(1)”把一系列操作的总成本平均到每次，不代表每次操作都同样快。</p>
-<div class="note-table-wrap" role="region" aria-label="常用容器与适配器" tabindex="0"><table><caption>常用容器与适配器</caption><thead><tr><th scope="col">类型</th><th scope="col">访问与修改复杂度</th><th scope="col">特点</th></tr></thead><tbody><tr><td>vector</td><td>随机访问 O(1)；尾插摊还 O(1)；中间插删 O(n)</td><td>连续存储，重分配会迁移元素。</td></tr><tr><td>deque</td><td>随机访问 O(1)；首尾单元素插删 O(1)</td><td>整体不保证连续，常见实现为分段存储。</td></tr><tr><td>list</td><td>已知位置插删 O(1)；查找位置 O(n)</td><td>双向链表，节点有额外分配和指针开销。</td></tr><tr><td>stack / queue</td><td>取决于底层容器</td><td>限制后进先出/先进先出接口，默认底层为 deque。</td></tr><tr><td>priority_queue</td><td>top O(1)；堆调整 O(log n)，底层容器操作另计</td><td>常用二叉堆，使父节点优先级不低于孩子，堆顶优先级最高；不是完整排序。</td></tr></tbody></table></div>
-<p><strong>选择依据：</strong>看访问和修改方式、地址稳定性及内存成本。CPU 缓存保存近期取用的数据，连续存储利于相邻访问复用同一批数据，体现空间局部性；链表不因插删复杂度低就一定更快。</p>
-</div>
-
-<div class="note-lesson" id="q27">
-<h3>6.2 vector 的大小、容量与扩容</h3>
-<div class="note-table-wrap" role="region" aria-label="vector 容量接口" tabindex="0"><table><caption>vector 容量接口</caption><thead><tr><th scope="col">接口</th><th scope="col">作用</th></tr></thead><tbody><tr><td>size / capacity</td><td>分别表示已有元素数、当前存储可容纳的元素数。</td></tr><tr><td>reserve(n)</td><td>请求至少 n 的容量，不新增元素。</td></tr><tr><td>resize(n)</td><td>调整元素数；扩大会构造元素，缩小会销毁尾部元素。</td></tr><tr><td>clear / shrink_to_fit</td><td>clear 销毁元素但不要求归还容量；shrink_to_fit 是非强制缩容请求。</td></tr></tbody></table></div>
-<p><strong>扩容机制：</strong>容量不足时取得新存储，在其中构造迁移后的元素，再销毁旧元素并释放旧存储。常见实现采用几何增长，但标准不规定固定 1.5 倍或 2 倍。</p>
-<p><strong>易错点：</strong>下标合法性由 size 决定；每次插入前都 reserve(size + 1) 可能破坏增长策略。默认分配器下 vector&lt;int&gt; 的 resize 新增元素为 0。</p>
-<details class="note-example-details"><summary>代码示例：reserve 与 resize 的不同结果</summary>
-<figure class="note-example">
-    <figcaption>预留容量之后，size 仍然为零</figcaption>
-    <pre tabindex="0" aria-label="预留容量之后，size 仍然为零"><code class="language-cpp" data-example="vector-capacity">#include &lt;iostream&gt;
-#include &lt;vector&gt;
-
-int main() {
-    std::vector&lt;int&gt; values;
-    values.reserve(8);
-    std::cout &lt;&lt; values.size() &lt;&lt; '\n';
-    // values[0] = 7; // 越界：目前还没有元素。
-    values.resize(3);
-    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values[0] &lt;&lt; '\n';
-    values.push_back(7);
-    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values.back() &lt;&lt; '\n';
-}</code></pre>
-    <p class="note-example-result">运行结果：</p>
-    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>0
-3 0
-4 7</code></pre>
-</figure>
-</details><details class="note-review-question" id="review-vector-size"><summary>经典问题：reserve(100) 以后，为什么不能直接写第 100 个元素？</summary>
-<p>reserve 不建立新元素。原来 size 为 0 时，任何元素下标都不合法；应 resize 或插入元素，随后按 size 判断下标。</p>
-</details>
-</div>
-
-<div class="note-lesson" id="q29">
-<h3>6.3 map、set 与无序关联容器</h3>
-<p><strong>关联容器</strong>按键查找元素。map 保存键值对，如姓名到成绩；set 只保存键，常用于判重或成员查询。下列容器中键不能重复，查找依据是键的等价关系。</p>
-<div class="note-table-wrap" role="region" aria-label="关联容器" tabindex="0"><table><caption>关联容器</caption><thead><tr><th scope="col">容器</th><th scope="col">组织与查找</th><th scope="col">适用需求</th></tr></thead><tbody><tr><td>map / set</td><td>按比较器有序；典型查找与插入 O(log n)</td><td>有序遍历、上下界与范围查询。</td></tr><tr><td>unordered_map / unordered_set</td><td>按哈希组织；查找平均 O(1)、最坏 O(n)</td><td>不需要排序，接受桶空间与 rehash 成本。</td></tr></tbody></table></div>
-<p><strong>有序容器</strong>常用红黑树这类自平衡二叉搜索树：比较键后进入较小或较大的一侧，并维持树高，避免退化为长链。<code>comp(a,b)</code> 表示 a 是否应排在 b 前；双方都不排在对方前时视为等价，不一定由 == 判断。</p>
-<p><strong>哈希容器</strong>先把键算成哈希值，再定位到桶（元素分组），最后比较键。不同键可能落入同一桶，这叫冲突；等价键必须有相同哈希值。负载因子是元素数/桶数；元素增长可能触发 <strong>rehash</strong>，调整桶并重新分组。</p>
-<p><strong>接口副作用：</strong><code>map[key]</code> 在键缺失时插入默认值；只查询可用 find，要求存在可用 at（缺失抛异常）。contains 自 C++20 提供。</p>
-</div>
-
-<div class="note-lesson" id="q28">
-<h3>6.4 迭代器、引用与指针失效</h3>
-<p><strong>失效</strong>表示之前取得的位置不再保证可用，不能继续用它访问元素，常因元素搬迁、销毁或容器内部结构改变。迭代器失效与对象地址失效要分别判断：哈希表重新分桶可能改变遍历结构，却不搬动元素。</p>
-<div class="note-table-wrap" role="region" aria-label="最常用的失效规则" tabindex="0"><table><caption>最常用的失效规则</caption><thead><tr><th scope="col">容器与操作</th><th scope="col">迭代器</th><th scope="col">元素引用 / 指针</th></tr></thead><tbody><tr><th scope="row">vector 重新分配</th><td>全部失效，包括旧 end()。</td><td>全部失效。</td></tr><tr><th scope="row">vector 插入，未重新分配</th><td>插入位置及之后失效；尾部插入使旧 end() 失效。</td><td>插入位置及之后失效；尾部插入不影响已有元素引用。</td></tr><tr><th scope="row">vector erase</th><td>被删位置及之后失效，包括旧 end()。</td><td>被删位置及之后失效。</td></tr><tr><th scope="row">list / map / set 插入</th><td>通常不影响已有元素迭代器。</td><td>已有元素引用保持有效。</td></tr><tr><th scope="row">list / map / set 删除</th><td>被删除元素的迭代器失效。</td><td>被删除元素的引用失效。</td></tr><tr><th scope="row">unordered_map rehash</th><td>全部迭代器失效。</td><td>已有元素的引用 / 指针仍有效。</td></tr><tr><th scope="row">unordered_map erase</th><td>仅被删除元素的迭代器失效。</td><td>仅被删除元素的引用 / 指针失效。</td></tr></tbody></table></div>
-<p>索引可用于修改后重新定位，但插入、删除和重排也可能改变索引对应的对象。reserve 只能减少部分重分配；deque 两端插入通常使迭代器失效，但已有元素引用保持有效，不能套用 vector 规则。</p>
-<details class="note-review-question" id="review-06"><summary>经典问题：vector 扩容之后，原来保存的元素引用还能继续使用吗？</summary>
-<p>发生重分配后，旧引用、指针和迭代器全部失效。应在修改后重新获取访问位置；如果还会删除或重排，需要额外设计稳定的对象标识。</p>
-</details>
-<p>实践与延伸：<a href="../cpp-stable-handles/index.html">vector 与稳定句柄</a>。</p>
-</div>
-
-<div class="note-lesson" id="q31">
-<h3>6.5 push_back 与 emplace_back</h3>
-<p><strong>push_back</strong> 接收一个 T，再拷贝或移动到容器；<strong>emplace_back</strong> 把参数按原来的左值/右值性质传给构造函数，在新元素位置直接构造 T。传构造参数可省去临时对象；传已有 T 时仍可能拷贝或移动。</p>
-<p><strong>emplace 不保证更快。</strong>它不消除扩容时旧元素的迁移，也不保证没有分配或异常。转交资源前应先用管理对象建立所有权，避免裸资源在异常路径泄漏。</p>
-<details class="note-example-details"><summary>代码示例：预留容量后比较新元素的构造</summary>
-<figure class="note-example">
-    <figcaption>预留容量以排除旧元素迁移，比较新元素的构造过程</figcaption>
-    <pre tabindex="0" aria-label="预留容量以排除旧元素迁移，比较新元素的构造过程"><code class="language-cpp" data-example="emplace">#include &lt;iostream&gt;
-#include &lt;vector&gt;
-
-struct Widget {
-    explicit Widget(int n) { std::cout &lt;&lt; &quot;construct &quot; &lt;&lt; n &lt;&lt; '\n'; }
-    Widget(const Widget&amp;) { std::cout &lt;&lt; &quot;copy\n&quot;; }
-    Widget(Widget&amp;&amp;) noexcept { std::cout &lt;&lt; &quot;move\n&quot;; }
-};
-int main() {
-    std::vector&lt;Widget&gt; items;
-    items.reserve(2);
-    items.push_back(Widget(7));
-    items.emplace_back(8);
-}</code></pre>
-    <p class="note-example-result">运行结果：</p>
-    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>construct 7
-move
-construct 8</code></pre>
-</figure>
-</details>
-</div>
-
-<div class="note-lesson" id="q30">
-<h3>6.6 范围算法与比较器</h3>
-<p><strong>谓词</strong>是返回真假条件的函数，例如“元素是否为偶数”。算法用它筛选或分组；比较器则判断两个元素的先后关系。</p>
-<p><strong>remove/remove_if</strong> 将保留元素移至范围前部，返回新逻辑结尾，不改变容器大小。应再调用 erase 删除尾部；remove 后尾部元素的具体值不应作为过滤结果使用。</p>
-<pre class="note-snippet" tabindex="0"><code>auto last = std::remove_if(v.begin(), v.end(),
-                          [](int x) { return x % 2 == 0; });
-v.erase(last, v.end());  // 真正缩小容器</code></pre>
-<p><strong>删除遍历：</strong>vector 常用 <code>it = v.erase(it)</code> 接回有效位置，不能继续使用已失效的 it。C++20 的 erase_if 可简化适用容器的删除。</p>
-<p><strong>严格弱序</strong>要求元素不排在自身前面、先后关系可传递，以及“互不先于”的等价关系也可传递。升序可用 <code>a &lt; b</code>；写成 <code>a &lt;= b</code> 会破坏自比较为假的要求。</p>
-<p><strong>lower_bound</strong> 折半缩小候选范围，寻找第一个不排在目标值前面的元素；普通升序下就是第一个大于等于目标的元素，找不到则返回 end。范围必须满足“排在目标前的元素在前，其余在后”；按同一比较器排序是满足这一前提的常见方式。</p>
-<details class="note-example-details"><summary>代码示例：erase-remove 删除偶数</summary>
-<figure class="note-example">
-    <figcaption>先得到新的逻辑结尾，再删除容器尾部</figcaption>
-    <pre tabindex="0" aria-label="先得到新的逻辑结尾，再删除容器尾部"><code class="language-cpp" data-example="erase-remove">#include &lt;algorithm&gt;
-#include &lt;iostream&gt;
-#include &lt;vector&gt;
-
-int main() {
-    std::vector&lt;int&gt; values{1, 2, 3, 4, 5};
-    auto last = std::remove_if(values.begin(), values.end(),
-                              [](int x) { return x % 2 == 0; });
-    values.erase(last, values.end());
-    for (int x : values) std::cout &lt;&lt; x;
-    std::cout &lt;&lt; '\n';
-}</code></pre>
-    <p class="note-example-result">运行结果：</p>
-    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>135</code></pre>
-</figure>
-</details>
-<h4>排序与稳定分区</h4>
-<div class="note-table-wrap" role="region" aria-label="算法的语义与 C++17 常规重载复杂度" tabindex="0"><table><caption>算法的语义与 C++17 常规重载复杂度</caption><thead><tr><th scope="col">算法</th><th scope="col">结果</th><th scope="col">相等/同组元素的原顺序</th><th scope="col">复杂度</th></tr></thead><tbody><tr><td>sort</td><td>按比较器有序</td><td>不保证保留</td><td>O(n log n) 次比较</td></tr><tr><td>stable_sort</td><td>按比较器有序</td><td>保留等价元素顺序</td><td>内存足够时 O(n log n)，否则 O(n log² n) 次比较</td></tr><tr><td>partition</td><td>满足谓词的元素在前</td><td>两组都不保证保留</td><td>O(n) 次谓词调用和交换上界</td></tr><tr><td>stable_partition</td><td>满足谓词的元素在前</td><td>两组都保留</td><td>O(n) 次谓词调用；移动/交换通常依可用内存为 O(n) 或 O(n log n)</td></tr></tbody></table></div>
-<p><strong>稳定</strong>描述相对顺序，不表示地址或业务身份稳定。排序可以不重分配 vector，却改变某个位置上保存的是哪个对象值。</p>
-<pre tabindex="0"><code class="language-cpp">auto valid_end = std::stable_partition(v.begin(), v.end(),
-    [](const KV&amp; x) { return x.key != 0; });</code></pre>
-<p>若 key == 0 表示无效数据，该调用把无效项移到末尾，保留有效项的原顺序，不删除元素。返回值是无效区间的起点。</p>
-<p><a href="stl-ordering.cpp" download>下载源码（stl-ordering.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
-<details class="note-example-details"><summary>稳定分区与按 key 降序排列：含顺序断言</summary>
-<pre tabindex="0"><code class="language-cpp" data-source="stl-ordering.cpp">#include &lt;algorithm&gt;
-#include &lt;cassert&gt;
-#include &lt;vector&gt;
-struct KV { int key; char value; };
-int main() {
-    std::vector&lt;KV&gt; v{{2,&#x27;a&#x27;}, {0,&#x27;x&#x27;}, {1,&#x27;b&#x27;}, {2,&#x27;c&#x27;}, {0,&#x27;y&#x27;}};
-    auto end = std::stable_partition(v.begin(), v.end(),
-                                   [](const KV&amp; x) { return x.key != 0; });
-    assert(end - v.begin() == 3);
-    assert(v[0].value==&#x27;a&#x27; &amp;&amp; v[1].value==&#x27;b&#x27; &amp;&amp; v[2].value==&#x27;c&#x27;);
-    assert(v[3].value==&#x27;x&#x27; &amp;&amp; v[4].value==&#x27;y&#x27;);
-    std::stable_sort(v.begin(), end,
-                     [](const KV&amp; a, const KV&amp; b) { return a.key &gt; b.key; });
-    assert(v[0].value==&#x27;a&#x27; &amp;&amp; v[1].value==&#x27;c&#x27; &amp;&amp; v[2].value==&#x27;b&#x27;);
-}</code></pre>
-</details>
-<details class="note-review-question"><summary>经典问题：把无效项放到末尾，再降序排列，应该如何选择算法？</summary>
-<p>先确认两项要求是否分别执行：仅移走无效项用 stable_partition；若还要按 key 降序，只排序有效区间。相同 key 也要保留原顺序时用 stable_sort；否则 sort 即可。降序用 a.key &gt; b.key，不用 &gt;=。</p>
-</details>
-<p class="note-source">参考：<a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a> · <a href="https://eel.is/c++draft/alg.partitions" target="_blank" rel="noreferrer">分区算法</a>。</p>
-</div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/container.requirements" target="_blank" rel="noreferrer">容器要求</a> · <a href="https://eel.is/c++draft/vector.capacity" target="_blank" rel="noreferrer">vector 容量</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 修改与失效</a> · <a href="https://eel.is/c++draft/unord.req" target="_blank" rel="noreferrer">无序关联容器</a> · <a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a>。</p>
-</section>
-
+<section class="note-part" id="generic-and-library" aria-labelledby="generic-and-library-title">
+<h2 id="generic-and-library-title">三、泛型编程与标准库</h2>
+<p>先掌握模板、推导和 Lambda，再用这些机制理解容器接口、失效规则与范围算法。底层结构的通用原理见<a href="../data-structures/index.html">数据结构基础</a>，这里关注 C++ 的接口与对象保证。</p>
 <section id="templates" aria-labelledby="templates-title">
-<h2 id="templates-title">7. 模板与类型推导</h2>
+<h3 id="templates-title">6. 模板、类型推导与可调用对象</h3>
+<p>先理解模板推导和可调用对象，再阅读下一章的容器与算法；转发引用建立在<a href="#q22">值类别</a>和<a href="#q23">移动语义</a>之上。</p>
 <div class="note-lesson" id="q32">
-<span id="template-foundation" class="note-anchor" aria-hidden="true"></span><h3>7.1 模板定义、实例化与特化</h3>
+<span id="template-foundation" class="note-anchor" aria-hidden="true"></span><h4>6.1 模板定义、实例化与特化</h4>
 <p><strong>模板</strong>把类型或值留作参数，用同一份描述生成不同版本。例如 <code>template&lt;class T&gt; T add(T a, T b)</code> 可用于 int 或 double。把具体参数代入并形成相应版本，称为<strong>实例化</strong>；编译器先检查不依赖参数的部分，再检查实例中的类型相关操作。</p>
 <p><strong>定义可见性：</strong>隐式实例化通常需要看到模板定义，所以常放头文件。类型集合固定时，可在实现文件中显式实例化指定版本，但不会自动支持任意新类型。</p>
 <p><strong>特化</strong>为特定模板参数另写规则：全特化固定全部参数，如 <code>Box&lt;int&gt;</code>；偏特化匹配一类参数，如 <code>Box&lt;T*&gt;</code>。类模板支持两者，函数模板只能全特化，部分情况通常用重载区分。生成多个版本可能增加编译时间和代码体积。</p>
@@ -972,7 +1066,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q05">
-<h3>7.2 auto、decltype 与 decltype(auto)</h3>
+<h4>6.2 auto、decltype 与 decltype(auto)</h4>
 <p><strong>auto</strong> 让编译器从初始化表达式推导变量类型；<strong>decltype</strong> 获取表达式或指定实体的类型，不执行该表达式。两者规则不同，尤其要留意引用与 const 是否保留。</p>
 <div class="note-table-wrap" role="region" aria-label="类型推导" tabindex="0"><table><caption>类型推导</caption><thead><tr><th scope="col">形式</th><th scope="col">规则</th></tr></thead><tbody><tr><td><code>auto x = expr</code></td><td>按值推导，通常去掉引用和顶层 const；保留指针目标的 const。</td></tr><tr><td><code>auto&amp; x = expr</code></td><td>保留引用语义，目标的 const 也保留。</td></tr><tr><td><code>decltype(name)</code></td><td>对未加括号的变量名/成员访问，取得实体声明类型。</td></tr><tr><td><code>decltype(expr)</code>（其他表达式）</td><td>左值得到 T&，将亡值得到 T&&，纯右值得到 T。</td></tr><tr><td><code>decltype(auto)</code></td><td>对初始化或返回表达式应用 decltype 规则。</td></tr></tbody></table></div>
 <p><strong>括号会改变结果：</strong>n 为 int 变量时，decltype(n) 是 int，decltype((n)) 是 int&amp;。返回局部对象时，<code>decltype(auto)</code> 与 <code>return (local);</code> 可能产生悬垂引用。</p>
@@ -1000,7 +1094,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q24">
-<h3>7.3 转发引用与 std::forward</h3>
+<h4>6.3 转发引用与 std::forward</h4>
 <p><strong>转发引用</strong>用于接收并保留调用者的左值/右值性质。典型写法是函数模板参数 <code>T&amp;&amp;</code>，其中 T 需要由实参推导，且 T 本身未加 const/volatile：传入 X 左值时 T 推导为 X&amp;，传入 X 右值时 T 为 X。</p>
 <p><strong>引用折叠</strong>处理类型替换后叠加的引用：有 &amp; 就得到左值引用，只有两层都是 &amp;&amp; 才得到右值引用。因此左值传入时，T&amp;&amp; 最终成为 X&amp;。函数内的参数名仍是左值；<code>std::forward&lt;T&gt;</code> 根据推导出的 T，把左值继续当左值，把原右值转回右值再传出。</p>
 <pre class="note-snippet" tabindex="0"><code>template&lt;class T&gt;
@@ -1038,7 +1132,7 @@ consume</code></pre>
 </div>
 
 <div class="note-lesson" id="q34">
-<h3>7.4 Lambda 与捕获</h3>
+<h4>6.4 Lambda 与捕获</h4>
 <p><strong>Lambda</strong> 是就地定义函数的表达式，形如 <code>[捕获](参数) { 函数体 }</code>。编译器生成可用 () 调用的对象，称为<strong>闭包</strong>；值捕获把外部数据复制进闭包，引用捕获只借用。<code>[=]</code> 默认按值捕获用到的局部变量，<code>[&amp;]</code> 默认按引用捕获。</p>
 <div class="note-table-wrap" role="region" aria-label="常见捕获" tabindex="0"><table><caption>常见捕获</caption><thead><tr><th scope="col">形式</th><th scope="col">含义与生命周期</th></tr></thead><tbody><tr><td><code>[x]</code></td><td>保存 x 的副本；默认调用运算符为 const，mutable 允许修改闭包内副本。</td></tr><tr><td><code>[&amp;x]</code></td><td>借用 x，不延长其生命周期。</td></tr><tr><td><code>[this]</code></td><td>保存当前对象的指针，不拥有对象。</td></tr><tr><td><code>[*this]</code>（C++17）</td><td>复制当前对象；须满足复制要求。</td></tr><tr><td><code>[p = std::move(owner)]</code>（C++14）</td><td>初始化捕获，可把独占资源移入闭包。</td></tr></tbody></table></div>
 <p><strong>生命周期：</strong>引用捕获和 this 捕获不延长目标生命期；C++17 的 [=] 捕获 this 也只保存指针。<strong>std::function</strong> 用统一函数签名包装不同可调用对象，但 C++17 要求目标可拷贝；捕获 unique_ptr 的闭包通常不满足这一点。</p>
@@ -1062,7 +1156,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q35">
-<h3>7.5 编译期分支与结果类型</h3>
+<h4>6.5 编译期分支与结果类型</h4>
 <div class="note-table-wrap" role="region" aria-label="常用能力" tabindex="0"><table><caption>常用能力</caption><thead><tr><th scope="col">工具</th><th scope="col">用途与边界</th></tr></thead><tbody><tr><td><code>if constexpr</code>（C++17）</td><td>在模板中按常量条件选择分支，不实例化已确定丢弃的分支；不能用它在非模板代码中隐藏任意非法代码。</td></tr><tr><td><code>optional&lt;T&gt;</code>（C++17）</td><td>在自身存储中按需构造一个 T，并记录是否有值；无值时 value() 抛异常，value_or 提供回退。</td></tr><tr><td><code>variant&lt;A,B&gt;</code>（C++17）</td><td>保存一种候选值及当前类型状态；get_if 检查并取指定类型，visit 按当前类型调用处理函数。某些替换抛异常后可能无值。</td></tr></tbody></table></div><details class="note-example-details"><summary>代码示例：optional 结果与 if constexpr 分支</summary>
 <figure class="note-example">
     <figcaption>用 optional 表达失败，用 if constexpr 选择类型相关操作</figcaption>
@@ -1102,7 +1196,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q33">
-<h3>7.6 SFINAE 与模板约束</h3>
+<h4>6.6 SFINAE 与模板约束</h4>
 <p><strong>SFINAE</strong> 即“替换失败不是错误”。编译器把推导出的类型代入函数声明时，若参数/返回类型等规定位置无法成立，就移除这个候选，继续找其他匹配。例如要求 T::value_type 的声明，对没有该成员的 int 可以替换失败；函数体内部的任意错误不会因此被忽略。</p>
 <p><strong>enable_if_t&lt;条件, T&gt;</strong> 在条件为真时得到 T，为假时没有相应类型，可用来触发上述候选排除。示例用 is_integral_v 检查是否为整数类型。C++20 的 <strong>concepts/requires</strong> 则直接声明模板必须满足的条件，例如支持某个操作，不满足时不参与相应匹配。</p>
 <details class="note-example-details"><summary>代码示例：仅允许整数类型的函数模板</summary>
@@ -1126,19 +1220,240 @@ int main() {
 </details>
 </div>
 <p class="note-source">相关规则：<a href="https://eel.is/c++draft/temp.deduct" target="_blank" rel="noreferrer">模板替换与推导</a> · <a href="https://eel.is/c++draft/expr.prim.lambda" target="_blank" rel="noreferrer">Lambda</a> · <a href="https://eel.is/c++draft/stmt.if" target="_blank" rel="noreferrer">if constexpr</a> · <a href="https://eel.is/c++draft/optional" target="_blank" rel="noreferrer">optional</a> · <a href="https://eel.is/c++draft/variant" target="_blank" rel="noreferrer">variant</a> · <a href="https://eel.is/c++draft/forward" target="_blank" rel="noreferrer">move 与 forward</a> · <a href="https://eel.is/c++draft/dcl.type.decltype" target="_blank" rel="noreferrer">decltype</a> · <a href="https://eel.is/c++draft/dcl.spec.auto" target="_blank" rel="noreferrer">auto 推导</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [temp.deduct]（模板实参推导）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
+<section id="stl" aria-labelledby="stl-title">
+<h3 id="stl-title">7. STL 容器与算法</h3>
+<p>本章关注标准库接口、常见实现与 C++ 对象的有效性。动态数组的摊还分析、链表、堆、红黑树维护和哈希冲突处理统一见<a href="../data-structures/index.html">数据结构基础</a>；先理解结构，再把它与容器保证对应起来。</p>
+<div class="note-lesson" id="q26">
+<span id="stl-foundation" class="note-anchor" aria-hidden="true"></span><h4>7.1 容器、迭代器与算法</h4>
+<p><strong>STL</strong> 通常指标准库的容器、迭代器、算法等通用组件。容器保存元素；迭代器表示访问位置，<code>*it</code> 访问元素，<code>++it</code> 前进一步；算法通过这些位置操作元素，不必知道具体容器类型。</p>
+<p><strong>范围 [first, last)</strong> 包含 first、不包含 last。begin() 指向开头，end() 是不能解引用的尾后位置；空范围二者相等。vector 迭代器支持直接跳到第 n 个位置，list 则沿节点移动；std::sort 要求随机访问迭代器，list 应用自己的 sort 成员。</p>
+<p><strong>复杂度：</strong>n 是元素数，O 描述工作量随 n 增长的量级。“摊还 O(1)”把一系列操作的总成本平均到每次，不代表每次操作都同样快。</p>
+<div class="note-table-wrap" role="region" aria-label="常用容器与适配器" tabindex="0"><table><caption>常用容器与适配器</caption><thead><tr><th scope="col">类型</th><th scope="col">访问与修改复杂度</th><th scope="col">特点</th></tr></thead><tbody><tr><td>vector</td><td>随机访问 O(1)；尾插摊还 O(1)；中间插删 O(n)</td><td>连续存储，重分配会迁移元素。</td></tr><tr><td>deque</td><td>随机访问 O(1)；首尾单元素插删 O(1)</td><td>整体不保证连续，常见实现为分段存储。</td></tr><tr><td>list</td><td>已知位置插删 O(1)；查找位置 O(n)</td><td>双向链表，节点有额外分配和指针开销。</td></tr><tr><td>stack / queue</td><td>取决于底层容器</td><td>限制后进先出/先进先出接口，默认底层为 deque。</td></tr><tr><td>priority_queue</td><td>top O(1)；堆调整 O(log n)，底层容器操作另计</td><td>常用二叉堆，使父节点优先级不低于孩子，堆顶优先级最高；不是完整排序。</td></tr></tbody></table></div>
+<p><strong>选择依据：</strong>看访问和修改方式、地址稳定性及内存成本。CPU 缓存保存近期取用的数据，连续存储利于相邻访问复用同一批数据，体现空间局部性；链表不因插删复杂度低就一定更快。</p>
+<p><strong>其他常用类型：</strong><code>array&lt;T,N&gt;</code> 在对象内部保存固定数量的连续元素，没有动态扩容；<code>forward_list&lt;T&gt;</code> 是单向链表，通过 before_begin、insert_after、erase_after 表达前驱位置。priority_queue 默认以 vector 保存元素，借助堆算法维护优先级；栈、队列和堆的通用机制见<a href="../data-structures/index.html#stack-queue-heap">接口与底层结构</a>。</p>
+</div>
+
+<div class="note-lesson" id="q27">
+<h4>7.2 vector 的大小、容量与扩容</h4>
+<div class="note-table-wrap" role="region" aria-label="vector 容量接口" tabindex="0"><table><caption>vector 容量接口</caption><thead><tr><th scope="col">接口</th><th scope="col">作用</th></tr></thead><tbody><tr><td>size / capacity</td><td>分别表示已有元素数、当前存储可容纳的元素数。</td></tr><tr><td>reserve(n)</td><td>请求至少 n 的容量，不新增元素。</td></tr><tr><td>resize(n)</td><td>调整元素数；扩大会构造元素，缩小会销毁尾部元素。</td></tr><tr><td>clear / shrink_to_fit</td><td>clear 销毁元素但不要求归还容量；shrink_to_fit 是非强制缩容请求。</td></tr></tbody></table></div>
+<p><strong>扩容机制：</strong>容量不足时取得新存储，在其中构造迁移后的元素，再销毁旧元素并释放旧存储。常见实现采用几何增长，但标准不规定固定 1.5 倍或 2 倍。</p>
+<p>可把存储理解为三条边界：起点、已构造元素的结尾、容量的结尾；<code>[size, capacity)</code> 只是预留空间，不能当作已有 T 访问。迁移使用 T 的拷贝或移动构造，不能一律当成 memcpy；选择与异常保证见<a href="#q25">移动与 noexcept</a>。为什么几何增长能摊还为 O(1)，见<a href="../data-structures/index.html#dynamic-array">动态数组扩容分析</a>。</p>
+<p><strong>易错点：</strong>下标合法性由 size 决定；每次插入前都 reserve(size + 1) 可能破坏增长策略。默认分配器下 vector&lt;int&gt; 的 resize 新增元素为 0。</p>
+<details class="note-example-details"><summary>代码示例：reserve 与 resize 的不同结果</summary>
+<figure class="note-example">
+    <figcaption>预留容量之后，size 仍然为零</figcaption>
+    <pre tabindex="0" aria-label="预留容量之后，size 仍然为零"><code class="language-cpp" data-example="vector-capacity">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;int&gt; values;
+    values.reserve(8);
+    std::cout &lt;&lt; values.size() &lt;&lt; '\n';
+    // values[0] = 7; // 越界：目前还没有元素。
+    values.resize(3);
+    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values[0] &lt;&lt; '\n';
+    values.push_back(7);
+    std::cout &lt;&lt; values.size() &lt;&lt; ' ' &lt;&lt; values.back() &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>0
+3 0
+4 7</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-vector-size"><summary>经典问题：reserve(100) 以后，为什么不能直接写第 100 个元素？</summary>
+<p>reserve 不建立新元素。原来 size 为 0 时，任何元素下标都不合法；应 resize 或插入元素，随后按 size 判断下标。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="deque-storage">
+<h4>7.3 deque 的分段存储与链表接口</h4>
+<p><strong>deque 的典型实现</strong>用一张块指针表连接若干元素块。libstdc++ 的实现可作为具体例子：元素在块内连续，块与块之间不要求相邻；这里的块指针表有时叫 map，与 std::map 无关。</p>
+<pre tabindex="0" aria-label="deque 分段索引示意"><code class="language-text">块指针表：[块 A 地址][块 B 地址][块 C 地址]
+              │          │          │
+              ▼          ▼          ▼
+块内元素： [空 a b c]  [d e f g]  [h 空 空 空]
+              ↑                     ↑
+            第一个元素            最后一个元素</code></pre>
+<p>以上每块 4 个位置仅用于示意。设块容量为 B、第一个元素在首块内偏移 s，逻辑下标 i 对应块偏移 <code>(s+i)/B</code> 和块内偏移 <code>(s+i)%B</code>；用块指针表可直接定位，所以非连续存储仍能支持 O(1) 随机访问。不能用 <code>&amp;d[0] + i</code> 跨块代替 d[i]。</p>
+<p>两端增长可新建元素块，必要时调整块指针表。已有元素可以留在原块内，迭代器依赖的块索引信息却可能变化；因此必须按<a href="#container-invalidation">标准失效规则</a>判断，不能观察一次地址没变就复用旧迭代器。块大小、空块保留策略和具体迭代器字段属于实现细节。</p>
+<p><strong>list / forward_list：</strong>节点式组织让插入不必迁移其他元素。list 可用已知节点位置删除；forward_list 的 erase_after 需要前驱。先按值查找位置仍可能花 O(n)，不能把完整业务操作都记成 O(1)。指针如何连接及空间成本见<a href="../data-structures/index.html#linked-list">单向与双向链表</a>。</p>
+<p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/gcc-12.5.0/libstdc%2B%2B/api/a00467_source.html" target="_blank" rel="noreferrer">libstdc++：deque 实现</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/deque.overview" target="_blank" rel="noreferrer">C++17：deque 接口保证</a>。</p>
+</div>
+
+<div class="note-lesson" id="q29">
+<h4>7.4 map、set 与无序关联容器</h4>
+<p><strong>关联容器</strong>按键查找元素。map 保存键值对，如姓名到成绩；set 只保存键，常用于判重或成员查询。下列容器中键不能重复，查找依据是键的等价关系。</p>
+<div class="note-table-wrap" role="region" aria-label="关联容器" tabindex="0"><table><caption>关联容器</caption><thead><tr><th scope="col">容器</th><th scope="col">组织与查找</th><th scope="col">适用需求</th></tr></thead><tbody><tr><td>map / set</td><td>按比较器有序；典型查找与插入 O(log n)</td><td>有序遍历、上下界与范围查询。</td></tr><tr><td>unordered_map / unordered_set</td><td>按哈希组织；查找平均 O(1)、最坏 O(n)</td><td>不需要排序，接受桶空间与 rehash 成本。</td></tr></tbody></table></div>
+<p><strong>有序容器</strong>常用红黑树这类自平衡二叉搜索树：比较键后进入较小或较大的一侧，并维持树高，避免退化为长链。<code>comp(a,b)</code> 表示 a 是否应排在 b 前；双方都不排在对方前时视为等价，不一定由 == 判断。</p>
+<p>标准规定顺序、复杂度和元素有效性等要求，并未指定必须使用红黑树。libstdc++ 的树节点包含父子链接与颜色；重平衡通过调整节点链接完成，保留未删除元素的身份。通用的黑高约束、旋转与插删修复见<a href="../data-structures/index.html#red-black-tree">红黑树</a>，本章继续关注 map/set 的接口保证。</p>
+<p><strong>哈希容器</strong>先把键算成哈希值，再定位到桶（元素分组），最后比较键。不同键可能落入同一桶，这叫冲突；等价键必须有相同哈希值。负载因子是元素数/桶数；元素增长可能触发 <strong>rehash</strong>，调整桶并重新分组。</p>
+<p>libstdc++ 的实现使用节点链接与桶索引；图解中的“每桶一条链”是逻辑分组，不应当作所有标准库相同的字段布局。链式散列、开放寻址和退化原因见<a href="../data-structures/index.html#hash-table">哈希表</a>。std::unordered_map 的 rehash 会使迭代器失效，却保留元素引用/指针；不能套用其他平坦哈希表的地址规则。</p>
+<p><strong>容量规划：</strong>unordered_map 的 <code>reserve(n)</code> 按预计元素数和最大负载因子规划桶，<code>rehash(n)</code> 按桶数请求重建；都不是新增 n 个元素。应在取得长期使用的迭代器之前安排这些操作。扩大桶数无法修复“所有键哈希值都相同”这类坏哈希。</p>
+<p><strong>接口副作用：</strong><code>map[key]</code> 在键缺失时插入默认值；只查询可用 find，要求存在可用 at（缺失抛异常）。contains 自 C++20 提供。</p>
+<p><strong>选型追问：</strong>有序遍历和范围查询偏向 map；只做按键查询可考虑 unordered_map，但还要计算键的哈希/比较成本、分配、内存和扩桶开销。树的成员 lower_bound 可沿树查找；对 map 迭代器调用通用 std::lower_bound，比较次数虽是对数级，迭代器推进仍可能是线性的。</p>
+<p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/libstdc%2B%2B/latest-doxygen/a00749_source.html" target="_blank" rel="noreferrer">libstdc++：树节点与重链接</a> · <a href="https://gcc.gnu.org/onlinedocs/gcc-12.4.0/libstdc%2B%2B/api/a19407_source.html" target="_blank" rel="noreferrer">libstdc++：哈希表结构</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/unord.req" target="_blank" rel="noreferrer">C++17：无序容器要求</a>。</p>
+</div>
+
+<div class="note-lesson" id="q28">
+<span id="container-invalidation" class="note-anchor" aria-hidden="true"></span>
+<h4>7.5 迭代器、引用与指针失效</h4>
+<p><strong>失效</strong>表示之前取得的位置不再保证可用，不能继续用它访问元素，常因元素搬迁、销毁或容器内部结构改变。迭代器失效与对象地址失效要分别判断：哈希表重新分桶可能改变遍历结构，却不搬动元素。</p>
+<div class="note-table-wrap" role="region" aria-label="最常用的失效规则" tabindex="0"><table><caption>最常用的失效规则</caption><thead><tr><th scope="col">容器与操作</th><th scope="col">迭代器</th><th scope="col">元素引用 / 指针</th></tr></thead><tbody><tr><th scope="row">vector 重新分配</th><td>全部失效，包括旧 end()。</td><td>全部失效。</td></tr><tr><th scope="row">vector 插入，未重新分配</th><td>插入位置及之后失效；尾部插入使旧 end() 失效。</td><td>插入位置及之后失效；尾部插入不影响已有元素引用。</td></tr><tr><th scope="row">vector erase</th><td>被删位置及之后失效，包括旧 end()。</td><td>被删位置及之后失效。</td></tr><tr><th scope="row">list / map / set 插入</th><td>通常不影响已有元素迭代器。</td><td>已有元素引用保持有效。</td></tr><tr><th scope="row">list / map / set 删除</th><td>被删除元素的迭代器失效。</td><td>被删除元素的引用失效。</td></tr><tr><th scope="row">unordered_map rehash</th><td>全部迭代器失效。</td><td>已有元素的引用 / 指针仍有效。</td></tr><tr><th scope="row">unordered_map erase</th><td>仅被删除元素的迭代器失效。</td><td>仅被删除元素的引用 / 指针失效。</td></tr></tbody></table></div>
+<p>上表按操作成功后的 C++17 保证理解。list / map / set 的普通插入不使已有迭代器失效；unordered_map 插入若未触发 rehash，不使已有迭代器失效，触发时按 rehash 行处理。vector 的 reserve 未改变容量时不使访问位置失效，发生重分配时按首行处理。</p>
+<div class="note-table-wrap" role="region" aria-label="deque 插入与非空范围删除的失效规则" tabindex="0"><table><caption>deque 插入与非空范围删除的失效规则</caption><thead><tr><th scope="col">操作</th><th scope="col">已有元素迭代器 / 旧 end()</th><th scope="col">元素引用 / 指针</th></tr></thead><tbody>
+<tr><th scope="row">在任一端插入</th><td>全部迭代器失效，含旧 end()。</td><td>已有元素保持有效。</td></tr>
+<tr><th scope="row">在中间插入</th><td>全部失效，含旧 end()。</td><td>全部失效。</td></tr>
+<tr><th scope="row">删除首部，未删除最后一个元素</th><td>仅被删元素的迭代器失效；旧 end() 保持有效。</td><td>仅被删元素失效。</td></tr>
+<tr><th scope="row">删除范围包含最后一个元素</th><td>被删元素的迭代器与旧 end() 失效；其他元素迭代器保持有效。</td><td>仅被删元素失效。</td></tr>
+<tr><th scope="row">删除严格位于中间的范围</th><td>全部失效，含旧 end()。</td><td>全部失效。</td></tr>
+</tbody></table></div>
+<p>pop_front / pop_back 同样按删除规则判断；只剩一个元素时，pop_front 也删除了最后一个元素，旧 end() 因而失效。clear 后不再有可用的旧元素访问入口。索引可在修改后重新定位，但插入、删除和重排也可能改变索引对应的对象。</p>
+<details class="note-example-details"><summary>代码示例：deque 两端增长保留引用，rehash 保留元素指针</summary>
+<figure class="note-example">
+<figcaption>保留有保证的元素访问入口，修改后重新获取迭代器</figcaption>
+<pre tabindex="0" aria-label="容器修改后引用与迭代器的不同保证"><code class="language-cpp" data-example="container-reference-stability">#include &lt;cassert&gt;
+#include &lt;deque&gt;
+#include &lt;iostream&gt;
+#include &lt;unordered_map&gt;
+
+int main() {
+    std::deque&lt;int&gt; d{10, 20};
+    int&amp; first = d.front();
+    d.push_front(5);
+    d.push_back(30);
+    assert(&amp;first == &amp;d[1]);
+    auto fresh = d.begin();  // 插入前取得的迭代器不可复用。
+    assert(*fresh == 5);
+
+    std::unordered_map&lt;int, int&gt; table{{1, 7}};
+    int* value = &amp;table.at(1);
+    const auto old_buckets = table.bucket_count();
+    table.rehash(old_buckets + 1);
+    assert(table.bucket_count() &gt; old_buckets);
+    assert(value == &amp;table.at(1));
+    *value = 9;
+    std::cout &lt;&lt; first &lt;&lt; ' ' &lt;&lt; table.find(1)-&gt;second &lt;&lt; '\n';
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>10 9</code></pre>
+</figure>
+</details>
+<p class="note-source">参考：<a href="https://timsong-cpp.github.io/cppwp/n4659/deque.modifiers" target="_blank" rel="noreferrer">C++17：deque 修改与失效</a>。</p>
+<details class="note-review-question" id="review-06"><summary>经典问题：vector 扩容之后，原来保存的元素引用还能继续使用吗？</summary>
+<p>发生重分配后，旧引用、指针和迭代器全部失效。应在修改后重新获取访问位置；如果还会删除或重排，需要额外设计稳定的对象标识。</p>
+</details>
+<p>实践与延伸：<a href="../cpp-stable-handles/index.html">稳定句柄：对象身份、重排与生命周期</a>。</p>
+</div>
+
+<div class="note-lesson" id="q31">
+<h4>7.6 push_back 与 emplace_back</h4>
+<p><strong>push_back</strong> 接收一个 T，再拷贝或移动到容器；<strong>emplace_back</strong> 把参数按原来的左值/右值性质传给构造函数，在新元素位置直接构造 T。传构造参数可省去临时对象；传已有 T 时仍可能拷贝或移动。</p>
+<p><strong>emplace 不保证更快。</strong>它不消除扩容时旧元素的迁移，也不保证没有分配或异常。转交资源前应先用管理对象建立所有权，避免裸资源在异常路径泄漏。</p>
+<details class="note-example-details"><summary>代码示例：预留容量后比较新元素的构造</summary>
+<figure class="note-example">
+    <figcaption>预留容量以排除旧元素迁移，比较新元素的构造过程</figcaption>
+    <pre tabindex="0" aria-label="预留容量以排除旧元素迁移，比较新元素的构造过程"><code class="language-cpp" data-example="emplace">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+struct Widget {
+    explicit Widget(int n) { std::cout &lt;&lt; &quot;construct &quot; &lt;&lt; n &lt;&lt; '\n'; }
+    Widget(const Widget&amp;) { std::cout &lt;&lt; &quot;copy\n&quot;; }
+    Widget(Widget&amp;&amp;) noexcept { std::cout &lt;&lt; &quot;move\n&quot;; }
+};
+int main() {
+    std::vector&lt;Widget&gt; items;
+    items.reserve(2);
+    items.push_back(Widget(7));
+    items.emplace_back(8);
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>construct 7
+move
+construct 8</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q30">
+<h4>7.7 范围算法与比较器</h4>
+<p><strong>谓词</strong>是返回真假条件的函数，例如“元素是否为偶数”。算法用它筛选或分组；比较器则判断两个元素的先后关系。</p>
+<p><strong>remove/remove_if</strong> 将保留元素移至范围前部，返回新逻辑结尾，不改变容器大小。应再调用 erase 删除尾部；remove 后尾部元素的具体值不应作为过滤结果使用。</p>
+<pre class="note-snippet" tabindex="0"><code>auto last = std::remove_if(v.begin(), v.end(),
+                          [](int x) { return x % 2 == 0; });
+v.erase(last, v.end());  // 真正缩小容器</code></pre>
+<p><strong>删除遍历：</strong>vector 常用 <code>it = v.erase(it)</code> 接回有效位置，不能继续使用已失效的 it。C++20 的 erase_if 可简化适用容器的删除。</p>
+<p><strong>严格弱序</strong>要求元素不排在自身前面、先后关系可传递，以及“互不先于”的等价关系也可传递。升序可用 <code>a &lt; b</code>；写成 <code>a &lt;= b</code> 会破坏自比较为假的要求。</p>
+<p><strong>lower_bound</strong> 折半缩小候选范围，寻找第一个不排在目标值前面的元素；普通升序下就是第一个大于等于目标的元素，找不到则返回 end。范围必须满足“排在目标前的元素在前，其余在后”；按同一比较器排序是满足这一前提的常见方式。</p>
+<details class="note-example-details"><summary>代码示例：erase-remove 删除偶数</summary>
+<figure class="note-example">
+    <figcaption>先得到新的逻辑结尾，再删除容器尾部</figcaption>
+    <pre tabindex="0" aria-label="先得到新的逻辑结尾，再删除容器尾部"><code class="language-cpp" data-example="erase-remove">#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;int&gt; values{1, 2, 3, 4, 5};
+    auto last = std::remove_if(values.begin(), values.end(),
+                              [](int x) { return x % 2 == 0; });
+    values.erase(last, values.end());
+    for (int x : values) std::cout &lt;&lt; x;
+    std::cout &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>135</code></pre>
+</figure>
+</details>
+<p><strong>排序与稳定分区</strong></p>
+<div class="note-table-wrap" role="region" aria-label="算法的语义与 C++17 常规重载复杂度" tabindex="0"><table><caption>算法的语义与 C++17 常规重载复杂度</caption><thead><tr><th scope="col">算法</th><th scope="col">结果</th><th scope="col">相等/同组元素的原顺序</th><th scope="col">复杂度</th></tr></thead><tbody><tr><td>sort</td><td>按比较器有序</td><td>不保证保留</td><td>O(n log n) 次比较</td></tr><tr><td>stable_sort</td><td>按比较器有序</td><td>保留等价元素顺序</td><td>内存足够时 O(n log n)，否则 O(n log² n) 次比较</td></tr><tr><td>partition</td><td>满足谓词的元素在前</td><td>两组都不保证保留</td><td>O(n) 次谓词调用和交换上界</td></tr><tr><td>stable_partition</td><td>满足谓词的元素在前</td><td>两组都保留</td><td>O(n) 次谓词调用；移动/交换通常依可用内存为 O(n) 或 O(n log n)</td></tr></tbody></table></div>
+<p><strong>稳定</strong>描述相对顺序，不表示地址或业务身份稳定。排序可以不重分配 vector，却改变某个位置上保存的是哪个对象值。</p>
+<pre tabindex="0"><code class="language-cpp">auto valid_end = std::stable_partition(v.begin(), v.end(),
+    [](const KV&amp; x) { return x.key != 0; });</code></pre>
+<p>若 key == 0 表示无效数据，该调用把无效项移到末尾，保留有效项的原顺序，不删除元素。返回值是无效区间的起点。</p>
+<p><a href="stl-ordering.cpp" download>下载源码（stl-ordering.cpp）</a>。使用 C++17 编译；断言测试请勿定义 NDEBUG。</p>
+<details class="note-example-details"><summary>稳定分区与按 key 降序排列：含顺序断言</summary>
+<pre tabindex="0"><code class="language-cpp" data-source="stl-ordering.cpp">#include &lt;algorithm&gt;
+#include &lt;cassert&gt;
+#include &lt;vector&gt;
+struct KV { int key; char value; };
+int main() {
+    std::vector&lt;KV&gt; v{{2,&#x27;a&#x27;}, {0,&#x27;x&#x27;}, {1,&#x27;b&#x27;}, {2,&#x27;c&#x27;}, {0,&#x27;y&#x27;}};
+    auto end = std::stable_partition(v.begin(), v.end(),
+                                   [](const KV&amp; x) { return x.key != 0; });
+    assert(end - v.begin() == 3);
+    assert(v[0].value==&#x27;a&#x27; &amp;&amp; v[1].value==&#x27;b&#x27; &amp;&amp; v[2].value==&#x27;c&#x27;);
+    assert(v[3].value==&#x27;x&#x27; &amp;&amp; v[4].value==&#x27;y&#x27;);
+    std::stable_sort(v.begin(), end,
+                     [](const KV&amp; a, const KV&amp; b) { return a.key &gt; b.key; });
+    assert(v[0].value==&#x27;a&#x27; &amp;&amp; v[1].value==&#x27;c&#x27; &amp;&amp; v[2].value==&#x27;b&#x27;);
+}</code></pre>
+</details>
+<details class="note-review-question"><summary>经典问题：把无效项放到末尾，再降序排列，应该如何选择算法？</summary>
+<p>先确认两项要求是否分别执行：仅移走无效项用 stable_partition；若还要按 key 降序，只排序有效区间。相同 key 也要保留原顺序时用 stable_sort；否则 sort 即可。降序用 a.key &gt; b.key，不用 &gt;=。</p>
+</details>
+<p class="note-source">参考：<a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a> · <a href="https://eel.is/c++draft/alg.partitions" target="_blank" rel="noreferrer">分区算法</a>。</p>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/container.requirements" target="_blank" rel="noreferrer">容器要求</a> · <a href="https://eel.is/c++draft/vector.capacity" target="_blank" rel="noreferrer">vector 容量</a> · <a href="https://eel.is/c++draft/vector.modifiers" target="_blank" rel="noreferrer">vector 修改与失效</a> · <a href="https://eel.is/c++draft/unord.req" target="_blank" rel="noreferrer">无序关联容器</a> · <a href="https://eel.is/c++draft/alg.sorting" target="_blank" rel="noreferrer">排序要求</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [vector.modifiers]（修改与失效）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
 </section>
 
+<section class="note-part" id="concurrent-programming" aria-labelledby="concurrent-programming-title">
+<h2 id="concurrent-programming-title">四、并发与同步</h2>
+<p>沿共享状态、线程生命周期和同步协议阅读，分别判断拥有者、指针变量和目标对象的安全性。</p>
 <section id="concurrency" aria-labelledby="concurrency-title">
-<h2 id="concurrency-title">8. 并发与同步</h2>
+<h3 id="concurrency-title">8. 并发与同步</h3>
+<p>本章关注 C++ 的同步保证和接口用法；线程如何调度、锁如何阻塞与唤醒，见<a href="../operating-systems/index.html#process-thread">进程与线程</a>及<a href="../operating-systems/index.html#locks">锁与 futex</a>。</p>
 <div class="note-lesson" id="shared-state-foundation">
-<h3>8.1 数据竞争与同步关系</h3>
+<h4>8.1 数据竞争与同步关系</h4>
 <p><strong>线程</strong>是程序中的一条执行路径，多条线程可以访问同一对象。典型<strong>数据竞争</strong>是：不同线程访问同一内存位置，至少一次写入、至少一次不是原子操作，而且缺少同步建立的先后关系；这属于 UB。</p>
 <p><strong>happens-before（先行发生）</strong>是语言用来保证访问先后与可见性的关系，不是肉眼观察到的时间先后。它可由线程内顺序和锁、join 等同步操作连接起来；例如线程完成后，另一线程成功 join 再读取它写好的结果。对象还必须活到最后一次访问之后。</p>
 <p><strong>同步工具：</strong>互斥锁让一组操作由单个线程独占执行；原子操作把一次访问或读改写作为不可分割的操作；条件变量让线程等待某个共享条件。单个计数安全，不表示“余额与库存同时更新”这类多对象规则也自动安全。</p>
 </div>
 
 <div class="note-lesson" id="q36">
-<h3>8.2 thread、join 与 detach</h3>
+<h4>8.2 thread、join 与 detach</h4>
 <p><strong>std::thread</strong> 对象管理与执行线程的关联。成功构造 <code>std::thread worker(f);</code> 后，f 在新线程执行；线程函数结束和管理对象完成清理是两件事。</p>
 <div class="note-table-wrap" role="region" aria-label="线程对象生命周期" tabindex="0"><table><caption>线程对象生命周期</caption><thead><tr><th scope="col">操作/状态</th><th scope="col">含义</th></tr></thead><tbody><tr><td>joinable</td><td>仍关联一个需要 join 或 detach 的线程；线程函数结束后也可能仍为 true。</td></tr><tr><td>join</td><td>等待完成并解除关联；线程完成与 join 返回之间建立同步。</td></tr><tr><td>detach</td><td>解除管理关系，不终止线程；被借用资源的生命周期仍需保证。</td></tr><tr><td>析构</td><td>std::thread 析构时若仍 joinable，会调用 terminate，不自动 join。</td></tr></tbody></table></div>
 <p><strong>线程异常：</strong>异常不会跳到创建线程处的 catch。可在线程内部捕获，用 exception_ptr 保存异常，或用 promise 写入结果/异常、future 等待并取得它；未捕获异常逃出线程入口会进入终止处理。</p>
@@ -1165,7 +1480,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q37">
-<h3>8.3 互斥锁、临界区与死锁</h3>
+<h4>8.3 互斥锁、临界区与死锁</h4>
 <p><strong>互斥锁</strong>一次只允许一个线程持有，锁内操作共享状态的范围称为<strong>临界区</strong>。对同一 mutex 的解锁与后续成功加锁建立同步，使先前写入可见。所有冲突访问都须遵守这套规则，不能只给写入方加锁。</p>
 <div class="note-table-wrap" role="region" aria-label="RAII 锁管理" tabindex="0"><table><caption>RAII 锁管理</caption><thead><tr><th scope="col">类型</th><th scope="col">适用情况</th></tr></thead><tbody><tr><td>lock_guard</td><td>简单作用域持锁，析构时解锁。</td></tr><tr><td>unique_lock</td><td>支持延迟加锁、手工解锁与移动；用于条件变量等待。</td></tr><tr><td>scoped_lock（C++17）</td><td>可同时管理多把锁，采用避免相互锁定死锁的加锁方式。</td></tr></tbody></table></div>
 <p><strong>死锁</strong>是参与者互相等待而无法继续，例如线程一持 A 等 B、线程二持 B 等 A。统一加锁顺序，或用 scoped_lock 一起取得需要的不同锁，可避免这类循环等待。recursive_mutex 只允许同一线程重复加锁，不能解决不同线程之间的等待环。</p>
@@ -1200,7 +1515,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q38">
-<h3>8.4 条件变量</h3>
+<h4>8.4 条件变量</h4>
 <p><strong>条件变量</strong>用于等待共享状态满足条件，通知本身不保存业务状态。必须将状态与互斥锁配合使用，而不是依赖“恰好收到一次通知”。</p>
 <ol class="note-mechanism"><li>持锁检查谓词，即“队列非空”等布尔条件；不满足时，wait 原子地释放锁并进入等待。</li><li>生产者在同一锁下修改状态，然后通知等待者。</li><li>等待者醒来后重新取得锁并检查谓词；成立才继续，否则再次等待。</li></ol>
 <pre class="note-snippet" tabindex="0"><code>cv.wait(lock, [&amp;] { return closed || !queue.empty(); });</code></pre>
@@ -1249,7 +1564,7 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q39">
-<h3>8.5 atomic、volatile 与内存序</h3>
+<h4>8.5 atomic、volatile 与内存序</h4>
 <p><strong>atomic</strong> 提供不可分割的读取、写入或读改写。对 atomic 计数，fetch_add/++ 将“读取—加一—写回”作为一次原子操作；<code>count = count + 1</code> 却分成独立读和写，可能丢失更新。<strong>volatile</strong> 要求保留实现所规定的可观察访问，常用于平台约定的设备寄存器；不提供线程间原子性或同步。</p>
 <p><strong>内存序</strong>规定线程间能依赖哪些先后与可见性保证。标志本身读写原子，不等于通过这个标志传递的普通数据也自动安全。</p>
 <div class="note-table-wrap" role="region" aria-label="主要内存序" tabindex="0"><table><caption>主要内存序</caption><thead><tr><th scope="col">内存序</th><th scope="col">保证与用途</th></tr></thead><tbody><tr><td>relaxed</td><td>保证该对象的原子操作及相应修改顺序，不为其他普通数据建立发布关系；适用于无额外发布需求的计数等。</td></tr><tr><td>release / acquire</td><td>常见发布方式：acquire 读取相应 release 写出的标志值后建立同步，随后可安全读取发布前写好的普通数据。</td></tr><tr><td>acq_rel</td><td>同时具有 acquire 和 release 的作用，用于原子读改写操作。</td></tr><tr><td>seq_cst</td><td>默认顺序一致操作，增加相关操作的单一总序约束；不自动修复其他未同步普通访问。</td></tr></tbody></table></div>
@@ -1289,19 +1604,25 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q21">
-<h3>8.6 shared_ptr 的线程安全</h3>
+<span id="shared-ownership-concurrency" class="note-anchor" aria-hidden="true"></span>
+<h4>8.6 shared_ptr 的线程安全</h4>
 <div class="note-table-wrap" role="region" aria-label="分别判断三层安全" tabindex="0"><table><caption>分别判断三层安全</caption><thead><tr><th scope="col">层次</th><th scope="col">规则</th></tr></thead><tbody><tr><td>共享控制块</td><td>不同 shared_ptr 实例可各自进行复制、销毁等所有权操作。</td></tr><tr><td>同一个 shared_ptr 变量</td><td>并发读写仍需同步；C++17 可用对应原子自由函数或锁，C++20 可用 atomic&lt;shared_ptr&lt;T&gt;&gt;。</td></tr><tr><td>目标 T 的内容</td><td>不因 shared_ptr 管理而自动安全，仍需按 T 的访问方式同步。</td></tr></tbody></table></div>
 <p>两个线程各持有同组 shared_ptr，却同时执行 <code>++*p</code>，仍可能对普通 int 产生数据竞争。<code>use_count() == 1</code> 不能作为并发独占访问的可靠判断。</p>
 </div>
 <p class="note-source">相关规则：<a href="https://eel.is/c++draft/thread.thread.destr" target="_blank" rel="noreferrer">thread 析构</a> · <a href="https://eel.is/c++draft/thread.condition.condvar" target="_blank" rel="noreferrer">条件变量等待</a> · <a href="https://eel.is/c++draft/atomics.order" target="_blank" rel="noreferrer">内存序</a> · <a href="https://eel.is/c++draft/atomics.types.operations" target="_blank" rel="noreferrer">CAS 操作</a> · <a href="https://eel.is/c++draft/dcl.type.cv" target="_blank" rel="noreferrer">const / volatile</a> · <a href="https://eel.is/c++draft/intro.races" target="_blank" rel="noreferrer">数据竞争</a> · <a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">shared_ptr</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [intro.races] / [atomics.order]（竞争与内存序）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>
 </section>
 
+<section class="note-part" id="build-and-debug" aria-labelledby="build-and-debug-title">
+<h2 id="build-and-debug-title">五、构建与调试</h2>
+<p>从翻译单元和链接规则定位构建问题，再区分运行时错误与性能问题。</p>
 <section id="engineering" aria-labelledby="engineering-title">
-<h2 id="engineering-title">9. 编译、链接与调试</h2>
+<h3 id="engineering-title">9. 编译、链接与调试</h3>
 <div class="note-lesson" id="q40">
-<span id="translation-foundation" class="note-anchor" aria-hidden="true"></span><h3>9.1 翻译单元、声明与定义</h3>
+<span id="translation-foundation" class="note-anchor" aria-hidden="true"></span><h4>9.1 翻译单元、声明与定义</h4>
 <p><strong>典型构建流程：</strong>预处理展开头文件和宏 → 编译生成汇编 → 汇编生成目标文件 → 链接成程序或库。一个 cpp 连同包含内容形成<strong>翻译单元</strong>。链接器按符号记录把函数/变量的引用与定义对应起来，并修正相关地址。</p>
-<p><strong>声明</strong>说明名字和类型，例如 <code>extern int count;</code>；<strong>定义</strong>建立变量或提供函数体，例如 <code>int count = 0;</code>。extern 在这里声明别处存在一个变量，不另建一份。<strong>ODR（单一定义规则）</strong>约束同一实体允许有哪些定义；普通外部链接变量、非 inline 函数通常只应在一处定义。</p>
+<p><strong>声明</strong>说明名字和类型，例如 <code>extern int count;</code>；<strong>定义</strong>建立变量或提供函数体，例如 <code>int count = 0;</code>。这里不带初始化器的 extern 变量声明不提供定义；对应定义可以在同一翻译单元，也可以在另一个翻译单元。<strong>ODR（单一定义规则）</strong>约束同一实体允许有哪些定义；普通外部链接变量、非 inline 函数通常只应在一处定义。</p>
 <div class="note-table-wrap" role="region" aria-label="常见链接错误" tabindex="0"><table><caption>常见链接错误</caption><thead><tr><th scope="col">错误</th><th scope="col">检查方向</th></tr></thead><tbody><tr><td>undefined reference / unresolved external symbol</td><td>实现是否参与构建、依赖库是否链接、声明定义是否匹配、模板是否实例化、工具相关的链接顺序。</td></tr><tr><td>multiple definition</td><td>是否在头文件定义普通外部链接实体并被多个翻译单元包含；是否违反单一定义规则 ODR。</td></tr></tbody></table></div>
 <p><strong>库：</strong>静态库通常在链接时提供所需目标代码；动态库通过加载或运行时的动态链接机制使用。两者均需考虑 ABI、版本和依赖，不能仅概括为性能优劣。</p>
 <details class="note-example-details"><summary>多文件示例：共享声明、唯一的定义与模板实例化</summary>
@@ -1330,18 +1651,69 @@ int main() {
 <details class="note-review-question"><summary>经典问题：省略 counter.cpp，或把 int count = 0 放进头文件会怎样？</summary>
 <p>前者缺少 count/tick 的定义，通常链接失败；后者被两个 cpp 包含后产生重复外部定义，违反 ODR。头文件防重不能跨翻译单元去重。若把 twice 的定义移到 cpp，则还需要为使用的类型显式实例化；只留下模板声明不会自动产生任意类型版本。</p>
 </details>
-<p>实践与延伸：<a href="../program-execution/index.html">程序执行：寄存器、调用与链接</a>。</p>
+<p>实践与延伸：<a href="../program-execution/index.html">程序执行：装载、调用与异常展开</a>。</p>
+<h4 id="extern-declarations">extern：先区分声明、定义与链接</h4>
+<pre tabindex="0"><code class="language-cpp">// 以下每一行单独解释，均假设处于命名空间作用域。
+extern int count;       // 变量声明，没有提供定义
+int count = 0;          // 变量定义
+extern int total = 1;   // 仍然是定义：带有初始化器
+int tick();            // 函数声明，通常已具有外部链接
+extern int tick();     // 显式写 extern，不改变它为 C 语言链接
+
+static int local = 0;
+extern int local;      // 重声明此前可见的实体，保留它的内部链接</code></pre>
+<p><code>extern</code> 是存储类说明符；它不等于“定义必须在其他文件”，也不等于“无论前文如何都强制外部链接”。变量声明是否是定义、实体具有什么链接，要结合初始化器、作用域和此前声明判断。链接允许跨翻译单元引用，也不自动保证符号被动态库导出。</p>
+<h4 id="language-linkage">extern "C"：给 C++ 声明指定 C 语言链接</h4>
+<p><code>extern "C"</code> 是 C++ 的<strong>语言链接说明</strong>，与单独的 extern 不是一回事。它让相应函数类型及具有外部链接的函数 / 变量名字采用 C 语言链接。常见 ABI 下，这避免按 C++ 重载规则修饰函数符号名，使 C++ 调用者能链接到 C 编译器产生的实现；具体符号拼写仍由平台工具链决定。</p>
+<p>它可以包住函数定义，函数体仍按 C++ 编译；不是“把这一段改用 C 语法编译”。同名的 C 链接函数也不能靠 C++ 参数重载来区分。互操作接口还需选择双方能表示的数据、匹配布局和调用约定，并约定所有权与错误处理；加上这几个字符不会自动让 <code>std::string</code> 或 C++ 异常跨越任意 C 边界。</p>
+<div class="note-table-wrap" role="region" aria-label="extern 与语言链接对照" tabindex="0"><table><caption>名字相近，解决的问题不同</caption><thead><tr><th scope="col">写法</th><th scope="col">这里说明什么</th><th scope="col">不能推导什么</th></tr></thead><tbody><tr><td>extern int count;</td><td>不带初始化器的变量声明</td><td>定义一定在其他文件、符号一定导出</td></tr><tr><td>extern int tick();</td><td>带存储类说明符的函数声明</td><td>它会采用 C 语言链接</td></tr><tr><td>extern "C" int tick();</td><td>C++ 中指定 C 语言链接的函数声明</td><td>实现由 C 编译器编译、任意 C++ 类型均可互操作</td></tr></tbody></table></div>
+<details class="note-example-details"><summary>混合编译示例：用 C 编译实现，用 C++ 编译调用者</summary>
+<p>把下面三段分别保存为对应文件，放在同一目录。头文件用 <code>__cplusplus</code> 保护语言链接说明，使 C 编译器不必解析 C++ 语法。</p>
+<h4>c_api.h</h4>
+<pre tabindex="0"><code class="language-cpp" data-linkage-example="c_api.h">#ifndef C_API_H
+#define C_API_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+int sum_ints(int a, int b);
+extern int call_count;
+#ifdef __cplusplus
+}
+#endif
+#endif</code></pre>
+<h4>c_api.c</h4>
+<pre tabindex="0"><code class="language-c" data-linkage-example="c_api.c">#include "c_api.h"
+int call_count = 0;
+int sum_ints(int a, int b) {
+    ++call_count;
+    return a + b;
+}</code></pre>
+<h4>main.cpp</h4>
+<pre tabindex="0"><code class="language-cpp" data-linkage-example="main.cpp">#include "c_api.h"
+#include &lt;cassert&gt;
+int main() {
+    const int result = sum_ints(19, 23);
+    assert(result == 42);
+    assert(call_count == 1);
+}</code></pre>
+<pre tabindex="0"><code class="language-text">gcc -std=c11 -Wall -Wextra -c c_api.c -o c_api.o
+g++ -std=c++17 -Wall -Wextra -c main.cpp -o main.o
+g++ c_api.o main.o -o mixed_demo</code></pre>
+<p>链接后运行 mixed_demo；断言通过时程序正常退出。若只去掉头文件中的 C 语言链接包装，C++ 调用者通常会寻找经过 C++ 名字修饰的 sum_ints，无法与 C 目标文件中的符号匹配。若缺少 c_api.o，则即使语言链接正确仍会缺定义：这是两个不同原因。</p>
+</details>
+<p>JNI 中的导出入口与显式注册如何使用这一区别，见<a href="../jni-references/index.html#native-registration">本地方法注册</a>。</p>
+<p class="note-source">规则依据：<a href="https://eel.is/c++draft/dcl.stc" target="_blank" rel="noreferrer">存储类说明符</a> · <a href="https://eel.is/c++draft/basic.def" target="_blank" rel="noreferrer">声明与定义</a> · <a href="https://eel.is/c++draft/dcl.link" target="_blank" rel="noreferrer">语言链接</a>。</p>
 </div>
 
 <div class="note-lesson" id="q03">
-<h3>9.2 static 的不同含义</h3>
+<h4>9.2 static 的不同含义</h4>
 <p><strong>链接</strong>决定不同位置的声明能否指向同一实体：内部链接把实体限制在本翻译单元，外部链接允许跨翻译单元引用；它与名字在源码中是否可见的“作用域”不同。命名空间用于组织名字，如 std::vector 中的 std；文件最外层也属于命名空间作用域。</p>
 <div class="note-table-wrap" role="region" aria-label="static 按声明位置解释" tabindex="0"><table><caption>static 按声明位置解释</caption><thead><tr><th scope="col">位置</th><th scope="col">含义</th></tr></thead><tbody><tr><td>局部变量</td><td>静态存储期，名字仍在局部可见；需要动态初始化时首次执行到声明处初始化。</td></tr><tr><td>命名空间作用域</td><td>变量或函数具有内部链接。</td></tr><tr><td>类内成员</td><td>数据成员由同一类共享；成员函数没有 this。C++17 inline static 数据成员可在类内定义。</td></tr></tbody></table></div>
 <p><strong>线程安全：</strong>C++11 起局部 static 的初始化具有相应线程安全保证，后续修改不会自动同步。例如多线程调用 <code>static int id = 0; return ++id;</code> 仍可能产生数据竞争。</p>
 </div>
 
 <div class="note-lesson" id="q04">
-<h3>9.3 inline、ODR 与宏</h3>
+<h4>9.3 inline、ODR 与宏</h4>
 <p><strong>inline</strong> 允许符合 ODR 的定义出现在多个翻译单元中，适合头文件定义，但不强制展开调用。外部链接的 inline 函数仍是同一个函数；多份定义须满足代码记号序列一致、相关名字含义一致等条件，不能让不同 cpp 看到不同函数体。</p>
 <p><strong>头文件防重</strong>只避免同一翻译单元重复包含，不能替代跨翻译单元的 ODR。普通外部链接函数通常在头文件声明、在一个 cpp 中定义。</p>
 <p><strong>宏</strong>在预处理时替换代码记号（名称、运算符等）。例如 <code>#define SQUARE(x) ((x) * (x))</code> 将 SQUARE(i++) 展开为 <code>((i++) * (i++))</code>；对同一变量的两次自增未定序（互相没有先后约束），导致 UB。加括号不能避免重复求值，普通函数不会这样展开实参。</p>
@@ -1351,33 +1723,34 @@ int main() {
 </div>
 
 <div class="note-lesson" id="q41">
-<h3>9.4 未定义行为与错误定位</h3>
+<h4>9.4 未定义行为与错误定位</h4>
 <p>常见 UB 来源包括未初始化读取、越界、悬垂、释放后使用、有符号溢出和数据竞争。<strong>检测器</strong>为程序加入额外检查，在触发相应访问或操作时报告错误；它们只能覆盖支持的错误类型和实际执行路径。</p>
-<ol><li>固定输入和构建配置，区分编译、链接或运行时问题。</li><li>建立最小复现，检查首次故障位置、调用栈（当前函数及逐层调用者）、对象生命周期与访问顺序。</li><li>在支持的平台用 ASan 查内存越界/释放后使用，UBSan 查部分语言错误，TSan 查数据竞争。</li><li>修复根因，用原始复现和必要边界验证；一次未报告不能证明全部路径正确。</li></ol>
+<p>先区分编译、链接与运行时问题，保留能复现的输入和构建配置。结合诊断信息、调用栈与对应语言规则判断原因；检测工具只能覆盖其支持的错误类型。</p>
 <details class="note-review-question" id="review-debug-evidence"><summary>经典问题：加一行打印就不崩溃，是否说明已经修好了？</summary>
 <p>不能。打印可能改变时序、布局或优化，使问题暂时隐藏。应定位非法访问或同步错误并修复，再用原始复现与边界验证。</p>
 </details>
-<p>实践与延伸：<a href="../cpp-memory-diagnostics/index.html">C++ 内存问题定位</a>。</p>
 </div>
 
 <div class="note-lesson" id="q42">
-<h3>9.5 性能测量与优化</h3>
+<h4>9.5 性能测量与优化</h4>
 <ul><li><strong>先定指标：</strong>吞吐是单位时间完成量，延迟是一次操作的耗时；二者与内存峰值可能存在取舍。性能分析器（profiler）通过定期采样或加入统计代码，找出耗时和分配集中的位置。</li><li><strong>控制变量：</strong>固定输入规模与分布、编译器、优化配置，区分初始化和稳态成本，重复测量观察波动。</li><li><strong>避免无效基准：</strong>保证计算结果可观察，防止循环被消除；不要随意加 volatile，因为它会改变程序的访问约束。</li><li><strong>结合场景判断：</strong>复杂度描述增长趋势，分配、复制、缓存和锁竞争影响实际成本。reserve 可能减少迁移，也会改变内存占用。</li></ul>
 </div>
 <p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.def.odr" target="_blank" rel="noreferrer">ODR 与定义</a> · <a href="https://eel.is/c++draft/intro.execution" target="_blank" rel="noreferrer">求值顺序</a> · <a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">AddressSanitizer</a> · <a href="https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html" target="_blank" rel="noreferrer">UndefinedBehaviorSanitizer</a> · <a href="https://clang.llvm.org/docs/ThreadSanitizer.html" target="_blank" rel="noreferrer">ThreadSanitizer</a> · <a href="https://eel.is/c++draft/dcl.inline" target="_blank" rel="noreferrer">inline</a> · <a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [dcl.link]（语言链接）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
 </section>
-
+</section>
 <section id="references" aria-labelledby="references-title">
 <h2 id="references-title">参考资料</h2>
-<p>各节引用公开工作草案或实现文档。工作草案持续更新，核对规则时应结合目标标准版本；ABI 示例不是 C++ 标准规定的固定布局。</p>
+<p>C++17 规则以固定工作草案 N4659 为对照，各章列出可检索的节名。eel.is 链接指向持续更新的当前草案，用于延伸查阅；遇到版本差异时先核对 N4659，后续标准仍单独标注。ABI 示例不是 C++ 标准规定的固定布局。</p>
 <ul>
+<li><a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">C++17 固定工作草案 N4659（PDF）</a></li>
 <li><a href="https://eel.is/c++draft/" target="_blank" rel="noreferrer">C++ 公开工作草案</a></li>
 <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines" target="_blank" rel="noreferrer">C++ Core Guidelines</a></li>
 <li><a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html" target="_blank" rel="noreferrer">Itanium C++ ABI</a></li>
 <li><a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">Clang 检测工具文档</a></li>
 </ul>
 </section>
-
+<!-- generated:note-body:end -->
 </div>
             </div>
         </article>

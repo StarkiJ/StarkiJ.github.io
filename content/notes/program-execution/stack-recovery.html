@@ -1,0 +1,52 @@
+<section class="note-part" id="stack-recovery" aria-labelledby="stack-recovery-title">
+<h2 id="stack-recovery-title">二、栈回溯与异常展开</h2>
+<p>前面的调用建立了寄存器与栈帧状态；这里看调试器怎样重建调用链，以及异常运行时怎样恢复状态并执行语言要求的清理。</p>
+<section id="backtrace" aria-labelledby="backtrace-title"><h3 id="backtrace-title">6. 调用栈回溯与 LLDB</h3>
+<p><strong>回溯</strong>从当前 PC/SP 等寄存器出发，根据展开信息或有效帧链恢复上一层寄存器与返回地址，逐层重复。它不是简单把栈内“看起来像代码地址”的数字全部打印出来。</p>
+<ol><li>取得故障线程寄存器，确认 PC 所属模块和构建 ID。</li><li>用 DWARF CFI 等展开信息或目标平台机制恢复上一帧；符合约定时也可沿帧指针链回溯。</li><li>结合模块装载偏移和匹配的符号文件，把代码地址映射到函数、源码行和可能的内联帧。</li><li>若栈损坏、缺少符号或展开信息，检查寄存器和原始栈；不要把截断回溯当作完整调用关系。</li></ol>
+<pre tabindex="0"><code class="language-text">thread backtrace all
+register read pc sp fp lr
+disassemble --frame
+memory read --size 8 --format x --count 16 $sp
+image lookup --address $pc</code></pre>
+<p>以上寄存器别名按 AArch64 LLDB 场景书写；其他目标需调整。读取内存前确认地址映射和可读范围，八字节显示也不意味着其中每一项都是指针。</p>
+<details class="note-review-question"><summary>经典问题：为什么优化后栈里少了某个函数？</summary>
+<p>可能被内联、尾调用消除，或缺少展开/调试信息。保留符号、核对同一构建，必要时用调试构建复现；不能只因回溯没有显示就断定没有执行。</p>
+</details>
+<p class="note-source">参考：<a href="https://lldb.llvm.org/use/map.html" target="_blank" rel="noreferrer">LLDB 命令参考</a>。</p>
+</section>
+<section id="unwind" aria-labelledby="unwind-title"><h3 id="unwind-title">7. C++ 异常展开：从 throw 到 catch</h3>
+<p><strong>Stack unwinding（栈展开）</strong>利用保存状态和展开规则恢复上层帧。打印 backtrace 可只读取并重建虚拟上下文；C++ 异常传播则还要实际转移控制并运行清理代码。这里以 GCC / Clang 常见的 <strong>Itanium 风格 C++ EH + DWARF 展开模型</strong>为例，它也用于多种非 Itanium 架构；Windows SEH 和 AArch32 EHABI 有不同细节。</p>
+<h4 id="unwind-phases">从 throw 到 catch：两阶段</h4>
+<ol><li><strong>抛出：</strong>构造异常对象；编译器通常调用 __cxa_throw，进入异常运行时和 _Unwind_RaiseException 等接口。</li><li><strong>第一阶段——搜索：</strong>逐帧查询 personality routine，依据异常类型和该调用位置的语言相关信息寻找匹配处理器。搜索阶段不实际弹掉程序栈，也不执行这些帧的局部析构。</li><li><strong>第二阶段——清理：</strong>从抛出点沿相同传播路径展开，把控制交给需要清理的 landing pad，销毁已完整构造、需要离开作用域的自动对象；清理后可通过 _Unwind_Resume 继续展开。</li><li><strong>进入处理器：</strong>到达搜索阶段找到的处理器帧，执行 catch 的相应逻辑。重新抛出会继续异常传播。</li></ol>
+<p>“展开就是不断 pop 返回地址”漏掉了寄存器恢复和语言清理语义。<strong>personality routine</strong>负责语言相关的匹配 / 清理决策，通用 unwinder 负责帧状态恢复；编译器生成的 landing pad 执行实际清理动作。</p>
+<h4 id="unwind-metadata">CFI、CFA、LSDA 分别描述什么</h4>
+<p class="note-source">参考：<a href="https://llvm.org/docs/ExceptionHandling.html" target="_blank" rel="noreferrer">LLVM：异常处理与展开表</a>。</p>
+<p>DWARF CFI 描述给定 PC 处如何计算 <strong>CFA（规范帧地址）</strong>以及恢复寄存器；CFA 是展开使用的参考地址，通常由 SP 或 FP 加偏移得到，不等同于“当前 SP”。ELF 中异常展开信息常见于 .eh_frame，语言相关 LSDA 常见于 .gcc_except_table，后者关联调用位置、landing pad 和处理动作。调试符号负责函数名 / 行号等信息；删除调试符号不必然删除运行异常所需的展开表。</p>
+<p>前面非叶函数示例在函数序言完成后，概念上可用 <code>CFA = SP + 16</code>，旧 x29 在 CFA−16，旧 x30 在 CFA−8；序言 / 尾声执行到一半时规则可能不同。缺少帧指针不自动意味着无法展开，关键是有适用且正确的展开信息。</p><p class="note-source">参考：<a href="https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html" target="_blank" rel="noreferrer">Itanium C++ ABI：搜索、清理和 personality 接口</a>。</p><h4 id="unwind-validation">用析构顺序验证，不靠背术语</h4>
+<figure class="note-example"><figcaption>完整 C++17 示例：先清理内层局部对象，再进入外层 catch</figcaption>
+<pre tabindex="0"><code class="language-cpp" data-example="unwind-order">#include &lt;iostream&gt;
+struct Guard {
+    const char* name;
+    ~Guard() { std::cout &lt;&lt; name &lt;&lt; '\n'; }
+};
+void inner() {
+    Guard first{"first"};
+    Guard second{"second"};
+    throw 7;
+}
+int main() {
+    try {
+        Guard outer{"outer"};
+        inner();
+    } catch (int value) {
+        std::cout &lt;&lt; "catch " &lt;&lt; value &lt;&lt; '\n';
+    }
+}</code></pre>
+<pre class="note-output" tabindex="0"><code>second
+first
+outer
+catch 7</code></pre></figure>
+<p>这验证 C++ 可观察的清理顺序，不能仅凭输出证明本机使用了哪一种 EH ABI。若构造函数尚未成功完成，失败对象自身的析构不会执行，但已成功构造的基类 / 成员会清理。仅有裸指针局部变量不会自动 delete 它指向的对象；要用 RAII 包装拥有关系。</p><details class="note-review-question"><summary>面试追问：unwind 过程中析构函数再次抛异常会怎样？</summary><p>若清理时调用的析构函数让第二个异常逃逸，运行时会调用 std::terminate；析构内部自行捕获处理是另一回事。异常逃出 noexcept 函数也会 terminate，不能承诺所有外层析构都已执行。未找到处理器时同样不能依赖“先析构整个栈再退出”。</p></details><details class="note-review-question"><summary>面试追问：零成本异常真的没有成本吗？</summary><p>通常指正常路径避免逐次注册处理器等开销，不代表二进制、缓存和优化没有代价。展开表与清理代码占空间，实际抛出还涉及异常对象、查表、类型匹配和展开；禁用异常编译也不能随意让异常穿越未准备好展开的边界。</p></details><p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_exceptions.html" target="_blank" rel="noreferrer">libstdc++：异常处理成本与禁用异常的边界</a>。</p><p>JVM 相关追问要分清层次：Java 异常由虚拟机管理解释 / 编译帧及 Java 处理器，不能说每次 Java throw 都直接走 C++ __cxa_throw。GC 根扫描、反优化和 native 异常展开都需要机器状态元数据，但各自目的和协议不同。</p>
+</section>
+</section>

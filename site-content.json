@@ -42,25 +42,207 @@
       "title": "计算机基础",
       "notes": [
         {
+          "slug": "data-structures",
+          "title": "数据结构：存储、查找与维护",
+          "cardTitle": "数据结构基础",
+          "summary": "从操作成本出发，理解动态数组、链表、堆、红黑树和哈希表的结构与维护。",
+          "kind": "overview",
+          "reading": "动态数组、链表、堆、搜索树和哈希表可按题目跳读；复杂度口径用于比较操作成本，C++ 容器接口与失效规则见 STL 章节。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "complexity",
+              "label": "操作需求与复杂度"
+            },
+            {
+              "anchor": "linear-storage",
+              "label": "动态数组与链表"
+            },
+            {
+              "anchor": "stack-queue-heap",
+              "label": "栈、队列与堆"
+            },
+            {
+              "anchor": "search-trees",
+              "label": "搜索树与红黑树"
+            },
+            {
+              "anchor": "hash-table",
+              "label": "哈希表与冲突处理"
+            },
+            {
+              "anchor": "selection",
+              "label": "结构选择与语言接口"
+            }
+          ],
+          "published": "2026-09-14",
+          "updated": "2026-09-18"
+        },
+        {
           "slug": "operating-systems",
           "title": "操作系统：进程、内存与同步",
           "cardTitle": "操作系统基础",
-          "summary": "梳理进程线程、虚拟内存、缺页、IPC、锁与信号之间的关系。",
+          "summary": "从进程与系统调用，到地址转换、TLB、缓存、缺页和 mmap，再理解通信、同步与信号。",
           "kind": "overview",
-          "reading": "从进程线程读到内存与同步，为程序执行和运行时专题打基础。",
-          "prerequisites": []
+          "reading": "进程与线程、虚拟内存、通信、同步和信号可按题目跳读；访存相关的地址转换、TLB、缓存和缺页适合结合一次访问分析。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "process-thread",
+              "label": "进程、线程与调度"
+            },
+            {
+              "anchor": "system-calls",
+              "label": "系统调用与 ARM64 约定"
+            },
+            {
+              "anchor": "virtual-memory",
+              "label": "虚拟内存与堆栈"
+            },
+            {
+              "anchor": "memory-access-flow",
+              "label": "完整访存流程"
+            },
+            {
+              "anchor": "memory-mapping",
+              "label": "mmap 与按需触页"
+            },
+            {
+              "anchor": "allocation",
+              "label": "进程创建与写时复制"
+            },
+            {
+              "anchor": "ipc",
+              "label": "进程间通信"
+            },
+            {
+              "anchor": "locks",
+              "label": "锁、futex 与死锁"
+            },
+            {
+              "anchor": "signals",
+              "label": "异常、信号与故障"
+            }
+          ],
+          "published": "2026-09-08",
+          "updated": "2026-09-18"
+        },
+        {
+          "slug": "computer-architecture",
+          "title": "计算机组成：指令集、流水线与缓存",
+          "cardTitle": "计算机组成：ISA、流水线与缓存",
+          "summary": "区分 ISA 与微架构，用 RISC-V 流水线理解冒险，比较 x86-64 / AArch64，并解释缓存一致性与伪共享。",
+          "kind": "overview",
+          "reading": "ISA 与微架构、RISC-V 流水线、x86-64 / AArch64 和缓存一致性可分别查阅；函数参数与栈帧属于平台 ABI，语言同步规则见对应语言笔记。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "isa-microarchitecture",
+              "label": "ISA 与微架构"
+            },
+            {
+              "anchor": "riscv-pipeline",
+              "label": "RISC-V 流水线"
+            },
+            {
+              "anchor": "x86-aarch64",
+              "label": "x86-64 / AArch64 ISA"
+            },
+            {
+              "anchor": "cache-coherence",
+              "label": "缓存一致性与伪共享"
+            }
+          ],
+          "published": "2026-09-19",
+          "updated": "2026-09-19"
         },
         {
           "slug": "network-basics",
-          "title": "网络：TCP、UDP 与 socket",
+          "title": "网络通信：传输协议、socket 与 HTTP",
           "cardTitle": "网络基础",
           "summary": "从端点与字节流出发，理解可靠传输、消息边界以及 HTTP/HTTPS。",
           "kind": "overview",
-          "reading": "先梳理端点和传输语义，再读消息边界与 HTTP/HTTPS。",
-          "prerequisites": []
+          "reading": "TCP/UDP、socket 收发与消息边界、HTTP/HTTPS 可分别查阅；一次 HTTPS 请求把相关步骤放在一起复习。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "layers",
+              "label": "分层与通信端点"
+            },
+            {
+              "anchor": "tcp",
+              "label": "TCP 可靠传输"
+            },
+            {
+              "anchor": "udp",
+              "label": "UDP 与传输选择"
+            },
+            {
+              "anchor": "framing",
+              "label": "socket 收发与消息边界"
+            },
+            {
+              "anchor": "http",
+              "label": "HTTP 与 HTTPS"
+            },
+            {
+              "anchor": "request-journey",
+              "label": "一次 HTTPS 请求"
+            }
+          ],
+          "published": "2026-09-08",
+          "updated": "2026-09-18"
+        },
+        {
+          "slug": "arm64-mte",
+          "title": "ARM64 MTE：内存标记、访问检查与使用",
+          "cardTitle": "ARM64 MTE 内存标记",
+          "summary": "从指针与内存标签出发，理解 CPU、内核和分配器如何协作，以及 Linux / Android 的启用、报告与检测边界。",
+          "kind": "topic",
+          "reading": "先理解虚拟内存与一次访存，再读两类标签和生命周期；平台配置须结合支持的硬件、内核与运行库。",
+          "prerequisites": [
+            {
+              "slug": "operating-systems",
+              "anchor": "memory-access-flow",
+              "label": "完整访存流程"
+            },
+            {
+              "slug": "operating-systems",
+              "anchor": "memory-mapping",
+              "label": "mmap 与页面映射"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "purpose",
+              "label": "目标与前置"
+            },
+            {
+              "anchor": "tags",
+              "label": "标签与访问检查"
+            },
+            {
+              "anchor": "cooperation",
+              "label": "硬件与软件协作"
+            },
+            {
+              "anchor": "enable",
+              "label": "Linux / Android 使用"
+            },
+            {
+              "anchor": "diagnosis",
+              "label": "报告与故障定位"
+            },
+            {
+              "anchor": "limits",
+              "label": "成本与检测边界"
+            }
+          ],
+          "published": "2026-09-18",
+          "updated": "2026-09-18"
         }
       ],
-      "description": "围绕操作系统、计算机网络、数据结构与计算机组成原理整理基础知识。"
+      "description": "围绕数据结构、操作系统、计算机组成与网络建立基础，并以 ARM64 MTE 专题理解硬件与软件协作的内存安全机制。"
     },
     {
       "id": "cpp",
@@ -69,49 +251,39 @@
         {
           "slug": "cpp-interview-roadmap",
           "title": "C++ 核心知识",
-          "summary": "语言基础、对象模型、资源管理、STL、模板与并发。",
+          "summary": "按语言与对象、生命周期与资源、泛型与标准库、并发、构建与调试五部分梳理 C++。",
           "description": "C++ 核心概念与机制复习笔记，涵盖类型、生命周期、虚函数、智能指针、移动语义、STL、模板、并发和编译链接，附代码示例与经典问题。",
           "kind": "overview",
-          "reading": "按章节复习语言机制；需要完整实现或排查流程时，再读对应专题。",
+          "reading": "按五部分查阅语言与工程规则；shared_ptr 与稳定句柄的完整实现分别见实践笔记。",
           "prerequisites": [],
           "chapters": [
             {
-              "anchor": "basics",
-              "label": "语言基础"
+              "anchor": "language-and-objects",
+              "label": "语言基础与对象模型"
             },
             {
-              "anchor": "lifetime",
-              "label": "存储与生命周期"
+              "anchor": "lifetime-and-resources",
+              "label": "生命周期、资源管理与拷贝移动"
             },
             {
-              "anchor": "objects",
-              "label": "类与对象模型"
+              "anchor": "generic-and-library",
+              "label": "泛型编程与标准库"
             },
             {
-              "anchor": "ownership",
-              "label": "资源管理与智能指针"
-            },
-            {
-              "anchor": "move",
-              "label": "值类别与移动语义"
-            },
-            {
-              "anchor": "stl",
-              "label": "STL 容器与算法"
-            },
-            {
-              "anchor": "templates",
-              "label": "模板与类型推导"
-            },
-            {
-              "anchor": "concurrency",
+              "anchor": "concurrent-programming",
               "label": "并发与同步"
             },
             {
-              "anchor": "engineering",
-              "label": "编译、链接与调试"
+              "anchor": "build-and-debug",
+              "label": "构建与调试"
+            },
+            {
+              "anchor": "language-linkage",
+              "label": "extern 与 C 语言链接"
             }
-          ]
+          ],
+          "published": "2026-09-09",
+          "updated": "2026-09-18"
         },
         {
           "slug": "cpp-shared-ptr",
@@ -119,58 +291,110 @@
           "cardTitle": "共享指针实现",
           "summary": "从控制块和所有权不变量出发，实现拷贝、移动、赋值与资源释放。",
           "kind": "practice",
-          "reading": "先理解所有权和对象生命周期，再跟随控制块推导实现。",
+          "reading": "从控制块的不变量推导拷贝、移动、赋值与最后一次释放，再用完整实现和断言验证；标准接口的使用规则见前置章节。",
           "prerequisites": [
             {
               "slug": "cpp-interview-roadmap",
-              "label": "资源管理与智能指针",
-              "anchor": "ownership"
+              "anchor": "ownership",
+              "label": "资源管理与智能指针"
+            },
+            {
+              "slug": "cpp-interview-roadmap",
+              "anchor": "copy-semantics",
+              "label": "拷贝与特殊成员函数"
             }
-          ]
+          ],
+          "chapters": [
+            {
+              "anchor": "ownership",
+              "label": "控制块与不变量"
+            },
+            {
+              "anchor": "operations",
+              "label": "拷贝、移动与赋值"
+            },
+            {
+              "anchor": "implementation",
+              "label": "实现与验证"
+            },
+            {
+              "anchor": "standard",
+              "label": "标准实现的扩展"
+            }
+          ],
+          "published": "2026-09-08",
+          "updated": "2026-09-18"
         },
         {
           "slug": "cpp-stable-handles",
-          "title": "vector 与稳定句柄",
+          "title": "稳定句柄：对象身份、重排与生命周期",
           "summary": "区分地址、位置和身份，处理扩容、重排、删除与槽位复用。",
-          "kind": "topic",
-          "reading": "先掌握容器失效规则，再区分对象的地址、位置和身份。",
+          "kind": "practice",
+          "reading": "先区分地址、位置和身份，再实现带版本号的句柄与对象池；容器失效与对象生命周期见核心知识。",
           "prerequisites": [
             {
               "slug": "cpp-interview-roadmap",
-              "label": "STL 容器与算法",
-              "anchor": "stl"
+              "anchor": "container-invalidation",
+              "label": "容器失效规则"
+            },
+            {
+              "slug": "cpp-interview-roadmap",
+              "anchor": "lifetime",
+              "label": "存储与生命周期"
             }
+          ],
+          "cardTitle": "稳定句柄与对象身份",
+          "chapters": [
+            {
+              "anchor": "invalidation",
+              "label": "地址、位置与身份"
+            },
+            {
+              "anchor": "mapping",
+              "label": "句柄与双向映射"
+            },
+            {
+              "anchor": "implementation",
+              "label": "实现与验证"
+            },
+            {
+              "anchor": "boundaries",
+              "label": "生命周期与并发边界"
+            }
+          ],
+          "published": "2026-09-08",
+          "updated": "2026-09-18"
+        }
+      ],
+      "description": "一篇核心笔记串联语言与工程基础，两篇实现实践深入资源与对象身份，一篇诊断笔记负责取证和验证。",
+      "groups": [
+        {
+          "title": "语言与工程基础",
+          "notes": [
+            "cpp-interview-roadmap"
           ]
         },
         {
-          "slug": "cpp-memory-diagnostics",
-          "title": "C++ 内存问题定位",
-          "cardTitle": "内存问题定位",
-          "summary": "区分泄漏、长期持有和非法访问，用复现、调用栈与对照实验验证修复。",
-          "kind": "topic",
-          "reading": "先区分拥有与借用，再按泄漏、长期持有和非法访问选择排查路径。",
-          "prerequisites": [
-            {
-              "slug": "cpp-interview-roadmap",
-              "label": "存储与生命周期",
-              "anchor": "lifetime"
-            }
+          "title": "资源与对象管理实践",
+          "notes": [
+            "cpp-shared-ptr",
+            "cpp-stable-handles"
           ]
         }
       ]
     },
     {
       "id": "runtime",
-      "title": "虚拟机与编译器",
-      "description": "程序执行、编译优化、JVM / ART、垃圾回收与 native 内存管理。",
+      "title": "编译器与运行时",
+      "description": "沿机器执行、托管类型与线程、编译优化、内存管理和平台实践组织知识；共同机制统一讲解，HotSpot、ART 和原生分配器随主题对照。",
       "notes": [
         {
           "slug": "program-execution",
-          "title": "程序执行：装载、调用与栈展开",
-          "cardTitle": "程序执行机制",
-          "summary": "从 ELF 装载到指令执行，理解 AArch64 调用约定、栈回溯与 C++ 异常展开。",
+          "title": "程序执行：装载、调用与异常展开",
+          "cardTitle": "程序执行：装载、调用与异常展开",
+          "summary": "沿 ELF 装载、x86-64 / AArch64 调用约定和栈帧，理解执行、回溯与异常清理。",
           "kind": "topic",
-          "reading": "先了解进程和虚拟内存，再沿装载、指令与数据表示、函数调用、栈展开阅读。",
+          "reading": "先建立装载与函数调用的机器状态模型，再读调用约定、栈回溯和异常展开；ISA 与流水线见计算机组成笔记。",
           "prerequisites": [
             {
               "slug": "operating-systems",
@@ -181,141 +405,118 @@
           "chapters": [
             {
               "anchor": "elf",
-              "label": "ELF 链接与装载"
+              "label": "链接与装载"
             },
             {
               "anchor": "abi",
-              "label": "arm64 调用约定"
+              "label": "AArch64 ABI"
+            },
+            {
+              "anchor": "x86-aarch64",
+              "label": "x86-64 / AArch64 ABI"
             },
             {
               "anchor": "call",
-              "label": "函数调用"
+              "label": "调用与栈帧"
             },
             {
               "anchor": "backtrace",
-              "label": "调用栈回溯"
+              "label": "栈回溯"
             },
             {
               "anchor": "unwind",
-              "label": "C++ unwind"
+              "label": "异常展开"
             }
-          ]
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-19"
         },
         {
-          "slug": "compiler-ir",
-          "title": "编译器：IR、SSA 与优化",
-          "cardTitle": "编译器基础",
-          "summary": "连接 SSA、循环 phi、寄存器分配与 inline cache、类型反馈和反优化。",
-          "kind": "topic",
-          "reading": "先建立程序执行的概念，再跟随 IR、SSA 和代码生成理解编译过程。",
+          "slug": "managed-runtime",
+          "title": "托管运行时：字节码、类与线程",
+          "summary": "从 JVM / DEX 表示、类加载与初始化，到方法分派、Java 同步和运行时协作，建立 HotSpot 与 ART 的共同基础。",
+          "kind": "overview",
+          "reading": "字节码与类、方法调用、线程和同步可按知识点跳读；内存分配、GC 与编译优化在关联笔记展开。",
           "prerequisites": [
             {
               "slug": "program-execution",
-              "label": "程序执行机制"
+              "anchor": "call",
+              "label": "函数调用与机器栈帧"
+            },
+            {
+              "slug": "operating-systems",
+              "anchor": "process-thread",
+              "label": "进程与线程"
             }
           ],
           "chapters": [
             {
-              "anchor": "cfg",
-              "label": "控制流图"
+              "anchor": "bytecode",
+              "label": "字节码与执行模型"
             },
             {
-              "anchor": "ssa",
-              "label": "SSA 与 phi"
+              "anchor": "class-loading",
+              "label": "类加载与类身份"
             },
             {
-              "anchor": "lowering",
-              "label": "phi 消除"
+              "anchor": "class-initialization",
+              "label": "链接与初始化"
             },
             {
-              "anchor": "inline-cache",
-              "label": "inline cache"
+              "anchor": "method-execution",
+              "label": "分派与异常"
+            },
+            {
+              "anchor": "java-memory-model",
+              "label": "Java 内存模型与同步"
+            },
+            {
+              "anchor": "runtime-cooperation",
+              "label": "执行状态与元数据"
             }
-          ]
+          ],
+          "published": "2026-09-14",
+          "updated": "2026-09-18"
         },
         {
-          "slug": "jvm-gc",
-          "title": "JVM GC：三色标记、STW 与读屏障",
-          "summary": "从三色标记的漏标反例出发，理解 STW、读写屏障与并发移动的正确性。",
+          "slug": "compiler-ir",
+          "title": "编译器：IR、代码生成与动态优化",
+          "cardTitle": "编译器：IR、代码生成与动态优化",
+          "summary": "从 CFG、SSA 和 ART HGraph，到寄存器分配、AOT、HotSpot C1/C2、JIT、OSR 与反优化。",
           "kind": "topic",
-          "reading": "先确认讨论范围与可达性前提，再依次阅读三色标记、暂停、屏障和转发。",
+          "reading": "先读 CFG、SSA 与 HGraph，再手推寄存器分配；随后阅读 AOT、HotSpot 分层、JIT、IC、OSR 及恢复元数据。",
           "prerequisites": [
             {
-              "slug": "operating-systems",
-              "anchor": "virtual-memory",
-              "label": "虚拟地址与物理内存"
+              "slug": "program-execution",
+              "anchor": "call",
+              "label": "函数调用与栈帧"
             }
           ],
           "chapters": [
             {
-              "anchor": "scope",
-              "label": "讨论范围与阅读前提"
+              "anchor": "compiler-foundations",
+              "label": "IR、优化与代码生成"
             },
             {
-              "anchor": "tricolor",
-              "label": "三色标记：用不变量解释漏标"
+              "anchor": "dynamic-compilation",
+              "label": "动态编译与运行时优化"
             },
             {
-              "anchor": "stw",
-              "label": "STW、安全点与并发阶段"
+              "anchor": "hotspot-tiers",
+              "label": "HotSpot C1 / C2"
             },
             {
-              "anchor": "barriers",
-              "label": "SATB、增量更新与读屏障"
-            },
-            {
-              "anchor": "forwarding",
-              "label": "转发地址：移动对象但保留身份"
+              "anchor": "aot-optimization",
+              "label": "AOT 优化"
             }
-          ]
-        },
-        {
-          "slug": "art-memory-gc",
-          "title": "ART 内存与 GC",
-          "summary": "理解对象可达性、并发复制、堆空间、引用表示和 OOM 排查。",
-          "kind": "overview",
-          "reading": "从对象可达性开始；虚拟内存基础有助于理解堆空间与 OOM。",
-          "prerequisites": [
-            {
-              "slug": "operating-systems",
-              "label": "虚拟地址与物理内存",
-              "anchor": "virtual-memory"
-            }
-          ]
-        },
-        {
-          "slug": "art-compilation-startup",
-          "title": "ART 编译与应用启动",
-          "summary": "沿解释、JIT、Profile 与 AOT，理解编译状态如何影响应用启动。",
-          "kind": "topic",
-          "reading": "先理解方法的执行与编译状态，再看它们在应用启动路径上的成本和取舍。",
-          "prerequisites": [
-            {
-              "slug": "compiler-ir",
-              "label": "AOT、JIT 与热点统计",
-              "anchor": "jit"
-            }
-          ]
-        },
-        {
-          "slug": "jni-references",
-          "title": "JNI：引用与生命周期",
-          "cardTitle": "JNI 引用管理",
-          "summary": "梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。",
-          "kind": "topic",
-          "reading": "先了解 GC Roots，再看跨 Java/native 边界的引用和线程规则。",
-          "prerequisites": [
-            {
-              "slug": "art-memory-gc",
-              "label": "可达性与 GC Roots",
-              "anchor": "roots"
-            }
-          ]
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-19"
         },
         {
           "slug": "native-memory-allocation",
-          "title": "malloc：分配路径、碎片与回收",
-          "summary": "沿 glibc 的线程缓存、arena、空闲块与系统映射理解 native 内存分配。",
+          "title": "原生内存分配：malloc、碎片与回收",
+          "summary": "区分对象、分配器与虚拟内存，沿 glibc 分配和释放路径理解缓存、碎片与驻留内存。",
           "kind": "topic",
           "reading": "先区分对象生命周期与虚拟内存，再沿 malloc / free 的路径分析性能和碎片。",
           "prerequisites": [
@@ -342,84 +543,292 @@
               "anchor": "tradeoffs",
               "label": "碎片、并发与 realloc"
             }
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-18"
+        },
+        {
+          "slug": "managed-memory-gc",
+          "title": "托管内存与垃圾回收",
+          "summary": "从运行时内存、对象分配与引用出发，理解 GC 与并发移动，对照 HotSpot、ART 的实现和内存排查。",
+          "kind": "overview",
+          "reading": "对象布局、分配、引用与可达性、GC 与并发移动、G1 和 ART 实例可按题目跳读；共性机制只讲一次，实现差异随知识点对照。",
+          "prerequisites": [
+            {
+              "slug": "operating-systems",
+              "anchor": "virtual-memory",
+              "label": "虚拟地址与物理内存"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "gc-foundations",
+              "label": "运行时内存、对象与回收基础"
+            },
+            {
+              "anchor": "concurrent-gc",
+              "label": "并发标记与对象移动"
+            },
+            {
+              "anchor": "gc-implementations",
+              "label": "收集器实现与平台排查"
+            }
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-18"
+        },
+        {
+          "slug": "jni-references",
+          "title": "JNI：调用边界、引用与生命周期",
+          "cardTitle": "JNI：调用边界、引用与生命周期",
+          "summary": "梳理 Java/native 调用、JNIEnv、引用种类、GC 协作和常见泄漏。",
+          "kind": "topic",
+          "reading": "先了解 GC Roots 与类加载器，再读注册、跨线程引用、缓冲释放和异步关闭协议。",
+          "prerequisites": [
+            {
+              "slug": "managed-memory-gc",
+              "anchor": "roots",
+              "label": "可达性与 GC Roots"
+            },
+            {
+              "slug": "managed-runtime",
+              "anchor": "class-loading",
+              "label": "类身份与加载器"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "interface",
+              "label": "调用与线程"
+            },
+            {
+              "anchor": "native-registration",
+              "label": "注册与查类"
+            },
+            {
+              "anchor": "references",
+              "label": "引用与身份"
+            },
+            {
+              "anchor": "access",
+              "label": "对象访问与异常"
+            },
+            {
+              "anchor": "gc",
+              "label": "GC 与 native 缓冲"
+            },
+            {
+              "anchor": "boundaries",
+              "label": "生命周期设计"
+            },
+            {
+              "anchor": "async-close",
+              "label": "异步关闭竞态"
+            }
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-18"
+        },
+        {
+          "slug": "art-compilation-startup",
+          "title": "ART 编译与 Android 应用启动",
+          "summary": "连接 D8/R8、DEX、Profile 与 ART 编译产物，结合 Zygote 和可复查实验分析启动成本。",
+          "kind": "topic",
+          "reading": "解释、JIT、AOT 的机制先读编译器笔记；本篇关注 ART 编译流程及其在 Android 启动场景中的作用。",
+          "prerequisites": [
+            {
+              "slug": "compiler-ir",
+              "label": "AOT、JIT 与热点统计",
+              "anchor": "jit"
+            },
+            {
+              "slug": "managed-runtime",
+              "anchor": "class-initialization",
+              "label": "类初始化与首次使用"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "execution",
+              "label": "DEX 与执行状态"
+            },
+            {
+              "anchor": "build-artifacts",
+              "label": "构建工具与产物"
+            },
+            {
+              "anchor": "profiles",
+              "label": "Profile 与编译产物"
+            },
+            {
+              "anchor": "profile-kinds",
+              "label": "Profile 的层次与用途"
+            },
+            {
+              "anchor": "startup",
+              "label": "Zygote 与启动"
+            },
+            {
+              "anchor": "tradeoffs",
+              "label": "启动验证"
+            },
+            {
+              "anchor": "startup-experiment",
+              "label": "启动对照实验"
+            }
+          ],
+          "published": "2026-09-13",
+          "updated": "2026-09-18"
+        }
+      ],
+      "groups": [
+        {
+          "title": "程序执行与编译",
+          "notes": [
+            "program-execution",
+            "managed-runtime",
+            "compiler-ir"
           ]
+        },
+        {
+          "title": "内存管理与垃圾回收",
+          "notes": [
+            "native-memory-allocation",
+            "managed-memory-gc"
+          ]
+        },
+        {
+          "title": "互操作与平台实践",
+          "notes": [
+            "jni-references",
+            "art-compilation-startup"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ai-agent",
+      "title": "AI 与 Agent",
+      "description": "从模型与工具的执行循环出发，理解可复用技能、能力连接协议与任务运行支撑。",
+      "notes": [
+        {
+          "slug": "ai-agent-foundations",
+          "title": "AI Agent：Skills、MCP 与 Harness",
+          "cardTitle": "AI Agent 基础",
+          "summary": "区分任务方法、能力连接与执行支撑，用一个内存报告任务串起 Skills、MCP 和 Harness。",
+          "kind": "overview",
+          "reading": "Agent 执行循环、Skill、MCP 和 Harness 可分别查阅；贯通案例用于核对三者职责及失败边界。",
+          "prerequisites": [],
+          "chapters": [
+            {
+              "anchor": "agent-loop",
+              "label": "模型与工具循环"
+            },
+            {
+              "anchor": "skills",
+              "label": "Skills"
+            },
+            {
+              "anchor": "mcp",
+              "label": "MCP"
+            },
+            {
+              "anchor": "harness",
+              "label": "Harness"
+            },
+            {
+              "anchor": "worked-example",
+              "label": "贯通案例与对照"
+            }
+          ],
+          "published": "2026-09-18",
+          "updated": "2026-09-18"
         }
       ]
     }
   ],
-  "readingPaths": [
+  "noteRelocations": [
     {
-      "title": "C++ 复习与实践",
-      "steps": [
+      "slug": "jvm-gc",
+      "title": "JVM GC：三色标记、STW 与读屏障",
+      "target": "managed-memory-gc",
+      "sections": [
         {
-          "slug": "cpp-interview-roadmap",
-          "label": "核心知识"
+          "anchor": "interview-map",
+          "label": "阅读前提与专题范围",
+          "targetAnchor": "scope"
         },
         {
-          "slug": "cpp-shared-ptr",
-          "label": "共享指针实现"
+          "anchor": "scope",
+          "label": "讨论范围与阅读前提",
+          "targetAnchor": "scope"
         },
         {
-          "slug": "cpp-memory-diagnostics",
-          "label": "内存问题定位"
-        }
-      ]
-    },
-    {
-      "title": "程序到运行时",
-      "steps": [
-        {
-          "slug": "operating-systems",
-          "label": "操作系统"
-        },
-        {
-          "slug": "program-execution",
-          "label": "程序执行"
-        },
-        {
-          "slug": "compiler-ir",
-          "label": "编译器"
-        },
-        {
-          "slug": "art-compilation-startup",
-          "label": "ART 编译与应用启动"
-        }
-      ]
-    },
-    {
-      "title": "内存与跨语言边界",
-      "steps": [
-        {
-          "slug": "art-memory-gc",
-          "label": "ART 内存与 GC"
-        },
-        {
-          "slug": "jni-references",
-          "label": "JNI 引用"
-        }
-      ]
-    },
-    {
-      "title": "JVM 面试：运行时与编译器",
-      "steps": [
-        {
-          "slug": "jvm-gc",
           "anchor": "tricolor",
-          "label": "GC 标记与屏障"
+          "label": "三色标记：用不变量解释漏标",
+          "targetAnchor": "tricolor"
         },
         {
-          "slug": "native-memory-allocation",
-          "label": "malloc"
+          "anchor": "stw",
+          "label": "STW、安全点与并发阶段",
+          "targetAnchor": "stw"
         },
         {
-          "slug": "program-execution",
-          "anchor": "abi",
-          "label": "ABI 与异常展开"
+          "anchor": "barriers",
+          "label": "SATB、增量更新与读屏障",
+          "targetAnchor": "barriers"
         },
         {
-          "slug": "compiler-ir",
-          "anchor": "ssa",
-          "label": "SSA 与 inline cache"
+          "anchor": "forwarding",
+          "label": "转发地址：移动对象但保留身份",
+          "targetAnchor": "forwarding"
+        },
+        {
+          "anchor": "review",
+          "label": "要点回顾与运行时协作",
+          "targetAnchor": "review"
+        }
+      ]
+    },
+    {
+      "slug": "art-memory-gc",
+      "title": "ART 内存与 GC",
+      "target": "managed-memory-gc",
+      "sections": [
+        {
+          "anchor": "roots",
+          "label": "可达性与 GC Roots",
+          "targetAnchor": "roots"
+        },
+        {
+          "anchor": "collectors",
+          "label": "回收算法与并发复制",
+          "targetAnchor": "collectors"
+        },
+        {
+          "anchor": "art-cc",
+          "label": "ART 并发复制的实现阶段",
+          "targetAnchor": "art-cc"
+        },
+        {
+          "anchor": "generations",
+          "label": "Young、Full 与卡表",
+          "targetAnchor": "generations"
+        },
+        {
+          "anchor": "spaces",
+          "label": "堆空间与引用表示",
+          "targetAnchor": "spaces"
+        },
+        {
+          "anchor": "oom",
+          "label": "OOM 与应用侧排查",
+          "targetAnchor": "oom"
+        },
+        {
+          "anchor": "related",
+          "label": "延伸阅读",
+          "targetAnchor": "related"
         }
       ]
     }

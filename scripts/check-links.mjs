@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { workspace, content, walk, relative } from "./lib/site.mjs";
+import { workspace, content, walk, relative, isNoteSource } from "./lib/site.mjs";
 import { parseHtml } from "./lib/html.mjs";
 
 const siteOrigin = content.origin;
@@ -86,6 +86,10 @@ async function checkReferences(files) {
                 );
                 continue;
             }
+            if (isNoteSource(resolved)) {
+                failures.push(`${relative(file)}: link to the published article instead of source fragment ${reference}`);
+                continue;
+            }
             if (!reference.includes("#") || !/\.(html|svg)$/i.test(resolved)) continue;
             let fragment;
             try { fragment = decodeURIComponent(reference.slice(reference.indexOf("#") + 1).split(":~:")[0]); }
@@ -146,7 +150,8 @@ async function checkSitemap(files) {
     }
 }
 
-const files = await walk(workspace);
+// Fragment references are checked in the assembled page, using its public URL.
+const files = (await walk(workspace)).filter(file => !isNoteSource(file));
 await checkReferences(files);
 await checkSitemap(files);
 

@@ -1,0 +1,144 @@
+<section id="basics" aria-labelledby="basics-title">
+<h3 id="basics-title">1. 语言基础</h3>
+<div class="note-lesson" id="values-and-objects">
+<span id="language-foundation" class="note-anchor" aria-hidden="true"></span><h4>1.1 类型、对象与变量</h4>
+<p><strong>类型</strong>规定数据如何表示、允许哪些操作；<strong>对象</strong>是程序中用于存放值、具有类型和生命周期的存储实例。<code>int n = 10;</code> 建立一个 int 对象，用名字 n 访问它，并把初值设为 10。变量可以表示对象，也可以是引用。</p>
+<p><code>int copy = n;</code> 建立独立副本；<code>int&amp; ref = n;</code> 为原对象建立别名；<code>int* ptr = &amp;n;</code> 保存其地址。改变 ref 就是改变 n，改变 copy 则不影响 n。</p>
+<p><strong>未定义行为（UB）</strong>表示标准不规定程序结果，可能崩溃，也可能暂时表现正常。后文的越界、悬垂等问题都要按这个含义理解。</p>
+<details class="note-deep-dive"><summary>C++、C 与运行时</summary>
+
+<p>C++ 在 C 之外提供类、模板、异常及对象自动管理资源等机制，但并不与 C 完全兼容。原生 C++ 程序通常不要求虚拟机，也不默认由垃圾回收器追踪和回收不再可达的动态对象；分配、异常处理等仍需要运行时支持。</p>
+
+</details>
+</div>
+
+<div class="note-lesson" id="q06">
+<h4>1.2 初始化与赋值</h4>
+<p><strong>初始化</strong>建立对象的初始状态；<strong>赋值</strong>修改已有对象。类对象的初始化可能调用构造函数来建立状态，之后的赋值则由赋值运算符处理。</p>
+<div class="note-table-wrap" role="region" aria-label="常见初始化形式（C++17）" tabindex="0"><table><caption>常见初始化形式（C++17）</caption><thead><tr><th scope="col">写法</th><th scope="col">含义</th></tr></thead><tbody><tr><td><code>int x;</code>（普通局部变量）</td><td>默认初始化，没有确定的初始值，不可直接读取。</td></tr><tr><td><code>int x{};</code></td><td>得到值为 0 的 int。</td></tr><tr><td><code>int x = 3;</code></td><td>用 3 初始化 x；不是对已有 x 赋值。</td></tr><tr><td><code>int x{3.5};</code></td><td>窄化转换，编译错误。</td></tr><tr><td><code>T obj();</code></td><td>函数声明，不是对象定义。</td></tr></tbody></table></div>
+<p><strong>列表初始化</strong>使用花括号，拒绝可能丢失值的窄化转换。类的非空列表初始化优先考虑 initializer_list 构造函数，即接收一组元素的构造函数。例如可变长数组 vector：<code>vector&lt;int&gt; a(3, 7)</code> 是三个 7，<code>vector&lt;int&gt; b{3, 7}</code> 是两个元素 3 和 7。</p>
+<p><strong>默认构造函数</strong>可不传实参调用。类若有用户提供的默认构造函数，<code>T{}</code> 不保证其整数、指针等成员全部清零。</p>
+</div>
+
+<div class="note-lesson" id="q01">
+<h4>1.3 指针、引用与参数传递</h4>
+<p><strong>指针</strong>保存目标地址，<code>&amp;n</code> 取 n 的地址，<code>*p</code> 访问 p 指向的对象；<strong>引用</strong>为目标建立别名。<code>sizeof</code> 取得类型或对象表示所需的字节数。</p>
+<div class="note-table-wrap" role="region" aria-label="指针与引用" tabindex="0"><table><caption>指针与引用</caption><thead><tr><th scope="col">比较项</th><th scope="col">指针 T*</th><th scope="col">引用 T&</th></tr></thead><tbody><tr><td>含义</td><td>保存地址的对象</td><td>已有对象或函数的别名</td></tr><tr><td>空值</td><td>可以为空，使用前按需要检查</td><td>应绑定有效目标，但之后仍可能悬垂</td></tr><tr><td>重新绑定</td><td>可以改变指向</td><td>不能重新绑定；赋值修改目标对象</td></tr><tr><td>sizeof</td><td>指针类型的大小</td><td>被引用类型的大小，不能据此推断底层实现</td></tr></tbody></table></div>
+<p><strong>参数传递：</strong>传值建立独立参数；传指针复制地址，通过地址可以修改目标，但修改形参指针不会改变调用者的指针变量；传引用直接借用调用者对象。需要重设调用者的指针时可传 <code>T*&amp;</code>，也可返回新指针。</p>
+<p><strong>接口选择：</strong>int、double、指针等小类型常传值；只读大对象用 <code>const T&amp;</code>，表示不通过该参数修改目标；要修改对象用 <code>T&amp;</code>；目标允许不存在时可用 <code>T*</code>，以空指针表示。</p>
+<p>指针保存了地址，并不代表目标始终可用。初始化、判空与生命周期的区别，见<a href="#pointer-states">空指针、野指针与悬垂指针</a>。</p>
+<details class="note-example-details"><summary>代码示例：副本、别名与三种传参方式</summary>
+<figure class="note-example">
+    <figcaption>从副本、引用和指针观察同一个值的变化</figcaption>
+    <pre tabindex="0" aria-label="从副本、引用和指针观察同一个值的变化"><code class="language-cpp" data-example="values-and-aliases">#include &lt;iostream&gt;
+
+int main() {
+    int score = 10;
+    int backup = score;
+    int&amp; alias = score;
+    int* pointer = &amp;score;
+
+    alias = 20;
+    std::cout &lt;&lt; score &lt;&lt; ' ' &lt;&lt; backup &lt;&lt; ' ' &lt;&lt; *pointer &lt;&lt; '\n';
+    pointer = &amp;backup;
+    *pointer = 30;
+    std::cout &lt;&lt; score &lt;&lt; ' ' &lt;&lt; backup &lt;&lt; ' ' &lt;&lt; alias &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>20 10 20
+20 30 20</code></pre>
+</figure>
+<figure class="note-example">
+    <figcaption>值参数只改副本，指针和引用可以改原对象</figcaption>
+    <pre tabindex="0" aria-label="值参数只改副本，指针和引用可以改原对象"><code class="language-cpp" data-example="parameters">#include &lt;iostream&gt;
+
+void by_value(int x) { x = 9; (void)x; }
+void by_pointer(int* x) { if (x) *x = 2; }
+void by_reference(int&amp; x) { x = 3; }
+
+int main() {
+    int n = 1;
+    by_value(n);
+    std::cout &lt;&lt; n &lt;&lt; ' ';
+    by_pointer(&amp;n);
+    std::cout &lt;&lt; n &lt;&lt; ' ';
+    by_reference(n);
+    std::cout &lt;&lt; n &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>1 2 3</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-01"><summary>经典问题：传值与传引用之后，哪些变量会一起变化？</summary>
+<p><code>int a = 1; int b = a; int&amp; r = a; r = 3;</code> 之后，a 和 r 为 3，b 为 1。b 是副本，r 是别名；函数参数也按是否建立独立对象判断。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q02">
+<h4>1.4 const 与 constexpr</h4>
+<p><strong>const</strong>限制通过该声明修改对象，但初值可以在运行时确定。<strong>constexpr 变量</strong>要求初值是常量表达式，即可按语言规则在编译时确定的表达式；constexpr 函数既可用于编译期求值，也可在运行时调用。</p>
+<div class="note-table-wrap" role="region" aria-label="const 的限定位置" tabindex="0"><table><caption>const 的限定位置</caption><thead><tr><th scope="col">声明</th><th scope="col">限制</th></tr></thead><tbody><tr><td><code>const int* p</code></td><td>不能通过 p 修改目标；p 可改变指向（底层 const）。</td></tr><tr><td><code>int* const p = &amp;n</code></td><td>p 不可改变指向；可通过 p 修改非 const 的 n（顶层 const）。</td></tr><tr><td><code>const int* const p = &amp;n</code></td><td>指向和通过它对目标的修改都受限。</td></tr></tbody></table></div>
+
+<p>顶层 const 限定对象本身，例如指针不可改指向；底层 const 限定所指向或引用的目标。const 不递归冻结其他对象，也不提供线程同步；去掉限定后仍不能修改原本为 const 的对象。</p>
+</div>
+
+<div class="note-lesson" id="arrays-and-strings">
+<h4>1.5 数组、指针与字符串</h4>
+<p><strong>数组</strong>连续保存固定数量的同类型元素；<strong>指针</strong>不自带元素数量。多数表达式中数组转换为首元素指针，但对数组直接使用 sizeof 时不发生这种转换。函数形参 <code>int a[]</code> 被调整为 <code>int* a</code>。</p>
+<p><strong>C 风格字符串</strong>用 <code>'\0'</code> 标记结束，长度不含终止字符。<code>const char* p = "Hello";</code> 指向不可修改的字符串字面量；<code>char text[] = "Hello";</code> 创建可写副本。C++17 不允许把该字面量赋给 char*。strlen 扫描到终止符，范围内没有有效终止符就可能越界；std::string 则自己保存字符并维护长度。</p>
+<pre class="note-snippet" tabindex="0"><code>char text[] = &quot;Hello&quot;;       // 6 个字符，包含 &#x27;\0&#x27;
+const char* p = text;
+sizeof(text);                // 6：整个数组大小
+std::strlen(text);           // 5：终止字符前的长度
+sizeof(p);                   // 平台的指针大小，与字符串长度无关</code></pre>
+<details class="note-example-details"><summary>代码示例：数组大小、字符串长度与修改</summary>
+<figure class="note-example">
+<figcaption>同一段文字，用数组大小和字符串长度观察</figcaption>
+<pre tabindex="0" aria-label="同一段文字，用数组大小和字符串长度观察"><code class="language-cpp" data-example="array-string-size">#include &lt;cstring&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    char text[] = &quot;Hello&quot;;
+    const char* pointer = text;
+    std::cout &lt;&lt; sizeof(text) &lt;&lt; &#x27; &#x27; &lt;&lt; std::strlen(text) &lt;&lt; &#x27;\n&#x27;;
+    std::cout &lt;&lt; std::strlen(pointer) &lt;&lt; &#x27;\n&#x27;;
+    text[0] = &#x27;h&#x27;;
+    std::cout &lt;&lt; pointer &lt;&lt; &#x27;\n&#x27;;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>6 5
+5
+hello</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-array-size"><summary>经典问题：为什么 sizeof 数组能取得全部大小，传进函数后却常常不行？</summary>
+<p>真正的数组在 sizeof 中保留数组类型；<code>void f(int a[])</code> 的 a 已是指针。需要长度时应显式传入，或使用能表达范围的接口。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="integer-boundaries">
+<h4>1.6 整数提升、转换与溢出</h4>
+<p><strong>整数提升：</strong>char、short 等较窄整数参与许多运算前，若 int 可表示其全部值就提升为 int，否则提升为 unsigned int。计算后存回窄类型，还会发生转换。</p>
+<p><strong>溢出规则：</strong>N 位无符号算术按模 2<sup>N</sup> 计算，转换回该无符号类型也按此规则取值，例如转回 8 位无符号类型时，256 变为 0。有符号算术超出类型范围是 UB，不能依赖回绕。<code>std::numeric_limits&lt;T&gt;</code> 可查询类型范围。</p>
+<p><strong>混合比较：</strong>通常算术转换可能把负数转成很大的无符号值。比较有符号下标与容器 size 时，应先处理负值。容量计算、整数翻转等应在乘加前检查范围。</p>
+<details class="note-example-details"><summary>代码示例：8 位 unsigned char 的后置自增</summary>
+<figure class="note-example">
+<figcaption>在明确的 8 位 unsigned char 前提下观察自增</figcaption>
+<pre tabindex="0" aria-label="在明确的 8 位 unsigned char 前提下观察自增"><code class="language-cpp" data-example="unsigned-wrap">#include &lt;climits&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    static_assert(UCHAR_MAX == 255, &quot;This example assumes 8-bit unsigned char&quot;);
+    unsigned char i = 255;
+    int old = i++;
+    std::cout &lt;&lt; old &lt;&lt; &#x27; &#x27; &lt;&lt; static_cast&lt;int&gt;(i) &lt;&lt; &#x27;\n&#x27;;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>255 0</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-integer-loop"><summary>经典问题：8 位 unsigned char 的 while (i++ &lt;= 255) 为什么无法靠条件结束？</summary>
+<p>在 8 位 unsigned char 前提下，i++ 返回的旧值始终在 0～255 内，条件一直成立；更新后存回 i 会回绕。若要遍历 0～255，可用能表示 256 的 int：<code>for (int i = 0; i &lt; 256; ++i)</code>。</p>
+<p><strong>最小修改：</strong>把计数器改为 <code>unsigned int i = 0;</code>，原条件会在旧值为 256 时失败，循环体共执行 256 次。但由于后置自增，循环体内看到的 i 是 1～256。<strong>更清楚的遍历：</strong>用上面的 for，把“处理当前值”和“递增”分开，循环体内直接使用 0～255。</p>
+</details>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/dcl.init" target="_blank" rel="noreferrer">初始化</a> · <a href="https://eel.is/c++draft/intro.object" target="_blank" rel="noreferrer">对象</a> · <a href="https://eel.is/c++draft/basic.compound" target="_blank" rel="noreferrer">指针与引用</a> · <a href="https://eel.is/c++draft/lex.string" target="_blank" rel="noreferrer">字符串字面量</a> · <a href="https://eel.is/c++draft/conv.prom" target="_blank" rel="noreferrer">整数提升</a> · <a href="https://eel.is/c++draft/expr.post.incr" target="_blank" rel="noreferrer">后置自增</a> · <a href="https://eel.is/c++draft/basic.fundamental" target="_blank" rel="noreferrer">整数类型范围</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [dcl.init]（初始化）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

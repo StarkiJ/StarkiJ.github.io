@@ -1,0 +1,275 @@
+<section id="objects" aria-labelledby="objects-title">
+<h3 id="objects-title">2. 类与对象模型</h3>
+<div class="note-lesson" id="class-foundation">
+<h4>2.1 类、封装与 this</h4>
+<p><strong>类</strong>是用户定义的类型，把数据成员和成员函数组织在一起。<strong>封装</strong>通过访问控制维护对象必须满足的条件（不变量），例如余额不得为负。</p>
+<p>public 允许外部访问；private 限制为本类及友元访问；protected 还允许派生类按规则访问。<strong>友元</strong>是用 friend 授予访问权限的指定函数或类。struct 默认 public，class 默认 private，默认继承访问也有这个差别。</p>
+<ul><li><strong>非静态成员与 this：</strong>每个对象有自己的数据成员；this 是成员函数内指向当前调用对象的指针，<code>this-&gt;x</code> 访问该对象的 x。</li><li><strong>static 成员：</strong>数据成员由同一类共享；成员函数没有 this，不能直接访问某个对象的非静态成员。</li><li><strong>构造函数：</strong>与类同名、无返回类型，在对象建立时初始化状态；冒号后的初始化列表指定基类和成员怎样初始化。</li><li><strong>析构函数：</strong>写作 <code>~T()</code>，在对象销毁时执行清理。</li></ul>
+<p><strong>const 成员函数</strong>在参数列表后写 const，表示不通过 this 修改普通成员。<strong>mutable 成员</strong>例外：可在这种函数中修改，常用于不改变对象逻辑值的缓存；仍需自行保证线程安全。</p>
+<details class="note-example-details"><summary>代码示例：构造、成员访问与独立对象</summary>
+<figure class="note-example">
+<figcaption>两个对象调用相同成员函数，修改各自的状态</figcaption>
+<pre tabindex="0" aria-label="两个对象调用相同成员函数，修改各自的状态"><code class="language-cpp" data-example="counter-class">#include &lt;iostream&gt;
+
+class Counter {
+public:
+    explicit Counter(int initial) : value_(initial) {}
+    void increment() { ++value_; }
+    int value() const { return value_; }
+private:
+    int value_;
+};
+
+int main() {
+    Counter a{0};
+    Counter b{10};
+    a.increment();
+    std::cout &lt;&lt; a.value() &lt;&lt; &#x27; &#x27; &lt;&lt; b.value() &lt;&lt; &#x27;\n&#x27;;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>1 10</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="inheritance-foundation">
+<h4>2.2 继承与基类子对象</h4>
+<p><strong>继承</strong>让派生类在基类基础上扩展。派生对象内包含基类那一部分状态，称为<strong>基类子对象</strong>。公开继承表示可按基类接口使用派生对象；基类可访问且无歧义时，派生类指针/引用可转换为基类指针/引用。<strong>组合</strong>则把另一个类型的对象作为成员，表达“包含”关系。</p>
+<p><strong>静态类型</strong>是编译时看到的类型，<strong>动态类型</strong>是实际完整对象的类型。<code>Base&amp; ref = derived;</code> 中，ref 的静态接口是 Base，实际对象可以是 Derived。非虚成员按静态类型选择；要让同一接口随实际类型选择实现，需要后面的虚函数机制。</p>
+<p><strong>虚继承</strong>用于共享基类子对象。例如 B、C 都继承 A，D 又继承 B、C，形成菱形；若 B、C 都用 virtual 继承 A，D 中只有一份共享的 A，称为虚基类子对象，由最派生类 D 初始化。</p>
+<details class="note-example-details"><summary>代码示例：非虚成员通过不同静态类型调用</summary>
+<figure class="note-example">
+<figcaption>通过不同静态类型访问同一对象</figcaption>
+<pre tabindex="0" aria-label="通过不同静态类型访问同一对象"><code class="language-cpp" data-example="ordinary-dispatch">#include &lt;iostream&gt;
+
+struct Notifier {
+    void send() const { std::cout &lt;&lt; &quot;default\n&quot;; }
+};
+struct EmailNotifier : public Notifier {
+    void send() const { std::cout &lt;&lt; &quot;email\n&quot;; }
+};
+void deliver(const Notifier&amp; notifier) {
+    notifier.send();
+}
+
+int main() {
+    EmailNotifier email;
+    email.send();
+    deliver(email);
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>email
+default</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q13">
+<h4>2.3 构造与析构顺序</h4>
+<p><strong>构造顺序：</strong>虚基类（由最派生类初始化）→ 直接非虚基类（声明顺序）→ 非静态成员（声明顺序）→ 构造函数体。初始化列表的书写顺序不改变这一规则。</p>
+<p><strong>正常析构：</strong>先执行当前类析构函数体，再逆序销毁成员和基类。构造失败时，完整对象的析构不会执行，但已构造的成员和基类会清理。</p>
+<p><strong>初始化与赋值：</strong>引用、const 标量及无可用默认构造的成员，须在进入构造函数体前得到合适初始化。函数体中的赋值不能替代这一步。</p>
+<details class="note-example-details"><summary>代码示例：成员与外层对象的构造析构顺序</summary>
+<figure class="note-example">
+    <figcaption>成员构造在函数体之前，成员析构在析构函数体之后</figcaption>
+    <pre tabindex="0" aria-label="成员构造在函数体之前，成员析构在析构函数体之后"><code class="language-cpp" data-example="construction-order">#include &lt;iostream&gt;
+
+struct Part {
+    const char* name;
+    explicit Part(const char* n) : name(n) { std::cout &lt;&lt; '+' &lt;&lt; name &lt;&lt; '\n'; }
+    ~Part() { std::cout &lt;&lt; '-' &lt;&lt; name &lt;&lt; '\n'; }
+};
+struct Whole {
+    Part first{&quot;first&quot;};
+    Part second{&quot;second&quot;};
+    Whole() { std::cout &lt;&lt; &quot;body\n&quot;; }
+    ~Whole() { std::cout &lt;&lt; &quot;~body\n&quot;; }
+};
+int main() { Whole object; }</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>+first
++second
+body
+~body
+-second
+-first</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q15">
+<h4>2.4 虚函数与动态绑定</h4>
+<p><strong>虚函数</strong>用 virtual 声明，允许派生类为同一接口提供新实现，这称为<strong>覆盖</strong>。通过基类指针或引用调用时，按实际对象类型选择相应实现，称为<strong>动态绑定</strong>；同一接口呈现不同行为，就是这里的运行时多态。覆盖函数即使不再写 virtual，仍然是虚函数。</p>
+
+<pre class="note-snippet" tabindex="0"><code>struct Base {
+    virtual const char* name() const { return &quot;Base&quot;; }
+    virtual ~Base() = default;
+};
+struct Derived : Base {
+    const char* name() const override { return &quot;Derived&quot;; }
+};
+Derived d;
+Base&amp; ref = d;
+ref.name();        // &quot;Derived&quot;：动态绑定
+ref.Base::name();  // &quot;Base&quot;：显式限定，抑制虚分派</code></pre>
+<p><strong>常见实现机制：</strong>虚表（vtable）保存虚函数入口等分派信息；对象中的虚指针（vptr）指向适用虚表。一次典型虚调用的过程是：</p>
+<ol class="note-mechanism"><li>编译期根据静态接口确定要调用的虚函数。</li><li>运行时从目标对象取得适用的虚表信息。</li><li>找到该虚函数对应的入口，以正确的对象地址调用覆盖实现。</li></ol>
+<p>同类完整对象通常共享适用的虚表；多继承可能需要多个虚指针和 this 地址调整。<strong>ABI</strong> 是对象布局、传参等二进制接口约定，虚表细节依 ABI 而定。标准规定调用结果，不强制虚表布局；编译器能确定目标时可省掉查表，直接调用，称为去虚拟化。</p>
+<p>先掌握这里的调用规则；读完对象布局后，可继续看<a href="#vtable-layout">具体虚表表项与多继承调用示意</a>。</p>
+<p><strong>override</strong> 让编译器检查是否真的覆盖了基类虚函数，例如漏写成员函数末尾的 const 会导致不匹配。<strong>final</strong> 禁止该虚函数继续被覆盖，也可放在类上禁止继续派生。</p>
+<p><strong>纯虚函数</strong>写作 <code>virtual void f() = 0;</code>，表示留待具体派生类实现的接口。仍有纯虚函数没有得到具体覆盖实现的类是<strong>抽象类</strong>，不能直接创建对象；<code>= 0</code> 不是把函数地址设为空。</p>
+<details class="note-deep-dive"><summary>覆盖的匹配规则与默认实参</summary>
+<p>函数参数以及末尾的 const/volatile、引用限定须匹配。引用限定写在成员函数末尾，用 &amp; 或 &amp;&amp; 限制调用对象的值类别，见<a href="#q22">值类别与引用</a>。返回类型通常相同，也允许符合条件的类指针或引用由基类类型变为派生类型，称为协变返回；对象值或智能指针不适用。</p>
+<p>默认实参在编译时按静态声明补齐，函数实现才参与动态分派。因此经 Base* 调用时，即使执行 Derived 的实现，省略的参数也取自 Base 的声明。</p>
+</details>
+<p class="note-source">参考：<a href="https://eel.is/c++draft/class.virtual" target="_blank" rel="noreferrer">虚函数规则</a>、<a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vtable" target="_blank" rel="noreferrer">Itanium C++ ABI</a>。</p>
+<details class="note-example-details"><summary>代码示例：通过同一接口调用不同派生实现</summary>
+<figure class="note-example">
+<figcaption>业务函数保持不变，实际对象决定发送渠道</figcaption>
+<pre tabindex="0" aria-label="业务函数保持不变，实际对象决定发送渠道"><code class="language-cpp" data-example="virtual-dispatch">#include &lt;iostream&gt;
+
+struct Notifier {
+    virtual void send() const { std::cout &lt;&lt; &quot;default\n&quot;; }
+    virtual ~Notifier() = default;
+};
+struct EmailNotifier : public Notifier {
+    void send() const override { std::cout &lt;&lt; &quot;email\n&quot;; }
+};
+struct SmsNotifier : public Notifier {
+    void send() const override { std::cout &lt;&lt; &quot;sms\n&quot;; }
+};
+void deliver(const Notifier&amp; notifier) {
+    notifier.send();
+}
+
+int main() {
+    EmailNotifier email;
+    SmsNotifier sms;
+    deliver(email);
+    deliver(sms);
+    email.Notifier::send();
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>email
+sms
+default</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-virtual-dispatch"><summary>经典问题：基类引用的类型不变，为什么能调用不同派生实现？</summary>
+<p>静态类型决定可调用的接口，动态类型决定虚调用的最终覆盖函数。去掉 virtual 后，该调用按静态类型选择；显式限定基类函数名也会抑制这次虚分派。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q16">
+<span id="virtual-destruction" class="note-anchor" aria-hidden="true"></span>
+<h4>2.5 虚析构与构造析构期间的虚调用</h4>
+<p><strong>经基类指针删除派生对象：</strong>在本文 C++17 范围内，基类析构必须为虚函数，否则行为未定义。允许这种销毁方式的接口通常使用 public 虚析构；禁止这种方式时，可用 protected 非虚析构。</p>
+<p>构造/析构期间的虚调用只分派到当前正在构造/析构的类层次，不进入尚未构造或已经销毁的派生部分。构造函数本身不能声明为 virtual。纯虚析构仍须提供函数体，因为销毁派生对象时仍会执行基类析构。</p>
+<details class="note-example-details"><summary>代码示例：不同生命周期阶段的分派与销毁</summary>
+<figure class="note-example">
+<figcaption>构造、普通虚调用和销毁发生在不同生命周期阶段</figcaption>
+<pre tabindex="0" aria-label="构造、普通虚调用和销毁发生在不同生命周期阶段"><code class="language-cpp" data-example="virtual-lifetime">#include &lt;iostream&gt;
+
+struct Base {
+    Base() { speak(); }
+    virtual void speak() { std::cout &lt;&lt; &quot;Base\n&quot;; }
+    virtual ~Base() { std::cout &lt;&lt; &quot;~Base\n&quot;; }
+};
+struct Derived : Base {
+    void speak() override { std::cout &lt;&lt; &quot;Derived\n&quot;; }
+    ~Derived() override { std::cout &lt;&lt; &quot;~Derived\n&quot;; }
+};
+int main() {
+    Base* p = new Derived;
+    p-&gt;speak();
+    delete p;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>Base
+Derived
+~Derived
+~Base</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-03"><summary>经典问题：通过基类指针删除派生对象，为什么需要虚析构？</summary>
+<p>虚析构使销毁从正确的动态类型启动，再逐层清理基类部分。缺少虚析构却经基类指针 delete 派生对象是未定义行为，不能概括为“只调用基类析构”。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="member-call-validity">
+<h4>2.6 重载、隐藏与成员调用</h4>
+<div class="note-table-wrap" role="region" aria-label="同名函数的不同关系" tabindex="0"><table><caption>同名函数的不同关系</caption><thead><tr><th scope="col">概念</th><th scope="col">发生的事情</th></tr></thead><tbody><tr><td>重载</td><td>同名函数通过不同参数列表区分，调用时选择匹配版本；普通函数不能仅凭返回值区分重载。</td></tr><tr><td>覆盖</td><td>派生类提供匹配的基类虚函数实现，参与动态分派。</td></tr><tr><td>隐藏</td><td>派生类同名声明可能遮住基类的一组重载；可用 <code>using Base::f;</code> 引入。</td></tr></tbody></table></div>
+<p><strong>空指针调用：</strong>非静态成员调用要求有效目标对象，即使函数体不读取字段也不能据此认为空指针调用合法。静态成员不需要 this，宜直接写 <code>Type::function()</code>。</p>
+<details class="note-review-question" id="review-null-member"><summary>经典问题：非静态成员函数不读取字段，能否通过空指针调用？</summary>
+<p>不能。非静态成员调用本身就要求有效对象；一次未崩溃的运行不能证明它合法。无对象需求的操作应使用静态成员或普通函数。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q17">
+<h4>2.7 对象切片</h4>
+<p><strong>对象切片：</strong><code>Derived d; Base b = d;</code> 只复制基类部分，b 是独立的 Base 对象。需要保留多态行为时，使用引用或合适的指针，不能按值放入 <code>vector&lt;Base&gt;</code>。</p>
+
+</div>
+
+<div class="note-lesson" id="q12">
+<h4>2.8 对象布局、对齐与 sizeof</h4>
+<p><strong>对齐</strong>要求对象起始地址满足特定倍数，例如 <code>alignof(int) == 4</code> 时地址须是 4 的倍数。编译器在成员间插入填充以满足各自对齐，并在尾部补齐，使数组中下一个对象也正确对齐。<code>offsetof(S, i)</code> 查询成员 i 相对 S 起点的字节偏移，须用于符合布局要求的类型。</p>
+<p>例如在 char 大小/对齐为 1、int 为 4、short 为 2 字节且采用默认布局的常见 ABI 下，<code>struct S { char c; int i; short s; };</code> 常见成员偏移为 0、4、8，总大小为 12。具体结果须结合类型布局和 ABI，用 sizeof、alignof，以及适用类型的 offsetof 验证。</p>
+<p><strong>注意：</strong>sizeof 通常不求值其表达式操作数；string/vector 的对象大小不包含其全部动态存储。调整成员顺序可能减少填充，但会改变 ABI；压紧布局（packing）限制成员对齐以减少填充，也可能带来未对齐访问和性能问题。</p>
+<div class="note-table-wrap" role="region" aria-label="同一组类型假设下的布局推导" tabindex="0"><table><caption>同一组类型假设下的布局推导</caption><thead><tr><th scope="col">类型</th><th scope="col">c / i / s 偏移</th><th scope="col">大小 / 对齐</th><th scope="col">填充</th></tr></thead><tbody><tr><td>S，默认布局</td><td>0 / 4 / 8</td><td>12 / 4</td><td>c 后补 3 字节，s 后补 2 字节</td></tr><tr><td>Packed，pack(1)</td><td>0 / 1 / 5</td><td>7 / 1</td><td>上述成员之间及尾部均无填充</td></tr></tbody></table></div>
+<p><code>#pragma pack</code> 是编译器扩展，push/pop 用于限制影响范围。压紧布局不等于可安全地把任意网络字节流转换成对象；还需处理字节序、表示和生命周期。未对齐成员的地址不能当作天然满足 int 对齐的普通指针使用。</p>
+<p><a href="layout.cpp" download>下载源码（layout.cpp）</a>。使用 C++17 编译，输出当前目标的布局结果。</p>
+<details class="note-example-details"><summary>布局验证：sizeof、alignof 与 offsetof</summary>
+<pre tabindex="0"><code class="language-cpp" data-source="layout.cpp"></code></pre>
+</details>
+<details class="note-review-question"><summary>经典问题：32 位与 64 位程序，sizeof(S) 一定不同吗？</summary>
+<p>不一定。这个结构没有指针；在上表类型假设与默认布局都成立时，两种目标都可能是 12 字节。指针常见为 4/8 字节，但位数本身不能决定所有类型布局。用目标编译器分别构建并记录 ABI、编译选项与输出。</p>
+</details>
+<p class="note-source">参考：<a href="https://gcc.gnu.org/onlinedocs/gcc/Structure-Layout-Pragmas.html" target="_blank" rel="noreferrer">GCC packing 扩展</a>。</p>
+</div>
+
+<div class="note-lesson" id="vtable-layout">
+<h4>2.9 虚表布局与多继承调用</h4>
+<p>下面采用<strong>遵循 Itanium C++ ABI 的常见 x86-64 布局</strong>，假设启用 RTTI、没有虚继承；这不是所有编译器通用的内存格式。RTTI 是运行时类型信息，供 dynamic_cast 等机制识别实际类型。示意省略普通数据成员与填充，表中的位置相对于虚指针指向的<strong>地址点（address point）</strong>。</p>
+<p><strong>单继承：</strong>源码中的 Base 先声明虚函数 f，再声明虚析构；Derived 覆盖 f。一个构造完成的 Derived 对象，其 Base 部分使用指向 Derived 虚表的 vptr：</p>
+<pre tabindex="0" aria-label="单继承虚表结构示意"><code class="language-text">Derived 对象
+  Base 部分的 vptr ───────────┐
+                             │   Derived 的虚表
+                             │   [-2] offset-to-top = 0
+                             │   [-1] typeinfo for Derived
+                             └─→ [ 0] Derived::f
+                                 [ 1] Derived 完整对象析构入口
+                                 [ 2] Derived 删除析构入口</code></pre>
+<p><strong>读表要点：</strong>vptr 指向地址点，不一定指向整张表开头；offset-to-top 表示从当前基类部分回到完整对象的位移。该 ABI 将虚析构分成“销毁完整对象”和“销毁后再释放存储”两个入口，并不表示执行两次析构。覆盖替换对应入口，新增虚函数可增加表项。</p>
+<p><strong>多继承：</strong>源码中 Joined 同时继承 Left 和 Right，并覆盖 left、right。以下以 Left 为主基类、Right 位于正偏移 d 的布局为例；两个入口最终访问同一个 Joined 对象。</p>
+<pre tabindex="0" aria-label="多继承对象与两组虚表示意"><code class="language-text">Joined 对象
+  +0  Left 部分  [vptr] ─→ 主虚表地址点
+  +d  Right 部分 [vptr] ─→ 次虚表地址点
+
+主虚表：offset-to-top = 0，typeinfo = Joined
+次虚表：offset-to-top = -d，typeinfo = Joined
+
+Right* p = &amp;joined;     // 指向 +d 处的 Right 部分
+p-&gt;right()
+  → 次虚表中的 right 入口
+  → thunk：把 this 从 Right* 调整回 Joined*
+  → Joined::right()</code></pre>
+<p><strong>thunk</strong> 是调整参数后再跳转到实现的短入口。固定偏移取决于实际布局；虚继承还可能使用额外的虚基类偏移和虚调用偏移，不能直接套用上图。构造/析构期间也不能假定始终使用最终派生类的虚表，调用规则见<a href="#virtual-destruction">虚析构与生命周期阶段</a>。</p>
+<p><a href="vtable-layout.cpp" download>下载源码（vtable-layout.cpp）</a>。程序用正常虚调用和断言验证单继承、多继承的分派，不通过强制转换读取虚表。GCC 可用 <code>g++ -std=c++17 -fdump-lang-class -c vtable-layout.cpp</code> 生成类布局报告，对照 Base、Derived、Left、Right、Joined 的表项；报告格式和偏移以目标编译器为准。</p>
+<details class="note-example-details"><summary>完整示例：两种基类接口访问同一个派生对象</summary>
+<pre tabindex="0"><code class="language-cpp" data-source="vtable-layout.cpp"></code></pre>
+</details>
+<details class="note-review-question"><summary>经典问题：一个含虚函数的对象，一定只有一个虚指针吗？</summary>
+<p>不能这样断言。常见多继承布局中，不同多态基类部分可有各自的虚指针；经不同基类调用还可能需要调整 this。说明具体 ABI 与继承结构后，再讨论对象大小和虚表数量。</p>
+</details>
+<p class="note-source">参考：<a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vtable" target="_blank" rel="noreferrer">Itanium C++ ABI：虚表布局</a> · <a href="https://itanium-cxx-abi.github.io/cxx-abi/abi.html#vcall" target="_blank" rel="noreferrer">虚调用与调整入口</a> · <a href="https://gcc.gnu.org/onlinedocs/gcc/Developer-Options.html" target="_blank" rel="noreferrer">GCC 布局转储选项</a>。</p>
+</div>
+
+<div class="note-lesson" id="q07">
+<h4>2.10 类型转换、explicit 与 nullptr</h4>
+<p><strong>类型转换</strong>改变值的表示或访问对象的类型。编译器自动完成的转换称为隐式转换；程序员用 cast 等写出的称为显式转换。继承层次中，派生转基类叫向上转型，基类转派生叫向下转型。</p>
+<div class="note-table-wrap" role="region" aria-label="显式转换" tabindex="0"><table><caption>显式转换</caption><thead><tr><th scope="col">操作</th><th scope="col">用途与限制</th></tr></thead><tbody><tr><td><code>static_cast</code></td><td>常规类型转换、向上转型等；向下转型不做运行时类型检查。</td></tr><tr><td><code>dynamic_cast</code></td><td>多态层次的运行时检查；常见向下/交叉转换需要多态源类型。指针失败返回空，引用失败抛 bad_cast。</td></tr><tr><td><code>const_cast</code></td><td>调整 const/volatile 限定；不使原本 const 的对象变得可写。</td></tr><tr><td><code>reinterpret_cast</code></td><td>低层次表示/指针转换；不自动保证后续访问符合对齐、类型与生命周期规则。</td></tr></tbody></table></div>
+<p>含有或继承虚函数的类是<strong>多态类型</strong>。dynamic_cast 利用运行时类型信息（RTTI）检查转换是否符合实际对象的继承关系；交叉转换是在同一完整对象的不同基类部分之间转换。</p>
+<p><strong>explicit</strong> 限制某些隐式转换：<code>explicit T(int)</code> 允许 <code>T t(3)</code>，阻止 <code>T t = 3</code>。<strong>nullptr</strong> 是专用空指针值；在 <code>f(int)</code> 与 <code>f(int*)</code> 重载中，<code>f(0)</code> 选整数版本，<code>f(nullptr)</code> 选指针版本。</p>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/class.base.init" target="_blank" rel="noreferrer">构造顺序</a> · <a href="https://eel.is/c++draft/class.virtual" target="_blank" rel="noreferrer">虚函数</a> · <a href="https://eel.is/c++draft/class.cdtor" target="_blank" rel="noreferrer">构造/析构期间的虚调用</a> · <a href="https://eel.is/c++draft/class.pre" target="_blank" rel="noreferrer">类</a> · <a href="https://eel.is/c++draft/class.derived" target="_blank" rel="noreferrer">继承</a> · <a href="https://eel.is/c++draft/class.abstract" target="_blank" rel="noreferrer">抽象类</a> · <a href="https://eel.is/c++draft/expr.cast" target="_blank" rel="noreferrer">显式转换</a> · <a href="https://eel.is/c++draft/basic.align" target="_blank" rel="noreferrer">内存对齐</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [class.virtual]（虚函数）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

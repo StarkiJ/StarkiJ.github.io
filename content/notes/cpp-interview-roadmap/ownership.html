@@ -1,0 +1,152 @@
+<section id="ownership" aria-labelledby="ownership-title">
+<h3 id="ownership-title">4. 资源管理与智能指针</h3>
+<div class="note-lesson" id="q11">
+<span id="ownership-foundation" class="note-anchor" aria-hidden="true"></span><h4>4.1 所有权、RAII 与异常安全</h4>
+<p><strong>所有权</strong>说明谁负责最终释放内存、文件、锁等资源；只使用资源而不负责释放的是借用者。<strong>RAII（资源获取即初始化）</strong>把资源交给对象管理：构造时取得或接管，析构时释放，清理便随对象生命周期自动执行。</p>
+<p><strong>异常与栈展开：</strong>throw 报告异常，程序沿调用关系向外寻找匹配的 catch。在找到的 catch 执行前，沿途退出的作用域会销毁已构造的局部对象，这称为栈展开。RAII 因而能覆盖正常返回和异常退出。</p>
+<div class="note-table-wrap" role="region" aria-label="异常安全保证" tabindex="0"><table><caption>异常安全保证</caption><thead><tr><th scope="col">级别</th><th scope="col">失败后的要求</th></tr></thead><tbody><tr><td>基本保证</td><td>不泄漏资源，对象不变量成立，但值可能改变。</td></tr><tr><td>强保证</td><td>对可观察状态没有影响；可用临时对象完成后再提交。</td></tr><tr><td>无抛出保证</td><td>操作不通过异常报告失败。</td></tr></tbody></table></div>
+<p><strong>noexcept</strong> 声明函数不向调用者传出异常；违反时进入 <code>std::terminate</code> 终止处理。析构通常应保持不抛异常，尤其不能在栈展开时再次抛出。RAII 不保证程序被强制终止时仍完成清理。调用栈如何找到清理代码，见<a href="../program-execution/index.html#unwind">异常展开机制</a>。</p>
+<details class="note-example-details"><summary>代码示例：异常传播时的自动清理</summary>
+<figure class="note-example">
+    <figcaption>向外层 catch 传播异常时，已构造的局部对象先析构</figcaption>
+    <pre tabindex="0" aria-label="向外层 catch 传播异常时，已构造的局部对象先析构"><code class="language-cpp" data-example="raii">#include &lt;iostream&gt;
+#include &lt;stdexcept&gt;
+
+struct Guard {
+    ~Guard() { std::cout &lt;&lt; &quot;cleanup\n&quot;; }
+};
+
+int main() {
+    try {
+        Guard guard;
+        throw std::runtime_error(&quot;failure&quot;);
+    } catch (const std::exception&amp;) {
+        std::cout &lt;&lt; &quot;caught\n&quot;;
+    }
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>cleanup
+caught</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-raii-unwind"><summary>经典问题：构造函数中途失败，谁负责释放已经取得的资源？</summary>
+<p>完整对象尚未构造成功，不执行自身析构；已完成构造的成员和基类会清理。将资源交给 unique_ptr、vector 等成员，可利用这套规则；未接管的裸资源仍需安排异常路径清理。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="q18">
+<h4>4.2 unique_ptr：独占所有权</h4>
+<p><strong>unique_ptr</strong> 表达独占所有权：同一份释放责任只交给一个管理者。它保存指针与删除方式，析构时清理；禁止拷贝，允许用移动转交责任，移动后源指针为空。<code>make_unique&lt;T&gt;(args)</code> 构造 T 并返回管理它的 unique_ptr。</p>
+<div class="note-table-wrap" role="region" aria-label="常用操作" tabindex="0"><table><caption>常用操作</caption><thead><tr><th scope="col">接口</th><th scope="col">效果</th></tr></thead><tbody><tr><td><code>get()</code></td><td>返回借用指针，不转移所有权。</td></tr><tr><td><code>release()</code></td><td>放弃所有权并返回指针，不释放资源；接收方负责后续清理。</td></tr><tr><td><code>reset()</code></td><td>释放当前资源并清空；传入新指针时接管新资源。</td></tr></tbody></table></div>
+<p><strong>接口语义：</strong>按值接收 unique_ptr 通常表示接管；只使用目标对象时可传 <code>T&amp;</code> 或 <code>const T&amp;</code>。自定义删除器可管理其他资源，也可能影响 unique_ptr 的大小。</p>
+<details class="note-example-details"><summary>代码示例：移动拥有者与借用指针的有效期</summary>
+<figure class="note-example">
+    <figcaption>移动转移所有权，借用指针不独立负责释放</figcaption>
+    <pre tabindex="0" aria-label="移动转移所有权，借用指针不独立负责释放"><code class="language-cpp" data-example="unique-ownership">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;utility&gt;
+
+int main() {
+    auto owner = std::make_unique&lt;int&gt;(7);
+    int* borrowed = owner.get();
+    auto next = std::move(owner);
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; (owner == nullptr)
+              &lt;&lt; ' ' &lt;&lt; *next &lt;&lt; ' ' &lt;&lt; *borrowed &lt;&lt; '\n';
+    next.reset();
+    // borrowed 现在悬垂，不能再解引用。
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>true 7 7</code></pre>
+</figure>
+</details>
+</div>
+
+<div class="note-lesson" id="q19">
+<span id="shared-ownership" class="note-anchor" aria-hidden="true"></span>
+<h4>4.3 shared_ptr：共享所有权</h4>
+<p><strong>shared_ptr</strong> 允许多个管理者共同拥有一个对象。它们关联一份<strong>控制块</strong>，记录强拥有者数量和删除方式：拷贝增加计数，移动转交已有计数，销毁或 reset 减少计数；强计数降到 0 才销毁目标。复制管理者不复制目标对象。</p>
+<p><strong>控制块不一定与对象同时释放。</strong>weak_ptr 是不增加强计数的观察者，仍有它存在时，目标虽已销毁，控制块还需保留。<code>make_shared&lt;T&gt;(args)</code> 创建对象及共享管理关系，通常合并分配以减少开销；这块存储可能等到弱观察者也消失才归还。</p>
+<p><strong>重复接管：</strong>从同一裸指针独立构造两个 shared_ptr 会产生两份控制块，可能重复释放。需要共享时应复制已有 shared_ptr。</p>
+<details class="note-deep-dive"><summary>对象如何取得共享自身的指针</summary>
+<p>类可继承 <code>std::enable_shared_from_this&lt;T&gt;</code>。首个 shared_ptr 建立拥有关系时，会关联对象内部的弱观察状态；之后调用 shared_from_this() 可取得同一控制块的 shared_ptr。不能直接用 shared_ptr(this) 再建一组；构造期间拥有关系通常还未建立，此时调用 shared_from_this() 会失败。</p>
+</details>
+<details class="note-example-details"><summary>代码示例：复制、reset 与最后一次释放</summary>
+<figure class="note-example">
+<figcaption>指针副本增加了，目标对象仍然只有一个</figcaption>
+<pre tabindex="0" aria-label="指针副本增加了，目标对象仍然只有一个"><code class="language-cpp" data-example="shared-count">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+struct Item {
+    ~Item() { std::cout &lt;&lt; &quot;destroy\n&quot;; }
+};
+int main() {
+    auto first = std::make_shared&lt;Item&gt;();
+    std::cout &lt;&lt; first.use_count() &lt;&lt; &#x27;\n&#x27;;
+    {
+        auto second = first;
+        std::cout &lt;&lt; first.use_count() &lt;&lt; &#x27;\n&#x27;;
+        first.reset();
+        std::cout &lt;&lt; second.use_count() &lt;&lt; &#x27;\n&#x27;;
+    }
+    std::cout &lt;&lt; &quot;done\n&quot;;
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>1
+2
+1
+destroy
+done</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-shared-count"><summary>经典问题：复制 shared_ptr 会复制目标对象吗？reset 一定马上析构目标吗？</summary>
+<p>复制只增加同组拥有者，不复制 T。reset 放弃当前拥有关系；仍有其他强拥有者时，目标继续存在。</p>
+</details>
+<p>实践与延伸：<a href="../cpp-shared-ptr/index.html">简化 shared_ptr：计数与释放</a>。</p>
+</div>
+
+<div class="note-lesson" id="q20">
+<h4>4.4 weak_ptr 与循环引用</h4>
+<p><strong>weak_ptr</strong>观察共享所有权组，不增加强引用计数。lock 尝试取得临时 shared_ptr；目标已销毁时返回空。expired 只观察某一时刻的状态，实际使用应检查 lock 的结果。</p>
+<p><strong>循环引用：</strong>A 通过 shared_ptr 拥有 B，B 又强拥有 A，外部指针消失后两者强计数仍非零。把仅用于观察的反向关系改为 weak_ptr，可解除强所有权环。</p>
+<details class="note-example-details"><summary>代码示例：父子对象的拥有与观察关系</summary>
+<figure class="note-example">
+    <figcaption>父节点拥有子节点，子节点只观察父节点</figcaption>
+    <pre tabindex="0" aria-label="父节点拥有子节点，子节点只观察父节点"><code class="language-cpp" data-example="weak-cycle">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+struct Node {
+    std::shared_ptr&lt;Node&gt; child;
+    std::weak_ptr&lt;Node&gt; parent;
+    ~Node() { std::cout &lt;&lt; &quot;destroy\n&quot;; }
+};
+int main() {
+    std::weak_ptr&lt;Node&gt; observer;
+    {
+        auto root = std::make_shared&lt;Node&gt;();
+        root-&gt;child = std::make_shared&lt;Node&gt;();
+        root-&gt;child-&gt;parent = root;
+        observer = root;
+        if (auto alive = observer.lock()) {
+            std::cout &lt;&lt; &quot;alive\n&quot;;
+        }
+    }
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; observer.expired() &lt;&lt; '\n';
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>alive
+destroy
+destroy
+true</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-04"><summary>经典问题：两个对象互相持有 shared_ptr，为什么外部指针消失后仍不析构？</summary>
+<p>环内强引用继续维持计数，引用计数无法自动消除这个环。反向观察关系可用 weak_ptr，访问时经 lock 临时取得共享所有权。</p>
+</details>
+</div>
+
+<div class="note-lesson" id="leak-boundaries">
+<h4>4.5 内存泄漏与长期持有</h4>
+<p><strong>内存泄漏</strong>是分配的存储没有在应释放时得到释放，常因丢失释放责任或强引用环；<strong>长期持有</strong>则是对象仍被缓存、任务等保存，但业务上已不需要。两者都能造成持续增长，修复方法取决于拥有关系。</p>
+<div class="note-table-wrap" role="region" aria-label="常见原因" tabindex="0"><table><caption>常见原因</caption><thead><tr><th scope="col">类型</th><th scope="col">处理方向</th></tr></thead><tbody><tr><td>丢失释放责任</td><td>用 RAII 明确拥有者，检查 release 和异常路径。</td></tr><tr><td>强引用环</td><td>调整拥有关系，观察关系使用 weak_ptr。</td></tr><tr><td>不必要的长期持有</td><td>清理回调/容器条目，设置缓存淘汰和解绑规则。</td></tr></tbody></table></div>
+<p><strong>智能指针不能判断业务上是否仍需要对象。</strong>只要拥有关系存在，资源就会保留。内存占用上涨也可能来自容量预留、缓存或分配器保留；应结合对象数量、分配来源和引用关系判断。分配器为什么保留空闲块，见<a href="../native-memory-allocation/index.html#free">free 与页面归还</a>。</p>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/unique.ptr" target="_blank" rel="noreferrer">unique_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.shared" target="_blank" rel="noreferrer">shared_ptr</a> · <a href="https://eel.is/c++draft/util.smartptr.weak" target="_blank" rel="noreferrer">weak_ptr</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#rr-raii" target="_blank" rel="noreferrer">RAII</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [unique.ptr] / [util.smartptr.shared]（智能指针）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

@@ -1,0 +1,81 @@
+<section id="lifetime" aria-labelledby="lifetime-title">
+<h3 id="lifetime-title">3. 存储与生命周期</h3>
+<div class="note-lesson" id="scope-storage-lifetime">
+<span id="q08" class="note-anchor" aria-hidden="true"></span><h4>3.1 作用域、存储期与生命周期</h4>
+<p><strong>作用域</strong>规定名字在源码中的可见范围；<strong>存储期</strong>规定承载对象的存储保留多久；<strong>生命周期</strong>规定对象何时建立与销毁。保存一个地址不会自动延长目标对象的生命周期。</p>
+<div class="note-table-wrap" role="region" aria-label="存储期" tabindex="0"><table><caption>存储期</caption><thead><tr><th scope="col">种类</th><th scope="col">典型对象</th><th scope="col">管理方式</th></tr></thead><tbody><tr><td>自动存储期</td><td>普通局部对象</td><td>离开相应作用域时自动销毁。</td></tr><tr><td>静态存储期</td><td>全局变量、static 变量</td><td>存储贯穿程序执行；初始化时机取决于具体规则。</td></tr><tr><td>线程存储期</td><td>thread_local 对象</td><td>每线程独立实例，存储与线程相联系。</td></tr><tr><td>动态存储期</td><td>new 创建的对象</td><td>由 delete 或资源拥有者安排清理。</td></tr></tbody></table></div>
+<p><strong>栈与堆</strong>是常见存储实现：栈用于维护函数调用及部分局部数据；堆用于动态分配。分配器负责取得和归还存储。局部 vector 对象通常具有自动存储期，它的元素则由分配器动态保存；局部变量也可能放在寄存器中或被优化消除。</p>
+</div>
+
+<div class="note-lesson" id="q09">
+<h4>3.2 new、delete 与原始存储</h4>
+<p><strong>new 表达式：</strong>取得合适存储 → 初始化对象 → 返回指针。<strong>delete 表达式：</strong>销毁对象 → 释放存储。operator new 主要负责分配，不能与完整 new 表达式混为一谈。</p>
+<div class="note-table-wrap" role="region" aria-label="分配与释放配对" tabindex="0"><table><caption>分配与释放配对</caption><thead><tr><th scope="col">取得方式</th><th scope="col">释放方式</th><th scope="col">是否调用类的构造 / 析构</th></tr></thead><tbody><tr><td><code>new T</code></td><td><code>delete p</code></td><td>是</td></tr><tr><td><code>new T[n]</code></td><td><code>delete[] p</code></td><td>是，针对数组元素</td></tr><tr><td><code>malloc</code></td><td><code>free</code></td><td>否，只管理原始存储</td></tr></tbody></table></div>
+<p><strong>失败处理：</strong>普通 new 分配失败时通常抛出 <code>std::bad_alloc</code> 异常；malloc 和 <code>new (std::nothrow)</code> 的分配失败返回空指针。若已分配存储但对象构造失败，通常调用匹配的释放函数归还存储。</p>
+<p><strong>placement new</strong> 用 <code>new (buffer) T(args)</code> 在已有字节空间中构造对象，不再另找存储。调用者须保证大小和对齐，并分别安排对象析构与存储归还。普通 delete/free 可接受空指针，但不能重复释放，也不会把其他指针副本自动清空。</p>
+</div>
+
+<div class="note-lesson" id="pointer-states">
+<h4>3.3 空指针、野指针与悬垂指针</h4>
+<p>判断指针能否使用，要分别确认它是否初始化、是否指向目标，以及目标是否仍然有效。“野指针”是工程中的俗称，使用范围并不统一；这里用它特指未初始化或没有建立合法指向的指针，并把目标失效后的指针单独称为<strong>悬垂指针（悬空指针）</strong>。</p>
+<div class="note-table-wrap" role="region" aria-label="三种指针状态" tabindex="0"><table><caption>三种指针状态</caption><thead><tr><th scope="col">状态</th><th scope="col">产生方式</th><th scope="col">使用边界与处理</th></tr></thead><tbody>
+<tr><th scope="row">空指针</th><td><code>int* p = nullptr;</code>，明确表示没有目标。</td><td>可判空、赋值；不能解引用。初始化为空让“尚无目标”成为明确状态。</td></tr>
+<tr><th scope="row">野指针</th><td>函数内普通局部变量 <code>int* p;</code> 未初始化，或从无效地址构造指针。</td><td>C++17 下，读取这种未初始化指针的值就可能已是 UB，不能先用 <code>if (p)</code> 验证。先初始化或建立合法指向。</td></tr>
+<tr><th scope="row">悬垂指针 / 引用</th><td>曾指向有效对象，随后对象离开作用域、被释放，或因容器操作失效。</td><td>不能继续访问原目标；借用期须受拥有者生命周期和容器操作约束。</td></tr>
+</tbody></table></div>
+<p><strong>判空不等于验证生命周期。</strong>释放对象不会自动清空各处保存的地址；把一个指针设为 nullptr，也不会修改其他指针副本。不要通过读取或比较已经失效的指针来证明对象仍存在。</p>
+<details class="note-example-details"><summary>代码示例：清空拥有者不会清空借用指针</summary>
+<figure class="note-example">
+<figcaption>只执行有效访问；未初始化读取与释放后使用保留为注释</figcaption>
+<pre tabindex="0" aria-label="指针初始化与借用失效"><code class="language-cpp" data-example="pointer-states">#include &lt;iostream&gt;
+
+int main() {
+    // int* wild;
+    // if (wild) {}       // 错误：先读取了未初始化的指针。
+    int* owner = new int(7);
+    int* borrowed = owner;
+    std::cout &lt;&lt; *borrowed &lt;&lt; '\n';
+    delete owner;
+    owner = nullptr;     // 只修改 owner；borrowed 已悬垂。
+    // *borrowed = 9;    // 错误：释放后使用，不执行。
+    borrowed = nullptr;  // 覆盖旧值，不读取已失效的地址。
+}</code></pre>
+<p class="note-example-result">运行结果：</p>
+<pre class="note-output" tabindex="0" aria-label="运行结果"><code>7</code></pre>
+</figure>
+</details>
+<p>实际资源管理优先使用下一章的<a href="#ownership">RAII 与智能指针</a>；它们管理释放责任，但借用指针仍可能悬垂。容器导致的失效统一见<a href="#container-invalidation">容器失效规则</a>。</p>
+<details class="note-review-question"><summary>经典问题：delete 后设为 nullptr，为什么仍可能发生释放后使用？</summary>
+<p>其他别名可能仍保存旧地址。置空只更新当前变量；修复还需让所有借用在对象销毁前结束，或通过仍有效的拥有者重新取得访问入口。</p>
+</details>
+<p class="note-source">参考：<a href="https://timsong-cpp.github.io/cppwp/n4659/dcl.init#12" target="_blank" rel="noreferrer">C++17：未初始化值</a> · <a href="https://timsong-cpp.github.io/cppwp/n4659/basic.stc#4" target="_blank" rel="noreferrer">C++17：存储结束后的指针使用</a>。</p>
+</div>
+
+<div class="note-lesson" id="q10">
+<h4>3.4 悬垂引用与非拥有型视图</h4>
+<p>上一节的悬垂问题同样适用于引用和视图。返回局部对象引用、释放后继续用旧指针、容器重分配后使用旧引用，都需要从目标生命周期解释。</p>
+<p><strong>string_view</strong>用起点和长度描述字符范围，不复制、不拥有字符。<code>std::string_view v = std::string("abc");</code> 中的临时 string 在语句结束后销毁，v 随即悬垂。</p>
+<p><strong>临时对象</strong>通常在创建它的完整表达式结束时销毁，例如上一例的分号处。直接写 <code>const std::string&amp; r = std::string("abc");</code> 可将该临时对象的生命期延长到 r 的生命期；这个效果不能靠后续引用继续传递，也不适用于返回局部对象引用。</p>
+<details class="note-example-details"><summary>代码示例：string 与 string_view 的拥有关系</summary>
+<figure class="note-example">
+    <figcaption>拥有者先存在，视图才有可用的字符范围</figcaption>
+    <pre tabindex="0" aria-label="拥有者先存在，视图才有可用的字符范围"><code class="language-cpp" data-example="view">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+
+int main() {
+    std::string owner = &quot;hello&quot;;
+    std::string_view view = owner;
+    std::cout &lt;&lt; view.substr(0, 2) &lt;&lt; '\n';
+    // 后续若 owner 销毁或重新分配，旧 view 可能失效。
+}</code></pre>
+    <p class="note-example-result">运行结果：</p>
+    <pre class="note-output" tabindex="0" aria-label="运行结果"><code>he</code></pre>
+</figure>
+</details><details class="note-review-question" id="review-02"><summary>经典问题：为什么返回一个指向局部 string 的 string_view 会出错？</summary>
+<p>局部 string 返回前被销毁，string_view 不拥有字符，之后访问其中字符已不合法。应返回拥有数据的 string，或保证底层拥有者覆盖视图的全部使用期。</p>
+</details>
+</div>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/basic.stc" target="_blank" rel="noreferrer">存储期</a> · <a href="https://eel.is/c++draft/basic.life" target="_blank" rel="noreferrer">对象生命周期</a> · <a href="https://eel.is/c++draft/expr.new" target="_blank" rel="noreferrer">new 表达式</a> · <a href="https://eel.is/c++draft/expr.delete" target="_blank" rel="noreferrer">delete 表达式</a> · <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#rr-raii" target="_blank" rel="noreferrer">RAII 建议</a>。</p>
+<p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [basic.life]（对象生命周期）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
+</section>

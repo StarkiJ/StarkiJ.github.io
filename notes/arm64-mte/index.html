@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从指针与内存标签出发，理解 CPU、内核和分配器如何协作，以及 Linux / Android 的启用、报告与检测边界。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="ARM64 MTE：内存标记、访问检查与使用 · Starki 笔记">
+    <meta property="og:description" content="从指针与内存标签出发，理解 CPU、内核和分配器如何协作，以及 Linux / Android 的启用、报告与检测边界。">
+    <meta property="og:url" content="https://starkij.github.io/notes/arm64-mte/index.html">
+    <title>ARM64 MTE：内存标记、访问检查与使用 · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/arm64-mte/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#foundations">计算机基础</a><span aria-hidden="true">/</span><span aria-current="page">ARM64 MTE：内存标记、访问检查与使用</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">计算机基础 / 专题</p>
+                <h1 id="note-title">ARM64 MTE：内存标记、访问检查与使用</h1>
+                <p class="note-deck">从指针与内存标签出发，理解 CPU、内核和分配器如何协作，以及 Linux / Android 的启用、报告与检测边界。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-18">2026.09.18</time></span><span>更新 <time datetime="2026-09-18">2026.09.18</time></span></span>
+<!-- generated:note-dates:end -->
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 先理解虚拟内存与一次访存，再读两类标签和生命周期；平台配置须结合支持的硬件、内核与运行库。</p><p>相关基础：<a href="../operating-systems/index.html#memory-access-flow">完整访存流程</a>、<a href="../operating-systems/index.html#memory-mapping">mmap 与页面映射</a></p></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout"><!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
+<ol>
+    <li><a href="#purpose">1. MTE 检查的是内存访问与标签是否匹配</a></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：2. 两种标签与一次访问检查"><a href="#tags">2. 两种标签与一次访问检查</a></summary>
+        <ol>
+            <li><a href="#tag-layout">2.1 logical tag、allocation tag 与 TBI</a></li>
+            <li><a href="#tag-instructions">2.2 标签由软件建立，访问检查由硬件执行</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：3. CPU、内核与分配器如何协作"><a href="#cooperation">3. CPU、内核与分配器如何协作</a></summary>
+        <ol>
+            <li><a href="#tag-lifetime">3.1 从分配、释放到复用</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：4. 在 Linux 与 Android 中启用"><a href="#enable">4. 在 Linux 与 Android 中启用</a></summary>
+        <ol>
+            <li><a href="#linux-mte">4.1 Linux：能力、映射和线程配置</a></li>
+            <li><a href="#android-mte">4.2 Android：应用与 native 进程的入口</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：5. 报告模式与故障定位"><a href="#diagnosis">5. 报告模式与故障定位</a></summary>
+        <ol>
+            <li><a href="#check-modes">5.1 同步、异步与非对称检查</a></li>
+            <li><a href="#report-workflow">5.2 把访问位置与生命周期联系起来</a></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：6. 检测边界、成本与相关方案"><a href="#limits">6. 检测边界、成本与相关方案</a></summary>
+        <ol>
+            <li><a href="#granularity-collision">6.1 两个必须能解释的漏检例子</a></li>
+            <li><a href="#related-tools">6.2 MTE、ASan 与 HWASan 的关系</a></li>
+        </ol>
+    </details></li>
+</ol>
+</details></nav>
+<!-- generated:note-toc:end --><div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
+<section id="purpose" aria-labelledby="purpose-title"><h2 id="purpose-title">1. MTE 检查的是内存访问与标签是否匹配</h2>
+<p><strong>MTE（Memory Tagging Extension）</strong>是 Arm AArch64 的内存标记扩展。软件为内存和指向它的指针安排标签，硬件在受检查的访问中比较两者；不匹配时按配置报告错误。它可帮助发现越界、释放后使用等问题，属于体系结构与内存安全机制，C、C++ 或运行库都可以使用。</p>
+<p>普通页权限能阻止访问未映射或不可写的页，但同一可写页里可能装着多个分配块：某个旧指针仍落在合法页内，不代表对应对象仍然有效。MTE 增加比页更细的检查；虚拟地址转换、TLB、缓存和缺页的完整基础见<a href="../operating-systems/index.html#memory-access-flow">一次访存流程</a>。</p>
+<p>本文分别说明架构机制、Linux 用户态接口与 Android 使用入口。示例为教学图和配置片段，未提供 ARM64 MTE 真机实测结果；支持情况须由目标硬件、内核和运行库共同确认。</p>
+</section>
+
+<section id="tags" aria-labelledby="tags-title"><h2 id="tags-title">2. 两种标签与一次访问检查</h2>
+<h3 id="tag-layout">2.1 logical tag、allocation tag 与 TBI</h3>
+<p>基础 MTE 为每个 <strong>16 字节 granule</strong>关联一个 <strong>4 位 allocation tag</strong>，它是独立于普通载荷的标签信息。参与访问的指针带有 logical tag，取自地址的 <strong>59:56 位</strong>。TBI（Top Byte Ignore）使配置允许的地址高位标签不参与通常的地址解释；MTE 进一步把其中的标签用于匹配检查，二者不是同一功能。</p>
+<pre tabindex="0"><code class="language-text">概念表示，A 为按 16 字节对齐的有效地址：
+指针 p = (地址 A，logical tag = 3)
+内存 [A, A+16) 的 allocation tag = 3
+
+用 p 访问这段带标签内存：3 == 3 → 标签匹配
+用 (A, 9) 访问同一段内存：9 != 3 → 按检查模式报告
+
+标签匹配只通过这一项检查；地址映射、权限、对齐等规则仍适用。</code></pre>
+<p>标签不会替程序保存完整对象长度、C++ 类型或所有权关系，也不等于把一个 4 位字段塞进每个对象的业务结构体。相邻的 16 字节粒度可以有不同标签；同一分配块覆盖多个粒度时，分配器必须按其策略处理所覆盖的范围。</p>
+<p class="note-source">参考：<a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Arm_Memory_Tagging_Extension_Whitepaper.pdf" target="_blank" rel="noreferrer">Arm：MTE 架构与内存安全白皮书</a>。</p>
+<h3 id="tag-instructions">2.2 标签由软件建立，访问检查由硬件执行</h3>
+<div class="note-table-wrap" role="region" aria-label="MTE 指令职责" tabindex="0"><table><caption>用于理解机制的几条 AArch64 指令</caption><thead><tr><th scope="col">指令</th><th scope="col">核心职责</th></tr></thead><tbody><tr><td>IRG</td><td>为地址生成带逻辑标签的指针，受允许标签集合等配置约束</td></tr><tr><td>STG</td><td>把指针携带的标签写入目标粒度的 allocation tag</td></tr><tr><td>STZG</td><td>设置 allocation tag，并将对应数据粒度清零</td></tr><tr><td>LDG</td><td>读取 allocation tag，形成带该标签的地址值</td></tr></tbody></table></div>
+<p>生成带标签指针与设置内存标签是两步：仅执行 IRG，或仅把随机数塞入指针高位，都不能保证内存端标签匹配。应用通常通过支持 MTE 的分配器获得正确配对的结果；手工实验还须按指令要求处理对齐和整个分配范围。</p>
+<p class="note-source">参考：<a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/Providing%20protection%20for%20complex%20software.pdf" target="_blank" rel="noreferrer">Arm：内存标记指令与软件配合</a>。</p>
+</section>
+
+<section id="cooperation" aria-labelledby="cooperation-title"><h2 id="cooperation-title">3. CPU、内核与分配器如何协作</h2>
+<div class="note-table-wrap" role="region" aria-label="MTE 各层职责" tabindex="0"><table><caption>有硬件能力，还需要软件建立使用条件</caption><thead><tr><th scope="col">层次</th><th scope="col">职责</th></tr></thead><tbody><tr><td>CPU</td><td>提供标签指令，按内存属性和检查配置比较标签、记录或触发故障</td></tr><tr><td>内核</td><td>暴露能力、建立带标签映射、维护线程配置，并把故障交给用户态报告路径</td></tr><tr><td>分配器 / 运行库</td><td>为分配块设置标签并返回匹配指针，释放或复用时按策略重新标记</td></tr><tr><td>编译器</td><td>可为受支持的栈等区域生成标签维护代码；具体覆盖取决于构建方式</td></tr><tr><td>应用与诊断工具</td><td>正确保留和传递标签，采集可符号化的报告并修复越界或生命周期问题</td></tr></tbody></table></div>
+<h3 id="tag-lifetime">3.1 从分配、释放到复用</h3>
+<pre tabindex="0"><code class="language-text">示意标签策略，不规定某一分配器的具体算法：
+t0：分配地址 A，内存标签设为 3，返回 p=(A,3)
+t1：业务复制指针 q=p
+t2：释放该块，分配器重标记；旧 q 的标签仍为 3
+t3：A 被复用，标签为 9，新拥有者得到 r=(A,9)
+t4：旧 q 访问 A，3 与 9 不匹配 → 检测到非法访问
+
+如果复用后标签恰好再次为 3，单靠标签比较可能漏掉该次旧指针访问。</code></pre>
+<p>标签维护属于分配策略的一部分：重标记时间、随机策略和延迟复用都会影响效果。开启普通 malloc 堆的标签，也不自动覆盖自建内存池的每个子对象、所有栈与全局变量，或 ART 托管堆的每个 Java 对象；这些区域需要各自的分配和插桩配合。</p>
+<p>跨组件传指针时应遵循平台 tagged-address ABI；随意清除高位会破坏匹配，随意复用高位也可能冲突。MTE 不负责迁移对象或更新所有别名，GC 搬迁协议属于另一项运行时职责。</p>
+</section>
+
+<section id="enable" aria-labelledby="enable-title"><h2 id="enable-title">4. 在 Linux 与 Android 中启用</h2>
+<h3 id="linux-mte">4.1 Linux：能力、映射和线程配置</h3>
+<p>实验需同时检查三项：通过 <code>getauxval(AT_HWCAP2)</code> 确认 <code>HWCAP2_MTE</code>；为适用地址范围设置 <code>PROT_MTE</code>；通过 <code>prctl(PR_SET_TAGGED_ADDR_CTRL, ...)</code> 配置线程的标签检查模式和允许生成的标签集合。每一步都要检查返回值；只成功 mmap 并不代表已开启检查或已为分配块生成随机标签。</p>
+<pre tabindex="0"><code class="language-text">Linux ARM64 教学流程，非完整可执行程序：
+1. 检查 HWCAP2_MTE；缺少能力则停止该实验
+2. prctl 设置 PR_TAGGED_ADDR_ENABLE、PR_MTE_TCF_SYNC
+   和按 PR_MTE_TAG_SHIFT 放置的允许标签位图
+3. mmap 匿名范围，保护包含 PROT_READ | PROT_WRITE | PROT_MTE
+4. 用标签指令 / 合适运行库设置内存标签，构造匹配指针
+5. 先验证正常访问，再在独立故障测试进程验证不匹配报告
+6. 用符合接口要求的映射地址 munmap</code></pre>
+<p>该 Linux 接口支持匿名映射和 tmpfs / memfd 等 RAM 文件映射，并非任意磁盘文件都支持 PROT_MTE。检查模式按线程管理；测试须确认实际执行访问的线程配置，而不能只查看主线程的一次设置。</p>
+<p class="note-source">接口与完整实验代码：<a href="https://docs.kernel.org/arch/arm64/memory-tagging-extension.html" target="_blank" rel="noreferrer">Linux AArch64 MTE</a>。</p>
+<h3 id="android-mte">4.2 Android：应用与 native 进程的入口</h3>
+<p>在支持 MTE 且系统已启用相应能力的 Android 设备上，可在应用清单中选择模式，例如调试复现使用 <code>android:memtagMode="sync"</code>。以下只是放入现有 Manifest 的 application 配置片段，其他属性按应用保留：</p>
+<pre tabindex="0"><code class="language-xml">&lt;application
+    android:memtagMode="sync"&gt;
+    &lt;!-- 原有组件声明 --&gt;
+&lt;/application&gt;</code></pre>
+<p>对于平台支持的 native 可执行程序，可在启动时使用下面的环境配置；平台构建也有 Android.bp 的 <code>sanitize.memtag_heap</code> 及诊断模式配置。入口、支持的覆盖区域和模式优先级须按目标 Android 版本确认，并重新启动目标进程验证实际生效状态。</p>
+<pre tabindex="0"><code class="language-sh">MEMTAG_OPTIONS=sync ./native_demo</code></pre>
+<p>这些设置不能为缺少 MTE 的 CPU 增加硬件能力，也不能把一次没有报错的运行当作配置成功的充分证据。应先确认设备支持、进程实际模式和所测内存区域，再用可控的独立测试验证报告；不要在正常业务流程里故意注入非法访问。</p>
+<p class="note-source">参考：<a href="https://source.android.com/docs/security/test/memory-safety/arm-mte" target="_blank" rel="noreferrer">Android：MTE 模式、应用清单与 native 配置</a>。</p>
+</section>
+
+<section id="diagnosis" aria-labelledby="diagnosis-title"><h2 id="diagnosis-title">5. 报告模式与故障定位</h2>
+<h3 id="check-modes">5.1 同步、异步与非对称检查</h3>
+<div class="note-table-wrap" role="region" aria-label="MTE 检查模式" tabindex="0"><table><caption>模式改变报告时机与可定位程度</caption><thead><tr><th scope="col">模式</th><th scope="col">Linux 用户态表现</th><th scope="col">如何使用证据</th></tr></thead><tbody><tr><td>同步</td><td>故障访问不执行；SIGSEGV 的 si_code 为 SEGV_MTESERR，带故障地址</td><td>定位当前访问指令，结合地址、标签、分配与释放记录</td></tr><tr><td>异步</td><td>稍后报告一个或多个标签错误；SEGV_MTEAERR，si_addr 为 0</td><td>报告位置未必是实际非法访问位置，可用同步模式缩小定位范围</td></tr><tr><td>非对称</td><td>读按同步方式、写按异步方式处理；依赖硬件与内核配置</td><td>先区分读写和实际选定模式，再解读报告精度</td></tr></tbody></table></div>
+<p>允许多个模式时，内核可能根据 CPU 偏好选择实际模式；不要把请求标志简单当成逐次访问的最终行为。忽略标签故障也不意味着内存访问因此具有合法的语言语义。</p>
+<h3 id="report-workflow">5.2 把访问位置与生命周期联系起来</h3>
+<ol><li><strong>保留环境：</strong>记录设备、系统、构建标识、符号文件和检查模式。</li><li><strong>确认访问：</strong>同步报告先看故障地址和读写指令；异步报告不要直接把当前栈顶当作出错语句。</li><li><strong>查分配块：</strong>结合分配器提供的地址范围、标签及可用的分配 / 释放栈，判断是跨块访问还是访问已释放对象。</li><li><strong>修复根因：</strong>追查长度计算、所有权或取消 / 回调时序，而不是改标签使错误访问通过。</li><li><strong>复测：</strong>运行原复现、边界输入与生命周期交错；记录覆盖条件，保留其他内存检查手段。</li></ol>
+<p>例如旧回调保留了已释放缓冲的指针，故障现场在回调读取处，修复可能在回调注销与缓冲释放的协调位置。MTE 证明这次访问的标签不匹配，分配器报告和业务证据才帮助解释“为什么这个指针已经失效”。</p>
+<p class="note-source">参考：<a href="https://docs.kernel.org/arch/arm64/memory-tagging-extension.html#tag-check-faults" target="_blank" rel="noreferrer">Linux 标签故障语义</a> · <a href="https://source.android.com/docs/security/test/memory-safety/arm-mte" target="_blank" rel="noreferrer">Android 同步报告与分配信息</a>。</p>
+</section>
+
+<section id="limits" aria-labelledby="limits-title"><h2 id="limits-title">6. 检测边界、成本与相关方案</h2>
+<h3 id="granularity-collision">6.1 两个必须能解释的漏检例子</h3>
+<p><strong>粒度限制：</strong>假设一个 12 字节分配放在一个 16 字节粒度内，整个粒度标签相同。访问第 13 个字节已经越过请求长度，却可能仍通过标签匹配。跨越到不同标签的相邻粒度才会触发这一检查；MTE 不了解每个字段或数组的精确边界。</p>
+<p><strong>标签碰撞：</strong>标签只有有限种取值，复用后的新块可能与旧指针标签相同。在“16 种标签独立均匀选择”等特定模型下可算出 1/16 的匹配概率，但真实分配策略可能排除某些值、避免近邻重复或延迟复用，不能把这个数字直接当作每次攻击或每次 UAF 的实际漏检率。</p>
+<p>未覆盖的内存、未执行的代码路径、粒度内越界、数据竞争和逻辑错误，也不会因为开启 MTE 自动消失。硬件检查降低了一部分插桩成本，标签存储、重标记、对齐浪费与故障处理仍有成本，应按模式与负载测量。</p>
+<h3 id="related-tools">6.2 MTE、ASan 与 HWASan 的关系</h3>
+<div class="note-table-wrap" role="region" aria-label="内存访问检测方案比较" tabindex="0"><table><caption>比较检查机制，不把名字当作覆盖保证</caption><thead><tr><th scope="col">方案</th><th scope="col">主要机制</th><th scope="col">使用条件</th></tr></thead><tbody><tr><td>MTE</td><td>CPU 比较指针与内存标签</td><td>MTE 硬件、系统支持、相应内存的标签维护</td></tr><tr><td>ASan</td><td>编译器插入访问检查，结合影子内存、红区及隔离等机制</td><td>适用代码插桩与运行库，覆盖和成本依构建与访问路径</td></tr><tr><td>HWASan</td><td>带标签指针、影子标签与编译器生成的检查</td><td>相应目标和工具链支持；名称不表示它就是 MTE 指令检查</td></tr></tbody></table></div>
+<p>选择时先看需覆盖的堆 / 栈 / 全局区域、能否重新编译、目标硬件、可接受开销和报告精度。MTE 检查失败是有价值的故障证据；“MTE 没报错”不构成程序内存安全的证明。</p>
+<p class="note-source">参考：<a href="https://clang.llvm.org/docs/AddressSanitizer.html" target="_blank" rel="noreferrer">Clang AddressSanitizer</a> · <a href="https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html" target="_blank" rel="noreferrer">Clang HWASan 设计</a> · <a href="https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Arm_Memory_Tagging_Extension_Whitepaper.pdf" target="_blank" rel="noreferrer">Arm MTE：检测能力与粒度</a>。</p>
+<details class="note-review-question"><summary>复习问题：为什么 CPU 支持 MTE，某个 UAF 仍可能不报错？</summary><p>依次检查内核和进程模式是否启用、目标内存是否带标签、分配器是否在生命周期变化时维护标签、访问是否实际执行，以及复用后是否发生标签碰撞。仅确认 CPU 型号不能回答这些问题。</p></details>
+</section>
+<!-- generated:note-body:end -->
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>
