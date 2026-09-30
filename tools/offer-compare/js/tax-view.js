@@ -116,7 +116,7 @@
             appendTaxFormula(
                 body,
                 "个人公积金（Offer 比例）",
-                formatPreciseMoney(inputs.monthlySalary) + " × " +
+                formatPreciseMoney(inputs.housingFundBaseMonthly) + " × " +
                     formatRate(inputs.housingFundRate) + " × " +
                     numberFormatter.format(inputs.housingFundMonths) + " = " +
                     formatPreciseMoney(inputs.employeeHousingFund)

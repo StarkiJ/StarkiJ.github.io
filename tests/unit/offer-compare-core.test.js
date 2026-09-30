@@ -37,6 +37,36 @@ function normalizedState(rawState) {
 
 assert.strictEqual(core.MAX_CYCLE_WEEKS, 52, "应导出 52 周的周期上限");
 
+var housingFundState = stateWithSchedule(1, [
+    { week: 1, weekday: 1, start: "09:00", end: "17:00" }
+]);
+housingFundState.offers[0].pay.otherAnnualCash = null;
+var emptyOtherAnnualCash = core.calculateAll(housingFundState);
+assert.deepStrictEqual(emptyOtherAnnualCash.validation.errors, []);
+assert.strictEqual(emptyOtherAnnualCash.state.offers[0].pay.otherAnnualCash, 0);
+housingFundState.settings = { year: 2026, socialInsuranceRate: 0 };
+housingFundState.offers[0].pay.monthlySalary = 25000;
+housingFundState.offers[0].housingFundRate = 0.12;
+var defaultHousingFund = core.calculateAll(housingFundState);
+assert.strictEqual(defaultHousingFund.state.offers[0].housingFundBaseMonthly, null);
+assert.strictEqual(defaultHousingFund.results[0].metrics.housingFundEquity, 72000);
+housingFundState.offers[0].housingFundBaseMonthly = 20000;
+var customHousingFund = core.calculateAll(housingFundState);
+assert.deepStrictEqual(customHousingFund.validation.errors, []);
+assert.strictEqual(customHousingFund.results[0].metrics.annualPretaxCash, 300000);
+assert.strictEqual(customHousingFund.results[0].metrics.housingFundEquity, 57600);
+assert.strictEqual(customHousingFund.results[0].tax.inputs.housingFundBaseMonthly, 20000);
+assert.strictEqual(customHousingFund.results[0].tax.inputs.employeeHousingFund, 28800);
+assert.strictEqual(
+    core.parseState(JSON.parse(core.stringifyState(housingFundState)))
+        .state.offers[0].housingFundBaseMonthly,
+    20000,
+    "自定义公积金基数应在导出和导入后保留"
+);
+housingFundState.offers[0].housingFundBaseMonthly = -100;
+assert.ok(issueCodes(core.calculateAll(housingFundState).validation.errors)
+    .includes("invalid_housing_fund_base_monthly"));
+
 var declaredLonger = normalizedSchedule(3, [
     { week: 1, weekday: 1, start: "09:00", end: "17:00" }
 ]);

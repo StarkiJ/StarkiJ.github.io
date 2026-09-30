@@ -72,7 +72,7 @@
 
             input.id = inputId;
             input.required = options.path === "company" ||
-                (input.type === "number" && !options.nullable);
+                (input.type === "number" && !options.nullable && !options.optionalZero);
             input.value = options.value === null || options.value === undefined ? "" : options.value;
             input.dataset.offerId = offer.id;
             if (options.path) {
@@ -381,7 +381,7 @@
                 label: "城市",
                 path: "city",
                 value: offer.city,
-                hint: "没有可靠的全国通用缴费基数上下限；城市未知时使用“通用”，个人社保和公积金均按月薪与填写比例直接估算。"
+                hint: "没有可靠的全国通用缴费基数上下限；城市未知时使用“通用”，个人社保按月薪估算，公积金可单独填写缴存基数。"
             }),
             createInputField(offer, {
                 label: "月薪（元）",
@@ -427,13 +427,27 @@
                 percent: true
             }),
             createInputField(offer, {
+                label: "公积金月缴存基数（元）",
+                type: "number",
+                path: "housingFundBaseMonthly",
+                value: offer.housingFundBaseMonthly,
+                min: 0,
+                max: 1000000000,
+                step: 100,
+                nullable: true,
+                placeholder: "默认按月薪 " + numberFormatter.format(offer.pay.monthlySalary) + " 元",
+                hint: "留空按月薪全额计算；填写后仅用于个人和单位公积金，不改变月薪收入。"
+            }),
+            createInputField(offer, {
                 label: "其他年现金（元）",
                 type: "number",
                 path: "pay.otherAnnualCash",
-                value: offer.pay.otherAnnualCash,
+                value: offer.pay.otherAnnualCash || null,
                 min: 0,
                 step: 100,
-                hint: "可填写固定补贴、签字费等。"
+                optionalZero: true,
+                placeholder: "默认 0 元",
+                hint: "留空按 0 元计算；可填写固定补贴、签字费等。"
             }),
             createInputField(offer, {
                 label: "奖金计税",
@@ -505,6 +519,11 @@
         function refresh() {
             calculate();
             fieldValidation.clear();
+            var housingFundBase = fields.querySelector('[data-path="housingFundBaseMonthly"]');
+            if (housingFundBase) {
+                housingFundBase.placeholder = "默认按月薪 " +
+                    numberFormatter.format(draft.pay.monthlySalary) + " 元";
+            }
             fields.querySelectorAll("input, select").forEach(function (control) {
                 if (control.dataset.path === "company") {
                     control.setCustomValidity(control.value.trim() ? "" : "请填写公司名称。");

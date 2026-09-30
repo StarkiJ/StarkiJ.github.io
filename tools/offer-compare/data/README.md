@@ -13,6 +13,7 @@
 页面导出的 JSON 也使用相同排版。
 
 每个 Offer 可以通过 `socialInsuranceRate` 覆盖默认个人社保比例，
+通过 `housingFundBaseMonthly` 单独指定公积金月缴存基数（`null` 或缺省时按月薪全额计算），
 并通过 `schedule.lunchBreakHours`、`schedule.dinnerBreakHours` 覆盖
 默认休息时长；留为 `null` 时继续继承 `settings`。休息时长按 Offer
 统一设置，不再细分到排班表中的单个班次。

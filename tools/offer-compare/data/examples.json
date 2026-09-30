@@ -32,6 +32,7 @@
       },
       "socialInsuranceRate": null,
       "housingFundRate": 0.12,
+      "housingFundBaseMonthly": null,
       "schedule": {
         "cycleWeeks": 1,
         "lunchBreakHours": null,
@@ -66,6 +67,7 @@
       },
       "socialInsuranceRate": null,
       "housingFundRate": 0.07,
+      "housingFundBaseMonthly": null,
       "schedule": {
         "cycleWeeks": 1,
         "lunchBreakHours": null,
@@ -100,6 +102,7 @@
       },
       "socialInsuranceRate": null,
       "housingFundRate": 0.12,
+      "housingFundBaseMonthly": null,
       "schedule": {
         "cycleWeeks": 1,
         "lunchBreakHours": null,
@@ -134,6 +137,7 @@
       },
       "socialInsuranceRate": null,
       "housingFundRate": 0.08,
+      "housingFundBaseMonthly": null,
       "schedule": {
         "cycleWeeks": 1,
         "lunchBreakHours": null,

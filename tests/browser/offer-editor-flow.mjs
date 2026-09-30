@@ -53,8 +53,12 @@ export async function checkEditorFlow({ client }) {
     assert.equal(accessibility.scheduleAlwaysVisible, true);
     assert.equal(accessibility.overtimeCollapsed, true);
     assert.ok(accessibility.controls > 30);
+    assert.equal(await read(`document.querySelector(${JSON.stringify(field("pay.otherAnnualCash"))}).value`), "");
+    assert.equal(await read(`document.querySelector(${JSON.stringify(field("pay.otherAnnualCash"))}).required`), false);
+    assert.equal(await read(`document.querySelector(${JSON.stringify(field("pay.otherAnnualCash"))}).placeholder`), "默认 0 元");
     const beforePreview = await read(`document.querySelector('#offerEditPreview').textContent`);
     await set(field("pay.monthlySalary"), "38000");
+    assert.equal(await read(`document.querySelector(${JSON.stringify(field("housingFundBaseMonthly"))}).placeholder`), "默认按月薪 38,000 元");
     await set(field("company"), "临时修改");
     assert.notEqual(await read(`document.querySelector('#offerEditPreview').textContent`), beforePreview);
     await delay(220);
@@ -82,7 +86,8 @@ export async function checkEditorFlow({ client }) {
     await click('.comparison-offer-link[data-offer-id="demo-a"]');
     for (const [path, invalid, valid] of [
         ["company", "  ", "A公司"], ["pay.monthlySalary", "", "28000"],
-        ["housingFundRate", "101", "12"], ["pay.otherAnnualCash", "-100", "0"]
+        ["housingFundRate", "101", "12"], ["housingFundBaseMonthly", "-100", "20000"],
+        ["pay.otherAnnualCash", "-100", ""]
     ]) {
         await set(field(path), invalid);
         await click("#saveOfferEdit");
@@ -137,6 +142,7 @@ export async function checkEditorFlow({ client }) {
     await click('.comparison-offer-link[data-offer-id="demo-a"]');
     await set(field("company"), "更新公司");
     await set(field("pay.monthlySalary"), "30000");
+    await set(field("housingFundBaseMonthly"), "20000");
     await set(field("socialInsuranceRate"), "20");
     await set(field("schedule.lunchBreakHours"), "1");
     await set(field("schedule.dinnerBreakHours"), "0.5");
@@ -159,6 +165,8 @@ export async function checkEditorFlow({ client }) {
     const offer = edited.offers[0];
     assert.equal(offer.company, "更新公司");
     assert.equal(offer.pay.monthlySalary, 30000);
+    assert.equal(offer.pay.otherAnnualCash, 0);
+    assert.equal(offer.housingFundBaseMonthly, 20000);
     assert.equal(offer.socialInsuranceRate, 0.2);
     assert.equal(offer.schedule.lunchBreakHours, 1);
     assert.equal(offer.schedule.dinnerBreakHours, 0.5);
@@ -192,6 +200,7 @@ export async function checkEditorFlow({ client }) {
     assert.equal(duplicated.offers[1].department, "A部门（副本）");
     assert.equal(duplicated.offers[0].pay.monthlySalary, 30000);
     assert.equal(duplicated.offers[1].pay.monthlySalary, 31000);
+    assert.equal(duplicated.offers[1].housingFundBaseMonthly, 20000);
     assert.deepStrictEqual(duplicated.offers[1].schedule, duplicated.offers[0].schedule);
 
     // Public delete selection supports confirmation and cancellation.

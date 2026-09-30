@@ -174,6 +174,7 @@
             },
             socialInsuranceRate: nullableRate(raw.socialInsuranceRate),
             housingFundRate: rate(raw.housingFundRate, 0),
+            housingFundBaseMonthly: nullableFinite(raw.housingFundBaseMonthly, 0, 1000000000),
             schedule: normalizeSchedule(raw.schedule),
             overtime: normalizeOvertime(raw.overtime)
         };
@@ -457,11 +458,12 @@
                 "otherAnnualCash",
                 path + ".pay.otherAnnualCash",
                 {
+                    nullable: true,
                     minimum: 0,
                     maximum: 1000000000,
                     step: 100,
                     code: "invalid_other_annual_cash",
-                    message: "其他年现金必须是非负金额，且以 100 元为步长。"
+                    message: "其他年现金必须留空或填写非负金额，且以 100 元为步长。"
                 }
             );
             validateRawNumber(
@@ -489,6 +491,20 @@
                     step: 0.001,
                     code: "invalid_housing_fund_rate",
                     message: "公积金比例必须是 0%–100%，且以 0.1% 为步长。"
+                }
+            );
+            validateRawNumber(
+                errors,
+                rawOffer,
+                "housingFundBaseMonthly",
+                path + ".housingFundBaseMonthly",
+                {
+                    nullable: true,
+                    minimum: 0,
+                    maximum: 1000000000,
+                    step: 100,
+                    code: "invalid_housing_fund_base_monthly",
+                    message: "公积金月缴存基数必须留空或填写非负金额，且以 100 元为步长。"
                 }
             );
             validateRawNumber(

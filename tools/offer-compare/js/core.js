@@ -257,7 +257,7 @@
                 key: "housing-fund-default",
                 category: "三险一金",
                 label: "住房公积金规则",
-                value: "比例未知时按 0%；已知时个人与单位使用相同比例，均按月薪全额缴纳 " +
+                value: "比例未知时按 0%；已知时个人与单位使用相同比例，缴存基数留空则按月薪全额缴纳 " +
                     settings.housingFundMonths + " 个月，不套用城市缴存上限"
             },
             {
@@ -291,6 +291,9 @@
         var socialInsuranceRate = offer.socialInsuranceRate === null
             ? settings.socialInsuranceRate
             : offer.socialInsuranceRate;
+        var housingFundBaseMonthly = offer.housingFundBaseMonthly === null
+            ? offer.pay.monthlySalary
+            : offer.housingFundBaseMonthly;
         var annualOvertimePay = calculateAnnualOvertimePay(offer, settings);
         var annualBaseSalary = offer.pay.monthlySalary * 12;
         var annualBonus = offer.pay.monthlySalary * Math.max(0, offer.pay.salaryMonths - 12);
@@ -298,7 +301,7 @@
             offer.pay.otherAnnualCash + annualOvertimePay;
         var employeeSocialInsurance = offer.pay.monthlySalary *
             socialInsuranceRate * settings.socialInsuranceMonths;
-        var employeeHousingFund = offer.pay.monthlySalary *
+        var employeeHousingFund = housingFundBaseMonthly *
             offer.housingFundRate * settings.housingFundMonths;
         var employerHousingFund = employeeHousingFund;
         var baselineDeductions = settings.basicDeduction +
@@ -393,6 +396,7 @@
             socialInsuranceRate: socialInsuranceRate,
             socialInsuranceMonths: settings.socialInsuranceMonths,
             employeeHousingFund: employeeHousingFund,
+            housingFundBaseMonthly: housingFundBaseMonthly,
             housingFundRate: offer.housingFundRate,
             housingFundMonths: settings.housingFundMonths,
             baselineDeductions: baselineDeductions,

@@ -108,6 +108,7 @@
             },
             socialInsuranceRate: null,
             housingFundRate: 0.05,
+            housingFundBaseMonthly: null,
             schedule: schedule,
             overtime: {
                 shiftsPerYear: 0,

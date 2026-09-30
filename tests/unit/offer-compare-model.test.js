@@ -67,6 +67,7 @@ assert.deepStrictEqual(created, {
     },
     socialInsuranceRate: null,
     housingFundRate: 0.05,
+    housingFundBaseMonthly: null,
     schedule: {
         cycleWeeks: 1,
         days: [
