@@ -76,9 +76,25 @@ int main() {
 <div class="note-lesson" id="q02">
 <h4>1.4 const 与 constexpr</h4>
 <p><strong>const</strong>限制通过该声明修改对象，但初值可以在运行时确定。<strong>constexpr 变量</strong>要求初值是常量表达式，即可按语言规则在编译时确定的表达式；constexpr 函数既可用于编译期求值，也可在运行时调用。</p>
-<div class="note-table-wrap" role="region" aria-label="const 的限定位置" tabindex="0"><table><caption>const 的限定位置</caption><thead><tr><th scope="col">声明</th><th scope="col">限制</th></tr></thead><tbody><tr><td><code>const int* p</code></td><td>不能通过 p 修改目标；p 可改变指向（底层 const）。</td></tr><tr><td><code>int* const p = &amp;n</code></td><td>p 不可改变指向；可通过 p 修改非 const 的 n（顶层 const）。</td></tr><tr><td><code>const int* const p = &amp;n</code></td><td>指向和通过它对目标的修改都受限。</td></tr></tbody></table></div>
+<p><strong>const 与指针：</strong>一个指针涉及两个对象：指针本身，以及它指向的对象。const 放在 <code>*</code> 左侧时限制所指对象，放在 <code>*</code> 右侧时限制指针本身。<code>const int*</code> 与 <code>int const*</code> 含义相同。</p>
+<div class="note-table-wrap" role="region" aria-label="const 与指针的四种组合" tabindex="0"><table><caption>const 与指针的四种组合</caption><thead><tr><th scope="col">声明</th><th scope="col">能否通过 p 修改目标</th><th scope="col">p 能否改变指向</th><th scope="col">含义</th></tr></thead><tbody><tr><td><code>int* p = &amp;n</code></td><td>可以</td><td>可以</td><td>普通指针</td></tr><tr><td><code>const int* p = &amp;n</code></td><td>不可以</td><td>可以</td><td>指向 const int 的指针</td></tr><tr><td><code>int* const p = &amp;n</code></td><td>可以</td><td>不可以</td><td>指向 int 的 const 指针</td></tr><tr><td><code>const int* const p = &amp;n</code></td><td>不可以</td><td>不可以</td><td>指向 const int 的 const 指针</td></tr></tbody></table></div>
+<pre class="note-snippet" tabindex="0"><code>int n = 10;
+int other = 20;
 
-<p>顶层 const 限定对象本身，例如指针不可改指向；底层 const 限定所指向或引用的目标。const 不递归冻结其他对象，也不提供线程同步；去掉限定后仍不能修改原本为 const 的对象。</p>
+const int* read_only = &amp;n;
+read_only = &amp;other;           // 可以改变指向
+// *read_only = 30;           // 错误：不能通过它修改目标
+
+int* const fixed = &amp;n;
+*fixed = 30;                  // 可以修改 n
+// fixed = &amp;other;            // 错误：fixed 自身是 const</code></pre>
+<p><strong>顶层与底层 const：</strong><code>int* const</code> 的 const 直接限定指针对象，称为顶层 const；<code>const int*</code> 的 const 限定间接访问的目标，称为底层 const。const 指针必须初始化，因为之后不能换地址。指向 const 的指针只限制这条访问路径：若 n 本身不是 const，仍可直接写 <code>n = 40</code>。</p>
+<p><strong>转换边界：</strong><code>int*</code> 可以隐式转换为 <code>const int*</code>，相当于减少修改权限；反向转换不允许。<code>const_cast</code> 可以显式调整 cv 限定，但若对象原本就是 const，去掉 const 后写入仍是未定义行为，详见<a href="#q07">类型转换</a>。</p>
+<p><strong>函数参数：</strong><code>void inspect(const int* p)</code> 限制函数通过 p 修改目标；<code>void inspect(int* const p)</code> 只让函数体内的形参副本不能改指向，不限制目标，也不要求调用者传入 const 指针。按值形参的顶层 const 不构成不同的函数签名。</p>
+<p>const 不递归冻结对象关联的其他对象，也不提供线程同步；它表达的是通过特定类型进行访问时的修改限制。</p>
+<details class="note-review-question" id="review-const-pointer"><summary>经典问题：const int*、int* const 和 const int* const 分别限制什么？</summary>
+<p>观察 <code>*</code> 两侧：左侧 const 限制所指对象，右侧 const 限制指针本身。两侧都有 const 时，两种操作都受限；没有 const 时两种操作都允许，但仍须满足目标有效、类型匹配和生命周期要求。</p>
+</details>
 </div>
 
 <div class="note-lesson" id="arrays-and-strings">
@@ -139,6 +155,6 @@ int main() {
 <p><strong>最小修改：</strong>把计数器改为 <code>unsigned int i = 0;</code>，原条件会在旧值为 256 时失败，循环体共执行 256 次。但由于后置自增，循环体内看到的 i 是 1～256。<strong>更清楚的遍历：</strong>用上面的 for，把“处理当前值”和“递增”分开，循环体内直接使用 0～255。</p>
 </details>
 </div>
-<p class="note-source">相关规则：<a href="https://eel.is/c++draft/dcl.init" target="_blank" rel="noreferrer">初始化</a> · <a href="https://eel.is/c++draft/intro.object" target="_blank" rel="noreferrer">对象</a> · <a href="https://eel.is/c++draft/basic.compound" target="_blank" rel="noreferrer">指针与引用</a> · <a href="https://eel.is/c++draft/lex.string" target="_blank" rel="noreferrer">字符串字面量</a> · <a href="https://eel.is/c++draft/conv.prom" target="_blank" rel="noreferrer">整数提升</a> · <a href="https://eel.is/c++draft/expr.post.incr" target="_blank" rel="noreferrer">后置自增</a> · <a href="https://eel.is/c++draft/basic.fundamental" target="_blank" rel="noreferrer">整数类型范围</a>。</p>
+<p class="note-source">相关规则：<a href="https://eel.is/c++draft/dcl.init" target="_blank" rel="noreferrer">初始化</a> · <a href="https://eel.is/c++draft/intro.object" target="_blank" rel="noreferrer">对象</a> · <a href="https://eel.is/c++draft/basic.compound" target="_blank" rel="noreferrer">指针与引用</a> · <a href="https://eel.is/c++draft/dcl.ptr" target="_blank" rel="noreferrer">指针声明</a> · <a href="https://eel.is/c++draft/dcl.type.cv" target="_blank" rel="noreferrer">const/volatile 限定</a> · <a href="https://eel.is/c++draft/conv.qual" target="_blank" rel="noreferrer">限定转换</a> · <a href="https://eel.is/c++draft/lex.string" target="_blank" rel="noreferrer">字符串字面量</a> · <a href="https://eel.is/c++draft/conv.prom" target="_blank" rel="noreferrer">整数提升</a> · <a href="https://eel.is/c++draft/expr.post.incr" target="_blank" rel="noreferrer">后置自增</a> · <a href="https://eel.is/c++draft/basic.fundamental" target="_blank" rel="noreferrer">整数类型范围</a>。</p>
 <p class="note-source">C++17 固定版本对照：<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf" target="_blank" rel="noreferrer">N4659</a> 中的 [dcl.init]（初始化）；PDF 内可按方括号节名查找。上面的 eel.is 链接为当前工作草案。</p>
 </section>
