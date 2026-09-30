@@ -1,0 +1,15 @@
+<section class="note-part" id="jvm-optimization" aria-labelledby="jvm-optimization-title">
+<h2 id="jvm-optimization-title">HotSpot 对象优化</h2>
+<h3 id="escape-analysis">逃逸、标量替换与锁消除</h3>
+<pre tabindex="0"><code class="language-java">static final class Pair {
+    final int x, y;
+    Pair(int x, int y) { this.x = x; this.y = y; }
+}
+static int sum(int a, int b) {
+    Pair p = new Pair(a, b);
+    return p.x + p.y;
+}</code></pre>
+<p>若编译器能看到相关构造与使用、确认不需要保留可观察的对象身份，可把 p.x / p.y 化为独立值，最终只计算 a+b。逃逸分析提供是否逃出方法 / 线程等信息，标量替换是可能采用的变换；分析成功也不保证每种代码形态都能消除分配。写入静态容器、传入无法分析的调用或观察身份，都可能影响决策。</p>
+<p>JDK 21 HotSpot C2 的这一优化不能一概表述为“对象从堆搬到栈”。若同步只作用于无法被其他线程访问的对象，编译器也可能消除相应锁操作；正确性依赖分析与语言语义。优化帧还可能需要在反优化时<a href="../jvm-hotspot/index.html#deopt-state">重新物化对象</a>。GC 篇保留<a href="../managed-memory-gc/index.html#object-creation">分配职责</a>，这里负责解释为何分配会消失。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/MemorySSA.html" target="_blank" rel="noreferrer">MemorySSA 与内存依赖</a> · <a href="https://releases.llvm.org/22.1.0/docs/CodeGenerator.html" target="_blank" rel="noreferrer">目标 lowering、活跃性与代码生成</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot 逃逸分析与标量替换</a>。</p>
+</section>

@@ -1,399 +1,142 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="从 CFG、SSA 和 ART HGraph，到寄存器分配、AOT、HotSpot C1/C2、JIT、OSR 与反优化。">
-    <meta name="theme-color" content="#f7faf8">
-    <meta property="og:type" content="article">
-    <meta property="og:locale" content="zh_CN">
-    <meta property="og:title" content="编译器：IR、代码生成与动态优化 · Starki 笔记">
-    <meta property="og:description" content="从 CFG、SSA 和 ART HGraph，到寄存器分配、AOT、HotSpot C1/C2、JIT、OSR 与反优化。">
-    <meta property="og:url" content="https://starkij.github.io/notes/compiler-ir/index.html">
-    <title>编译器：IR、代码生成与动态优化 · Starki 笔记</title>
-    <link rel="canonical" href="https://starkij.github.io/notes/compiler-ir/index.html">
-    <link rel="icon" href="../../images/head.jpg">
-    <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="../notes.css">
-<script defer src="../note-navigation.js"></script>
-</head>
-<body class="note-page">
-    <a class="note-skip" href="#note-content">跳到正文</a>
-    <header class="site-header site-header--sticky">
-        <div class="site-header-inner">
-            <a class="brand" href="../../index.html" aria-label="Starki 主页">
-                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
-                <span>Starki</span>
-            </a>
-            <nav class="site-nav" aria-label="站点导航">
-                <a href="../../index.html#about">关于</a>
-                <a href="../../index.html#tools">工具</a>
-                <a href="../../index.html#games">游戏</a>
-                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
-                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
-            </nav>
-        </div>
-    </header>
-    <main class="note-shell">
-        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">编译器与运行时</a><span aria-hidden="true">/</span><span aria-current="page">编译器：IR、代码生成与动态优化</span></nav>
-        <article aria-labelledby="note-title">
-            <header class="note-header">
-                <p class="eyebrow">编译器与运行时 / 专题</p>
-                <h1 id="note-title">编译器：IR、代码生成与动态优化</h1>
-                <p class="note-deck">从 CFG、SSA 和 ART HGraph，到寄存器分配、AOT、HotSpot C1/C2、JIT、OSR 与反优化。</p>
-                <div class="note-meta">
-                    <span>Starki</span>
-                    <!-- generated:note-dates:start -->
-<span class="note-dates"><span>发布 <time datetime="2026-09-13">2026.09.13</time></span><span>更新 <time datetime="2026-09-19">2026.09.19</time></span></span>
-<!-- generated:note-dates:end -->
-                    <span>概念 · 机制 · 经典问题</span>
-                </div>
-            </header>
-<!-- generated:reading-guide:start -->
-<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 先读 CFG、SSA 与 HGraph，再手推寄存器分配；随后阅读 AOT、HotSpot 分层、JIT、IC、OSR 及恢复元数据。</p><p>相关基础：<a href="../program-execution/index.html#call">函数调用与栈帧</a></p><nav class="note-parts" aria-label="分部直达"><a href="#compiler-foundations">一、IR、优化与代码生成</a><a href="#dynamic-compilation">二、动态编译与运行时优化</a></nav></aside>
-<!-- generated:reading-guide:end -->
-<div class="note-layout">
-<!-- generated:note-toc:start -->
-<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
-<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
-<ol>
-    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：一、IR、优化与代码生成"><a href="#compiler-foundations">一、IR、优化与代码生成</a></summary>
-        <ol>
-            <li><a href="#pipeline">1. 编译阶段与中间表示</a></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：2. 基本块与控制流图"><a href="#cfg">2. 基本块与控制流图</a></summary>
-                <ol>
-                    <li><a href="#dataflow">从 CFG 计算支配与活跃性</a></li>
-                </ol>
-            </details></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：3. SSA 与 phi"><a href="#ssa">3. SSA 与 phi</a></summary>
-                <ol>
-                    <li><a href="#phi-loop">循环里的 phi：静态一次定义，动态反复执行</a></li>
-                    <li><a href="#phi-and-select">phi、select 与优化收益</a></li>
-                    <li><a href="#hgraph">3.1 ART HGraph：把 CFG 与 SSA 落到编译器对象</a></li>
-                </ol>
-            </details></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：4. phi 消除与寄存器分配"><a href="#lowering">4. phi 消除与寄存器分配</a></summary>
-                <ol>
-                    <li><a href="#linear-scan">线性扫描：按活跃区间起点分配</a></li>
-                    <li><a href="#graph-coloring">图着色：不能共用寄存器的值连边</a></li>
-                    <li><a href="#instruction-selection">从值运算到目标指令</a></li>
-                    <li><a href="#register-allocation-example">跨调用活值为什么需要保存</a></li>
-                </ol>
-            </details></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：5. 优化的前提与代价"><a href="#optimization">5. 优化的前提与代价</a></summary>
-                <ol>
-                    <li><a href="#memory-dependencies">有两个相同 load，为什么不一定能合并</a></li>
-                    <li><a href="#escape-analysis">逃逸、标量替换与锁消除</a></li>
-                </ol>
-            </details></li>
-        </ol>
-    </details></li>
-    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：二、动态编译与运行时优化"><a href="#dynamic-compilation">二、动态编译与运行时优化</a></summary>
-        <ol>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：6. 解释执行、AOT、JIT 与热点统计"><a href="#jit">6. 解释执行、AOT、JIT 与热点统计</a></summary>
-                <ol>
-                    <li><a href="#hotspot-tiers">HotSpot C1 / C2：为什么分层</a></li>
-                    <li><a href="#aot-optimization">AOT 编译怎样做优化</a></li>
-                    <li><a href="#hotness">热点统计与编译调度</a></li>
-                    <li><a href="#code-cache">Profile 与代码缓存</a></li>
-                </ol>
-            </details></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：7. Inline cache、类型反馈与反优化"><a href="#inline-cache">7. Inline cache、类型反馈与反优化</a></summary>
-                <ol>
-                    <li><a href="#type-feedback">类型反馈怎样支持内联和反优化</a></li>
-                </ol>
-            </details></li>
-            <li><details class="note-toc-branch"><summary aria-label="展开或收起：8. OSR 与反优化：执行到一半怎样切换"><a href="#osr-deoptimization">8. OSR 与反优化：执行到一半怎样切换</a></summary>
-                <ol>
-                    <li><a href="#osr-entry">方法入口与循环入口不是同一个状态</a></li>
-                    <li><a href="#deopt-state">反优化恢复的是语义状态</a></li>
-                    <li><a href="#henvironment">8.1 ART HEnvironment：恢复信息怎样从图走到运行时</a></li>
-                </ol>
-            </details></li>
-            <li><a href="#compilation-evidence">9. 用证据区分预热、编译与反优化</a></li>
-        </ol>
-    </details></li>
-    <li><a href="#related">延伸阅读</a></li>
-</ol>
-</details></nav>
-<!-- generated:note-toc:end -->
-<div class="note-body" id="note-content" tabindex="-1">
-<!-- generated:note-body:start -->
-<section class="note-part" id="compiler-foundations" aria-labelledby="compiler-foundations-title">
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,follow"><meta name="description" content="编译器：IR、代码生成与动态优化已迁移，可按原章节继续阅读。">
+<meta name="theme-color" content="#f7faf8"><title>编译器：IR、代码生成与动态优化 · 内容已迁移</title>
+<link rel="icon" href="../../images/head.jpg">
+<link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../notes.css"></head>
+<body class="note-page"><a class="note-skip" href="#note-content">跳到正文</a>
+<header class="site-header site-header--sticky"><div class="site-header-inner">
+<a class="brand" href="../../index.html" aria-label="Starki 主页"><img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42"><span>Starki</span></a>
+<nav class="site-nav" aria-label="站点导航">
+    <a href="../../index.html#about">关于</a>
+    <a href="../../index.html#tools">工具</a>
+    <a href="../../index.html#games">游戏</a>
+    <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+    <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+</nav></div></header>
+<main class="note-shell" id="note-content" tabindex="-1">
+<nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><span aria-current="page">内容已整合</span></nav>
+<header class="note-header"><p class="eyebrow">章节迁移</p><h1 id="note-title">编译器：IR、代码生成与动态优化</h1>
+<p class="note-deck">本篇内容已按主题迁移至新笔记。可按原章节继续阅读。</p></header>
+<div class="note-body"><section id="compiler-foundations" aria-labelledby="compiler-foundations-title">
 <h2 id="compiler-foundations-title">一、IR、优化与代码生成</h2>
-<p class="note-reading-note">本部分主要用到<a href="../program-execution/index.html#abi">机器调用与寄存器约束</a>；CFG 与 SSA 在本部分定义，托管类加载不是通用编译原理的统一前置。</p>
-<p>先把程序表达成便于分析的控制流与数据流，再讨论变换的正确性和目标机器约束。词法、语法与语义分析在这里作为流程概览，重点是 IR、SSA 和代码生成。</p>
-<section id="pipeline" aria-labelledby="pipeline-title"><h3 id="pipeline-title">1. 编译阶段与中间表示</h3>
-<div class="note-table-wrap" role="region" aria-label="从源码到机器码" tabindex="0"><table><caption>从源码到机器码</caption><thead><tr><th scope="col">阶段</th><th scope="col">输入 → 输出</th><th scope="col">主要任务</th></tr></thead><tbody><tr><td>词法分析</td><td>字符 → token</td><td>识别标识符、关键字、字面量等</td></tr><tr><td>语法分析</td><td>token → AST</td><td>按文法建立结构，报告语法错误</td></tr><tr><td>语义分析</td><td>AST → 带类型/绑定信息的表示</td><td>名字查找、类型检查、作用域与转换</td></tr><tr><td>IR 生成与优化</td><td>高层结构 → 中间表示</td><td>显式表达控制流、数据依赖与内存操作</td></tr><tr><td>代码生成</td><td>IR → 目标指令</td><td>指令选择、寄存器分配、调度与目标约束</td></tr><tr><td>汇编与链接</td><td>汇编/目标文件 → 可执行程序或库</td><td>编码指令、解析符号与重定位</td></tr></tbody></table></div>
-<p><strong>AST</strong>保留源程序语法结构；<strong>IR</strong>为分析和变换提供规则更统一的表示。同一编译器可以有多层 IR，从接近语言语义逐步降低到机器指令。汇编器主要完成目标指令编码；解释器直接执行某种表示的语义，不必先生成本机代码。</p>
-<p>record/结构体需要字段类型、偏移、大小与对齐规则；类继承还涉及基类子对象、访问与动态分派。先确定语言语义，再按 ABI 降低到布局和地址操作，不能仅把每个字段按字节相加。</p>
+<p><a href="../llvm-compiler/index.html#compiler-foundations">阅读：一、IR、优化与代码生成</a></p>
 </section>
-<section id="cfg" aria-labelledby="cfg-title"><h3 id="cfg-title">2. 基本块与控制流图</h3>
-<p><strong>基本块</strong>是一段从入口顺序执行到结尾转移的指令序列；中间没有控制流跳入。<strong>CFG</strong>以基本块为节点，以可能的控制流转移为边。</p>
-<ol><li>在线性三地址码中，把第一条指令、跳转目标和转移指令后的新指令标为块首。</li><li>相邻块首之间构成基本块；以跳转、条件分支、返回等确定终结。</li><li>按各终结指令建立后继边，构造前驱列表；异常控制流也要按 IR 模型纳入。</li></ol>
-<p>条件分支通常有两个后继，返回没有普通后继。不能仅按花括号切块：短路逻辑、循环与异常处理都可能产生额外边。</p>
-<h4 id="dataflow">从 CFG 计算支配与活跃性</h4>
-<p>对可达块，入口只被自己支配；其他块的支配集合可初始化为全部可达块，再反复计算 <code>Dom(B) = {B} ∪ ∩ Dom(P)</code>，P 为 B 的前驱，直到不再变化。菱形 CFG 的两条分支互不支配，合并块的共同支配者可以只有入口与自己。</p>
-<pre tabindex="0"><code class="language-text">entry → left  → merge
-      → right → merge
-
-Dom(left)  = {entry, left}
-Dom(right) = {entry, right}
-Dom(merge) = {entry, merge}
-
-源变量 v 分别在 left / right 定义，merge 使用：
-  需要把各路径值汇合，后面的 SSA 例子用 phi 表达。</code></pre>
-<p><strong>活跃性</strong>问的是“这个值以后是否还会在被覆盖前使用”。在非 SSA 的块级模型中，可迭代计算 <code>OUT[B] = ∪ IN[S]</code>、<code>IN[B] = USE[B] ∪ (OUT[B] − DEF[B])</code>；USE 指块内先使用后定义的值，S 为后继。SSA 的 phi 输入使用发生在前驱边上，不能把所有输入都当作合并块同时需要的普通使用。</p>
-<p>支配帮助判断某定义是否覆盖所有到达路径；活跃性帮助决定哪些值必须保留、哪些值能共用寄存器。两种分析都不直接证明内存没有别名。</p>
+<section id="pipeline" aria-labelledby="pipeline-title">
+<h2 id="pipeline-title">1. 编译阶段与中间表示</h2>
+<p><a href="../llvm-compiler/index.html#pipeline">阅读：1. 编译阶段与中间表示</a></p>
 </section>
-<section id="ssa" aria-labelledby="ssa-title"><h3 id="ssa-title">3. SSA 与 phi</h3>
-<p><strong>SSA（静态单赋值）</strong>要求每个 SSA 值只有一个定义。源变量反复赋值时使用不同版本；控制流合并处用 phi 根据实际前驱选择对应版本。它不是同时执行所有分支，也不是求平均。</p>
-<pre tabindex="0"><code class="language-llvm">define i32 @choose(i1 %cond, i32 %x) {
-entry:
-  br i1 %cond, label %yes, label %no
-yes:
-  %a = add i32 %x, 1
-  br label %merge
-no:
-  %b = sub i32 %x, 1
-  br label %merge
-merge:
-  %result = phi i32 [ %a, %yes ], [ %b, %no ]
-  ret i32 %result
-}</code></pre>
-<p><strong>支配：</strong>从入口到 B 的每条路径都经过 A，则 A 支配 B。支配边界描述某定义可能与其他路径定义相遇的合并位置。经典 SSA 构建先计算支配关系，在迭代支配边界放置 phi，再沿支配树用版本栈重命名定义与使用；可结合活跃性省掉无用 phi。</p>
-<details class="note-review-question"><summary>经典问题：SSA 是否表示内存永远只写一次？</summary>
-<p>不是。SSA 约束 IR 值名的定义；store 仍可反复修改内存。对内存的依赖分析需别名分析或 MemorySSA 等额外表示，不能把不同 load 的结果直接视为恒等。</p>
-</details>
-<p class="note-source">参考：<a href="https://llvm.org/docs/LangRef.html#phi-instruction" target="_blank" rel="noreferrer">LLVM phi 语义</a> · <a href="https://llvm.org/docs/MemorySSA.html" target="_blank" rel="noreferrer">LLVM MemorySSA</a>。</p>
-<h4 id="phi-loop">循环里的 phi：静态一次定义，动态反复执行</h4>
-<p>循环头有入口边和回边，phi 合并初始值与上一轮结果。以下函数累加 <code>0..n-1</code>，演示 phi 的控制流语义；示例输入前提为 n 非负且数学结果能放入有符号 i32。这是便于演算的数值范围，不是 ABI 调用约定；代码中的普通 add 未附加 nsw / nuw，溢出时按位宽回绕。</p><pre tabindex="0"><code class="language-llvm">define i32 @sum_to(i32 %n) {
-entry:
-  br label %loop
-loop:
-  %i = phi i32 [ 0, %entry ], [ %next, %body ]
-  %sum = phi i32 [ 0, %entry ], [ %updated, %body ]
-  %more = icmp slt i32 %i, %n
-  br i1 %more, label %body, label %exit
-body:
-  %updated = add i32 %sum, %i
-  %next = add i32 %i, 1
-  br label %loop
-exit:
-  ret i32 %sum
-}</code></pre><p>n=3 时，进入循环头的 <code>(i, sum)</code> 依次为 <code>(0,0) → (1,0) → (2,1) → (3,3)</code>，最后返回 3。<code>%i</code> 只有一处静态定义，但该定义可以动态执行多次；“循环变量会变化，所以不能是 SSA”混淆了静态程序与动态执行。</p>
-<p>在 LLVM IR 中，phi 必须集中在基本块开头，输入成对标明值与前驱；输入值的使用发生在对应边上。因此 <code>%updated</code> 只需在 body→loop 的边上可用，不需要在 entry→loop 的边上也有定义。同一块的多个 phi 同时选择对应边的输入。</p>
-<h4 id="phi-and-select">phi、select 与优化收益</h4>
-<p>phi 按<strong>实际进入的前驱</strong>选值；select 按<strong>显式布尔条件</strong>从已可用的操作数中选值。把分支改成 select 时，不能随便把原本只在一个分支执行的可能抛异常、越界或有副作用的计算提升到公共路径。phi 通常在后端转成边上的复制或经寄存器合并消失，不要求 CPU 有名为 phi 的指令。</p>
-<p>SSA 使定义—使用关系明确：沿值的唯一来源做常量传播，按使用关系删除死值，检查支配与别名后复用计算。它不会自动解决别名、内存依赖或正确性问题；“SSA 就等于更少寄存器”也不成立，寄存器压力还要看活跃区间。</p><details class="note-review-question"><summary>面试追问：面试要求手工构建 SSA，按什么顺序？</summary><p>先画 CFG 并标入口、回边与合并块；算支配关系，在需要汇合多个定义的迭代支配边界放 phi；沿支配树重命名定义与使用，给每条前驱边填入对应版本；最后去掉无用或输入相同的 phi。循环头的回边输入不要漏填。</p></details>
-<section id="hgraph" aria-labelledby="hgraph-title"><h4 id="hgraph-title">3.1 ART HGraph：把 CFG 与 SSA 落到编译器对象</h4>
-<p><strong>HGraph 是 ART optimizing 编译器的图表示</strong>，不是 DEX 文件格式，也不是 LLVM IR 的别名。以 AOSP android-14.0.0_r1 为例，它组织一个编译单元的基本块、控制流与分析信息；<code>HBasicBlock</code> 保存前驱、后继以及指令，<code>HInstruction</code> 表达运算及其输入和使用关系，<code>HPhi</code> 表达合流值。图在构建、SSA 转换、优化和目标降低过程中逐步变化。</p>
-<pre tabindex="0"><code class="language-text">源方法：int choose(boolean c, int x) {
-          int y;
-          if (c) y = x + 1; else y = x - 1;
-          return y;
-        }
-
-示意 HGraph（省略入口、退出及具体节点编号）：
-B0：参数 c、x；HIf(c)       → B1 / B2
-B1：a = HAdd(x, 1)        → B3
-B2：b = HSub(x, 1)        → B3
-B3：y = HPhi(a, b)；HReturn(y)
-
-控制流边：B0→B1、B0→B2、B1→B3、B2→B3
-数据依赖：HAdd/HSub 使用 x；HPhi 使用各前驱提供的值</code></pre>
-<p>这是关系图示，不是某次编译的逐字 dump；实际图还受空检查、异常边、常量节点和优化结果影响。阅读 dump 时先看块间路径，再看每个值的定义和使用，最后检查变换是否保持支配、phi 输入与异常语义；只按节点的显示顺序阅读会漏掉图关系。</p>
-<p>可以顺着 <code>HGraphBuilder → SSA 与优化 pass → 位置约束 / 寄存器分配 → CodeGenerator</code> 追踪。需要异常或反优化状态的指令还可带 <code>HEnvironment</code>，它与普通输入边的职责不同，见<a href="#henvironment">编译期环境与运行时恢复</a>。AOT / JIT 何时触发这条编译流程，放在<a href="../art-compilation-startup/index.html#execution">ART 编译与启动</a>中讨论。</p>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/nodes.h" target="_blank" rel="noreferrer">ART HGraph、HBasicBlock、HInstruction、HPhi</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/optimizing_compiler.cc" target="_blank" rel="noreferrer">optimizing 编译流程</a>。</p>
+<section id="cfg" aria-labelledby="cfg-title">
+<h2 id="cfg-title">2. 基本块与控制流图</h2>
+<p><a href="../llvm-compiler/index.html#cfg">阅读：2. 基本块与控制流图</a></p>
 </section>
+<section id="dataflow" aria-labelledby="dataflow-title">
+<h2 id="dataflow-title">从 CFG 计算支配与活跃性</h2>
+<p><a href="../llvm-compiler/index.html#dataflow">阅读：从 CFG 计算支配与活跃性</a></p>
 </section>
-<section id="lowering" aria-labelledby="lowering-title"><h3 id="lowering-title">4. phi 消除与寄存器分配</h3>
-<p>降低 SSA 时，可把 <code>v = phi(a from A, b from B)</code> 变成在边 A→合并块上执行 v←a、边 B→合并块上执行 v←b。若前驱有多个后继而目标有多个前驱，直接把复制放任一块可能在错误路径执行，应按需要拆分临界边。</p>
-<p>同一条边上的多项复制具有并行语义。交换 a、b 不能依次执行 a←b、b←a，否则第二步读到已覆盖值；可用临时 t：t←a、a←b、b←t。寄存器合并可以消掉一部分复制。</p>
-<p><strong>虚拟寄存器</strong>是编译器表示中的值位置，不受硬件寄存器数量直接限制。分配器按活跃区间与干涉关系映射到物理寄存器；位置不足时 spill 到栈并插入 load/store。调用约定、寄存器类别和保存成本也属于约束。</p>
-<h4 id="linear-scan">线性扫描：按活跃区间起点分配</h4>
-<p>经典 linear scan 把程序位置线性编号，按区间起点遍历，维护按结束位置排列的 active 集合。处理新区间前释放已结束区间的寄存器；有空位就分配，没有空位则选择 spill。下面采用“比较结束位置，优先移出结束最晚的区间”的教学策略；真实实现可按使用位置拆分区间、处理空洞并估算溢出成本。</p>
-<pre tabindex="0"><code class="language-text">两个同类寄存器 R1、R2；半开区间 [start, end)：
-a = [0, 8)    b = [1, 3)    c = [2, 6)    d = [6, 9)
-位置 2 同时活跃 a、b、c，两个寄存器无法容纳三个值。
-位置 6 的 c 已结束，因此 c 与 d 不干涉。</code></pre>
-<div class="note-table-wrap" role="region" aria-label="线性扫描手工分配" tabindex="0"><table><caption>按起点扫描与选择溢出</caption><thead><tr><th scope="col">到达位置</th><th scope="col">处理</th><th scope="col">分配后状态</th></tr></thead><tbody>
-<tr><td>0：a 开始</td><td>取空闲 R1</td><td>a→R1</td></tr>
-<tr><td>1：b 开始</td><td>取空闲 R2</td><td>a→R1，b→R2</td></tr>
-<tr><td>2：c 开始</td><td>a 在 8 结束，比 c 的 6 更晚；选择 a 溢出</td><td>c→R1，b→R2；a 的值须保存到栈</td></tr>
-<tr><td>6：d 开始</td><td>b、c 已结束，释放其寄存器</td><td>d 可取 R1；a 后续使用需 reload</td></tr>
-</tbody></table></div>
-<p>这个表是在手算<strong>区间的分配决定</strong>。实际生成代码时要在覆盖寄存器前保存仍需使用的值，并在使用前重载；重载产生的短临时区间也要满足指令约束。分裂区间的实现可保留 a 的前段寄存器位置，整段溢出的简化实现则重写其定义与使用；不能只把分配表中的 a 改成“栈”就认为机器码已经正确。</p>
-<p class="note-source">参考：<a href="https://www.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf" target="_blank" rel="noreferrer">Poletto、Sarkar：Linear Scan Register Allocation</a>。</p>
-<h4 id="graph-coloring">图着色：不能共用寄存器的值连边</h4>
-<p>干涉图的节点代表待分配的值，边表示两值不能占用同一个寄存器。用 K 个颜色代表 K 个可用同类寄存器：相邻节点必须不同色。对上面的区间，边为 <code>a—b、a—c、a—d、b—c</code>；其中 a、b、c 构成三角形，所以 K=2 时不可能全部留在寄存器中。</p>
-<ol><li><strong>Simplify：</strong>反复删除度数小于 K 的节点并压栈。先删 d，它只有邻居 a。</li><li><strong>选择候选：</strong>剩余三角形没有度数小于 2 的节点。为与前例对照，这里选 a 为潜在 spill 候选，暂时移除；真实选择还应看使用频率、循环和代价。</li><li><strong>继续简化：</strong>剩下 b—c，可依次压栈 b、c。</li><li><strong>Select：</strong>逆序恢复：给 c 分 R1，b 分 R2；恢复 a 时两个颜色都被邻居占用，确实需要 spill。d 恢复后可分 R1。</li><li><strong>重写与重试：</strong>为 a 加入必要的栈存取，重新分析新增短区间与干涉，再完成分配。</li></ol>
-<p>“度数大于等于 K”本身不证明必须 spill：某些图仍可着色，乐观着色允许候选在恢复时找到颜色。本例必须溢出的证据是三角形需要三个颜色。复制合并还能减少 move，但若合并引入过多干涉，也可能增加溢出；实际算法要处理预着色寄存器、寄存器类别及目标指令限制。</p>
-<p>线性扫描通常较容易控制编译开销，图着色显式处理全局干涉；不能把名称直接等同于“一个总快、另一个生成代码总好”。Android 14 ART 的分配器工厂具有 linear-scan 与 graph-color 策略，实际选择须追踪编译选项，不能背成“JIT 必用前者、AOT 必用后者”。</p>
-<p class="note-source">参考：<a href="https://www.cs.princeton.edu/~appel/modern/text/color1.html" target="_blank" rel="noreferrer">Appel：带预着色节点的分配示例</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/register_allocator.cc" target="_blank" rel="noreferrer">ART 寄存器分配策略</a>。</p>
-<details class="note-review-question"><summary>经典问题：把所有 phi 换成合并块开头的普通 move 可以吗？</summary>
-<p>不可以。合并块必须知道来自哪个前驱才能选择输入；无条件顺序执行所有 move 会取错值。复制必须放到对应路径，并处理并行复制冲突。</p>
-</details>
-<p class="note-source">参考：<a href="https://llvm.org/docs/CodeGenerator.html" target="_blank" rel="noreferrer">LLVM 代码生成</a>。</p>
-<h4 id="instruction-selection">从值运算到目标指令</h4>
-<p>目标 lowering 还要处理硬件支持的类型、指令寻址和调用约束，之后才能分配寄存器、安排指令顺序。调度可重排独立工作以隐藏延迟，但必须保留数据依赖、内存顺序与必要的异常语义。</p>
-<pre tabindex="0"><code class="language-text">Java：static int tripleSum(int a, int b) { return (a + b) * 3; }
-
-等价的 i32 值运算（不附加“不会溢出”的标记）：
-  t = add a, b
-  r = mul t, 3
-  return r
-
-一种按基础 AAPCS64 传参的 AArch64 运算示例：
-  add w0, w0, w1
-  add w0, w0, w0, lsl #1
-  ret</code></pre>
-<p>第二条指令把 t 与 2t 相加；这里都保留低 32 位，符合该 Java int 运算的回绕语义。本示例另约定按基础 AAPCS64 在 w0/w1 接收 a/b，并从 w0 返回结果；它展示运算如何降低到机器指令，不代表 HotSpot 或 ART 实际编译该 Java 方法时使用这套入口。VM 的托管调用约定与 native ABI 需要通过适配代码衔接。</p>
-<p>a 最后一次使用后 w0 可承载 t，再承载返回值。指令选择消除了显式乘法，不代表所有处理器上它一定更快；这里只验证运算语义与所指定的位置安排。</p>
-<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/cpu/aarch64/sharedRuntime_aarch64.cpp" target="_blank" rel="noreferrer">JDK 21 AArch64：Java 与 C 调用约定及适配</a>。</p>
-<h4 id="register-allocation-example">跨调用活值为什么需要保存</h4>
-<pre tabindex="0"><code class="language-text">概念 IR：
-  t = a + b
-  r = call opaque()
-  return t + r
-
-一种 AAPCS64 保存方案（省略展开指令等汇编元数据）：
-  stp x19, x30, [sp, #-16]!
-  add w19, w0, w1
-  bl opaque
-  add w0, w19, w0
-  ldp x19, x30, [sp], #16
-  ret</code></pre>
-<p>t 跨调用仍活跃，不能只留在允许 opaque 覆盖的 w9。这里让 w19 保存 t，同时保留调用者原来的 x19 与返回位置，栈仍满足对齐。也可选择 spill 槽，在调用后 reload；寄存器不足时要综合活跃区间、寄存器类别、调用频率和保存成本。spill 是值的位置变化，不是创建新的语言层对象。</p>
+<section id="ssa" aria-labelledby="ssa-title">
+<h2 id="ssa-title">3. SSA 与 phi</h2>
+<p><a href="../llvm-compiler/index.html#ssa">阅读：3. SSA 与 phi</a></p>
 </section>
-<section id="optimization" aria-labelledby="optimization-title"><h3 id="optimization-title">5. 优化的前提与代价</h3>
-<div class="note-table-wrap" role="region" aria-label="常见优化" tabindex="0"><table><caption>常见优化</caption><thead><tr><th scope="col">优化</th><th scope="col">变换</th><th scope="col">必须确认的前提</th></tr></thead><tbody><tr><td>常量传播 / 折叠</td><td>用已知值替代计算</td><td>值确实确定，遵守目标语义与溢出规则</td></tr><tr><td>死代码删除</td><td>删除不影响可观察行为的计算</td><td>无需要保留的副作用、异常或 volatile 访问</td></tr><tr><td>公共子表达式消除</td><td>复用已有计算结果</td><td>操作数相同，相关内存未被可能的别名写入改变</td></tr><tr><td>循环不变量外提</td><td>把不随迭代变化的计算移到循环外</td><td>依赖、异常与执行条件允许移动</td></tr><tr><td>内联 / 去虚拟化</td><td>展开调用或确定调用目标</td><td>目标可确定，收益超过代码膨胀与编译成本</td></tr><tr><td>向量化</td><td>一次处理多个数据元素</td><td>依赖、别名、对齐与浮点语义允许</td></tr></tbody></table></div>
-<p>优化后的快慢需结合真实输入与热点衡量。浮点结合律通常不能像实数一样任意重排；C++ UB 也会影响编译器可以采用的推理，不能用“硬件会回绕”代替语言规则。</p>
-<h4 id="memory-dependencies">有两个相同 load，为什么不一定能合并</h4>
-<pre tabindex="0"><code class="language-text">前提：p / q 有效，访问普通非 volatile 内存
-a = load p
-store q, 9
-b = load p
-return a + b</code></pre>
-<p>若 p 与 q 指向同一位置，第二次读取应看见 9；把 b 无条件替换成 a 会改变结果。只有证明写入不影响 p、没有其他相关干扰等条件，才可能复用。MemorySSA 用 MemoryDef、MemoryUse、MemoryPhi 表达内存依赖候选关系；结合别名分析查可能覆盖的写入，不是把每个内存字节变成永不修改的 SSA 变量。</p>
-<p>类似地，循环不变量外提不仅看操作数不变。循环可能执行零次时，把原本位于循环里的可能故障的 load 或有副作用的调用移到入口，可能凭空增加一次访问。需要证明可安全提前执行，或保留必要的执行条件。</p>
-<h4 id="escape-analysis">逃逸、标量替换与锁消除</h4>
-<pre tabindex="0"><code class="language-java">static final class Pair {
-    final int x, y;
-    Pair(int x, int y) { this.x = x; this.y = y; }
-}
-static int sum(int a, int b) {
-    Pair p = new Pair(a, b);
-    return p.x + p.y;
-}</code></pre>
-<p>若编译器能看到相关构造与使用、确认不需要保留可观察的对象身份，可把 p.x / p.y 化为独立值，最终只计算 a+b。逃逸分析提供是否逃出方法 / 线程等信息，标量替换是可能采用的变换；分析成功也不保证每种代码形态都能消除分配。写入静态容器、传入无法分析的调用或观察身份，都可能影响决策。</p>
-<p>JDK 21 HotSpot C2 的这一优化不能一概表述为“对象从堆搬到栈”。若同步只作用于无法被其他线程访问的对象，编译器也可能消除相应锁操作；正确性依赖分析与语言语义。优化帧还可能需要在反优化时<a href="#deopt-state">重新物化对象</a>。GC 篇保留<a href="../managed-memory-gc/index.html#object-creation">分配职责</a>，这里负责解释为何分配会消失。</p>
-<p class="note-source">参考：<a href="https://llvm.org/docs/MemorySSA.html" target="_blank" rel="noreferrer">MemorySSA 与内存依赖</a> · <a href="https://llvm.org/docs/CodeGenerator.html" target="_blank" rel="noreferrer">目标 lowering、活跃性与代码生成</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot 逃逸分析与标量替换</a>。</p>
+<section id="phi-loop" aria-labelledby="phi-loop-title">
+<h2 id="phi-loop-title">循环里的 phi：静态一次定义，动态反复执行</h2>
+<p><a href="../llvm-compiler/index.html#phi-loop">阅读：循环里的 phi：静态一次定义，动态反复执行</a></p>
 </section>
+<section id="phi-and-select" aria-labelledby="phi-and-select-title">
+<h2 id="phi-and-select-title">phi、select 与优化收益</h2>
+<p><a href="../llvm-compiler/index.html#phi-and-select">阅读：phi、select 与优化收益</a></p>
 </section>
-<section class="note-part" id="dynamic-compilation" aria-labelledby="dynamic-compilation-title">
+<section id="hgraph" aria-labelledby="hgraph-title">
+<h2 id="hgraph-title">3.1 ART HGraph：把 CFG 与 SSA 落到编译器对象</h2>
+<p><a href="../art-runtime/index.html#hgraph">阅读：3.1 ART HGraph：把 CFG 与 SSA 落到编译器对象</a></p>
+</section>
+<section id="lowering" aria-labelledby="lowering-title">
+<h2 id="lowering-title">4. phi 消除与寄存器分配</h2>
+<p><a href="../llvm-compiler/index.html#lowering">阅读：4. phi 消除与寄存器分配</a></p>
+</section>
+<section id="linear-scan" aria-labelledby="linear-scan-title">
+<h2 id="linear-scan-title">线性扫描：按活跃区间起点分配</h2>
+<p><a href="../llvm-compiler/index.html#linear-scan">阅读：线性扫描：按活跃区间起点分配</a></p>
+</section>
+<section id="graph-coloring" aria-labelledby="graph-coloring-title">
+<h2 id="graph-coloring-title">图着色：不能共用寄存器的值连边</h2>
+<p><a href="../llvm-compiler/index.html#graph-coloring">阅读：图着色：不能共用寄存器的值连边</a></p>
+</section>
+<section id="instruction-selection" aria-labelledby="instruction-selection-title">
+<h2 id="instruction-selection-title">从值运算到目标指令</h2>
+<p><a href="../llvm-compiler/index.html#instruction-selection">阅读：从值运算到目标指令</a></p>
+</section>
+<section id="register-allocation-example" aria-labelledby="register-allocation-example-title">
+<h2 id="register-allocation-example-title">跨调用活值为什么需要保存</h2>
+<p><a href="../llvm-compiler/index.html#register-allocation-example">阅读：跨调用活值为什么需要保存</a></p>
+</section>
+<section id="optimization" aria-labelledby="optimization-title">
+<h2 id="optimization-title">5. 优化的前提与代价</h2>
+<p><a href="../llvm-compiler/index.html#optimization">阅读：5. 优化的前提与代价</a></p>
+</section>
+<section id="memory-dependencies" aria-labelledby="memory-dependencies-title">
+<h2 id="memory-dependencies-title">有两个相同 load，为什么不一定能合并</h2>
+<p><a href="../llvm-compiler/index.html#memory-dependencies">阅读：有两个相同 load，为什么不一定能合并</a></p>
+</section>
+<section id="escape-analysis" aria-labelledby="escape-analysis-title">
+<h2 id="escape-analysis-title">逃逸、标量替换与锁消除</h2>
+<p><a href="../jvm-hotspot/index.html#escape-analysis">阅读：逃逸、标量替换与锁消除</a></p>
+</section>
+<section id="dynamic-compilation" aria-labelledby="dynamic-compilation-title">
 <h2 id="dynamic-compilation-title">二、动态编译与运行时优化</h2>
-<p class="note-reading-note">本部分涉及托管方法的分派与执行状态；相关语义见<a href="../managed-runtime/index.html#method-execution">方法解析与分派</a>，机器状态基础见<a href="../program-execution/index.html#call">调用与栈帧</a>。</p>
-<p>运行期间的热点与类型信息可以指导编译决策。沿采集信息、生成优化代码、处理假设失效的顺序，连接前面的 IR 变换与可继续执行的运行时状态。</p>
-<section id="jit" aria-labelledby="jit-title"><h3 id="jit-title">6. 解释执行、AOT、JIT 与热点统计</h3>
-<p><strong>AOT</strong>在目标程序本次执行前生成机器码；<strong>JIT</strong>在运行过程中按需编译，可使用运行时类型和热点信息。解释执行、低成本编译、优化编译可组成不同层级，平衡启动、峰值性能与编译资源。C1/C2 是 HotSpot 的特定分层术语，不是所有 JIT 的统一级别。</p>
-
-<div class="note-table-wrap" role="region" aria-label="执行方式" tabindex="0"><table><caption>执行方式</caption><thead><tr><th scope="col">方式</th><th scope="col">收益</th><th scope="col">成本</th></tr></thead><tbody><tr><td>解释</td><td>无需先为所有方法生成本机代码</td><td>反复解释热点指令有成本</td></tr><tr><td>JIT</td><td>按运行热点生成代码并利用运行信息</td><td>占用应用运行期间的 CPU、代码缓存与元数据</td></tr><tr><td>AOT</td><td>提前生成可复用机器码</td><td>编译耗时、磁盘体积；可能编译并不热的方法</td></tr></tbody></table></div>
-<p>运行时还需要在解释帧、编译帧和 native 调用间转换。编译代码依赖相应检查、类状态和 GC 协作信息，不是与运行时脱离的一段裸机器码。</p>
-<h4 id="hotspot-tiers">HotSpot C1 / C2：为什么分层</h4>
-<p>以 <strong>JDK 21 HotSpot</strong> 的编译级别为例，C1 是编译开销较低的编译器，可按级别产生不同数量的运行反馈；C2 花更多编译资源追求更强的优化。分层让热点代码较早脱离解释执行，同时继续积累调用与类型信息，供后续优化使用。级别是代码的编译状态，不是“一个方法一定按 0、1、2、3、4 各跑一遍”的固定流水线。</p>
-<div class="note-table-wrap" role="region" aria-label="JDK 21 HotSpot 编译级别" tabindex="0"><table><caption>编译级别与主要职责</caption><thead><tr><th scope="col">级别</th><th scope="col">执行形式</th><th scope="col">反馈与用途</th></tr></thead><tbody><tr><td>0</td><td>解释执行</td><td>可收集热点信息，并决定是否提交编译任务</td></tr><tr><td>1</td><td>C1 简单编译</td><td>较快获得机器码，不承担完整的类型反馈收集</td></tr><tr><td>2</td><td>C1 有限 profiling</td><td>记录调用与回边计数等有限信息</td></tr><tr><td>3</td><td>C1 完整 profiling</td><td>除计数外记录方法数据中的更丰富反馈，为高层优化提供证据</td></tr><tr><td>4</td><td>C2 完整优化；配置 JVMCI 时也可由其承担</td><td>利用已有反馈进行更重的优化，增加编译 CPU、时间和代码缓存成本</td></tr></tbody></table></div>
-<p>实际升层由热点、编译队列、代码缓存、编译器是否可用及配置共同决定，可能跳级或停在较低级别；长循环还可能经 OSR 在循环中途切换。C2 依据类型反馈生成的快速路径仍要保证假设失效时可安全处理，可能走慢路径或反优化；这与“C2 机器码永远不退回解释”不同。反优化怎样恢复执行状态见<a href="#osr-deoptimization">OSR 与反优化</a>。</p>
-<details class="note-review-question"><summary>面试追问：为什么不把所有方法一开始就交给 C2？</summary><p>很多方法并不热，提前做重优化会花编译 CPU、延迟与代码缓存；初次执行也缺少有价值的类型和分支反馈。解释与 C1 先提供低成本执行和采样，运行时再把值得投入的方法交给 C2。是否收益更好仍取决于负载和配置。</p></details>
-<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/compiler/compilerDefinitions.hpp" target="_blank" rel="noreferrer">JDK 21 HotSpot CompLevel 定义</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">JDK 21：分层编译与代码缓存</a>。</p>
-<h4 id="aot-optimization">AOT 编译怎样做优化</h4>
-<p><strong>AOT 说明生成机器码的时机，不指定一套独有的优化算法。</strong>编译器仍可在 IR 上做常量传播、死代码删除、内联、循环优化和寄存器分配；每项变换的语义前提见<a href="#optimization">优化的前提与代价</a>。运行前已知的类型、调用关系和目标 ISA 可用于静态分析，但运行时才出现的接收者类型或分支频率不能凭空假定。</p>
-<p>例如某虚调用有多个可能目标：若 AOT 编译时能证明目标唯一，可以直接调用或内联；若只有历史 Profile 显示某类型常见，可在支持相应协议的运行时生成“类型检查 → 热门目标快速路径 → 其他目标慢路径”，并保留假设失效后的正确执行方式。没有证明或反馈时应保留通用分派。由此可见，<strong>Profile-guided AOT</strong>仍是 AOT，利用过去运行的数据不等于在本次运行中 JIT 编译。</p>
-<p>以 ART 为例，<code>dex2oat</code> 的 <code>speed</code> 倾向编译所有方法，<code>speed-profile</code> 依据 Profile 选择方法并优化相关类加载；已有类型反馈也可支持某些 AOT 调用点优化。要同时权衡编译耗时、磁盘中的机器码大小、启动时间、峰值执行速度和 Profile 的代表性。选择编译哪些方法与怎样优化单个方法是两个不同问题；具体 pass 和过滤器行为须限定 ART 版本。</p>
-<details class="note-review-question"><summary>面试追问：AOT 没有运行时信息，所以不能做内联吗？</summary><p>不能这样说。目标在编译时可证明时可以静态内联；也可以用已有 Profile 做受检查的猜测性优化，前提是运行时提供相应的慢路径或状态恢复。没有可靠证据时不能把可能变化的目标无条件固定。</p></details>
-<p class="note-source">参考：<a href="https://source.android.com/docs/core/runtime/configure" target="_blank" rel="noreferrer">Android：ART AOT 与 compiler filters</a> · <a href="https://source.android.com/docs/core/runtime/improvements" target="_blank" rel="noreferrer">Android：Profile 与 AOT 调用点优化</a>。</p>
-<h4 id="hotness">热点统计与编译调度</h4>
-<p>一种热点设计是在方法元数据中保存饱和调用计数、回边计数和编译状态；达到阈值后入队，避免重复编译。采样或线程本地计数可降低竞争；计数合并、过期、代码缓存容量和反优化也要纳入。无需每次调用都建立字符串键哈希表。</p>
-<details class="note-review-question"><summary>经典问题：热点统计应选择什么数据结构？</summary>
-<p>通常可把计数与状态放在方法关联元数据中，结合调用/回边计数或采样，降低查表和同步开销；编译队列要去重，计数可饱和。真实字段、阈值和队列实现需对照目标运行时分支。</p>
-</details>
-
-<details class="note-review-question"><summary>经典问题：调低 JIT 阈值一定让启动更快吗？</summary>
-<p>不一定。较早生成机器码可减少热点解释成本，也会提前占用 CPU、内存和编译队列，可能与启动关键线程争抢资源。按冷/热启动、编译时间、执行节省和代码缓存占用做对照，不能只比较单个函数执行速度。</p>
-</details>
-<h4 id="code-cache">Profile 与代码缓存</h4>
-<details class="note-review-question"><summary>经典问题：“JIT 预编译”通常需要怎样澄清？</summary>
-<p>如果指运行前依据已有 profile 生成机器码，那更接近 profile-guided AOT；如果指在运行中提前安排将使用的方法编译，则仍是运行时策略。应明确生成时间、输入信息和代码保存位置。</p>
-</details>
-<p><strong>代码缓存回收</strong>处理可回收的 JIT 机器码及随代码保存的辅助信息；Java 堆 GC 处理对象可达性。代码、运行时类型反馈和持久化 profile 的存储与寿命必须分别看。以 JDK 21 HotSpot 为例，MethodData 中的方法反馈分配在 Metaspace；Code Cache 中的 profiled code heap 保存的是带 profiling 的编译代码，不能理解成存放全部 profile 数据的堆。</p>
-<p>ART 有自己的 JIT 代码及 profiling 管理方式。回收一段机器码不等于删除全部类型反馈或磁盘 profile，也不等于清空 Java 堆；代码失效、类卸载和各类存储回收通过运行时协议协调。</p>
-<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/oops/methodData.cpp" target="_blank" rel="noreferrer">JDK 21 MethodData::allocate：反馈的元空间分配</a>。</p>
-<p>ART 的实际编译与 profile 流程见 <a href="../art-compilation-startup/index.html">ART 编译与 Android 应用启动</a>。</p>
-<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot：分层编译与代码缓存</a>。</p>
+<p><a href="../jvm-hotspot/index.html#dynamic-compilation">阅读：二、动态编译与运行时优化</a></p>
 </section>
-<section id="inline-cache" aria-labelledby="inline-cache-title"><h3 id="inline-cache-title">7. Inline cache、类型反馈与反优化</h3>
-<p><strong>Inline cache（内联缓存，IC）是在调用点缓存接收者类型与调用目标的关系。</strong>同一个虚调用点往往反复遇到同一类对象；缓存命中时可缩短动态分派路径。这里的 inline 描述缓存贴近调用点，并不等于把被调用函数体展开。</p><pre tabindex="0"><code class="language-text">调用点：receiver.work()
-首次执行：尚无缓存 → 运行时解析 receiver 的类型与目标
-单态路径（概念）：
-    按语言要求处理 null
-    if receiver.klass == cached_klass:
-        call cached_target(receiver)
-    else:
-        进入 IC miss / 运行时分派路径</code></pre><p>方法解析、普通分派与类身份见<a href="../managed-runtime/index.html#dispatch">托管调用基础</a>。缓存键必须足以识别运行时类型，例如可靠的 Klass 身份；同名类可能由不同类加载器定义，不能只比较类名字符串。虚表按类描述方法槽位，IC 则利用<strong>某一个调用点</strong>的类型规律，两者可以配合。</p>
-<ul><li><strong>未链接 / 未初始化：</strong>第一次调用尚需解析。</li><li><strong>单态（monomorphic）：</strong>调用点反复看到一种接收者类型，可使用类型检查加直接目标。</li><li><strong>多态内联缓存（PIC）：</strong>一般设计中可缓存少量“类型→目标”对，按 guard 逐一检查。</li><li><strong>超多态（megamorphic）：</strong>类型过多时，维护长检查链得不偿失，可退回通用虚表 / 接口表等分派。</li></ul>
-<p>上面是通用设计词汇，<strong>不是每个 HotSpot 调用点都必经四级状态</strong>。JDK 21 的 CompiledIC 主要表达 clean、monomorphic、megamorphic 等状态；JIT 根据 profile 生成多个类型 guard 的优化代码，与 CompiledIC 自身是否维护 PIC 数组是不同问题。</p>
-<h4 id="type-feedback">类型反馈怎样支持内联和反优化</h4>
-<p>JIT 看到单态热点后，可以生成“类型 guard + A.work 的内联代码 + 失败路径”。原 IC 快速调用仍存在一次调用，内联则消除了调用边界，并给后续常量传播、逃逸分析等提供机会。内联要平衡收益、代码膨胀和指令缓存压力。</p>
-<p>当接收者出现新类型时，普通 IC miss 可以进入运行时解析并更新状态，不必每次都反优化。如果机器码依赖了更强假设，例如类层次分析认定某方法只有一个实现，则新类加载可能使依赖失效，触发失效处理或反优化。反优化需要用元数据恢复解释执行所需的局部变量、操作数栈和内联帧状态。</p>
-<p>修改目标与缓存类型还必须满足并发发布协议，避免其他线程看到“新类型配旧目标”；代码修补也需遵守目标架构的指令可见性要求。这是运行时实现细节，不能直接用两次普通赋值替代。</p><details class="note-review-question"><summary>面试追问：IC miss、缓存状态变化、反优化是同一件事吗？</summary><p>不是。miss 表示当前接收者不满足该缓存快速路径；运行时可能解析后更新缓存，或者走通用分派。反优化则是退出不再适用的优化机器码、重建可继续执行的状态。guard 失败可以设计为慢调用，也可以设计为 uncommon trap，取决于编译决策。</p></details><details class="note-review-question"><summary>面试追问：如何把 inline cache 与 SSA 连起来回答？</summary><p>IC / profile 提供类型证据，JIT 生成 guard 把快速与慢速路径分开；两条路径返回的值在合并块可由 phi 汇合。进一步内联后，SSA 的定义—使用关系帮助传播常量与删除冗余计算。</p></details><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/compiledIC.hpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态与调用点约定</a>。</p><p class="note-source">参考：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/hotspot/share/code/compiledIC.cpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态转换与目标更新</a>。</p>
+<section id="jit" aria-labelledby="jit-title">
+<h2 id="jit-title">6. 解释执行、AOT、JIT 与热点统计</h2>
+<p><a href="../jvm-hotspot/index.html#jit">阅读：6. 解释执行、AOT、JIT 与热点统计</a></p>
 </section>
-<section id="osr-deoptimization" aria-labelledby="osr-deoptimization-title"><h3 id="osr-deoptimization-title">8. OSR 与反优化：执行到一半怎样切换</h3>
-<h4 id="osr-entry">方法入口与循环入口不是同一个状态</h4>
-<p>一个方法只调用一次，却在里面循环很久，仅统计方法调用次数可能漏掉热点。回边热度可触发<strong>OSR（On-Stack Replacement）编译</strong>：在运行时支持的位置，把正在执行的帧状态转为相应编译入口需要的状态，继续剩余工作，不重新执行方法开头。</p>
-<pre tabindex="0"><code class="language-text">long sum = 0;
-for (int i = 0; i &lt; n; i++) sum += i;
-
-解释执行到某个受支持的循环入口：
-  当前 i = k、sum = 前 k 项累加值、n 已知
-  → 把活值交给针对该入口生成的代码
-  → 编译代码从当前循环状态继续
-不是：i = 0、sum = 0，再跑一遍。</code></pre>
-<p>普通编译入口接收方法参数；OSR 入口还依赖当前执行位置和已形成的局部状态。需要对应代码已准备好、线程可完成转换等条件，不能仅凭回边计数达到某个固定值就保证立即切换。JDK 21 HotSpot 与 ART 都有 OSR 相关路径，具体入口、限制和阈值各自定义。</p>
-<h4 id="deopt-state">反优化恢复的是语义状态</h4>
-<p>假设 outer 调用 inner，JIT 把 inner 内联，并消除了其中的 Pair 分配。机器上可能只剩 outer 的一帧和若干寄存器值。若某个优化依赖失效，需要恢复的却可能是 outer、inner 两层逻辑帧，以及仍会被后续代码使用的对象。</p>
-<ol><li>在规定位置确定失效原因与恢复点，避免把普通 IC miss 都当成反优化。</li><li>依据恢复元数据取得各逻辑帧的执行位置、局部值、表达式中间状态和必要的同步状态；来源可为寄存器、栈槽或常量。</li><li>对被消除但后续需要的对象重新物化，恢复字段与别名关系；两个逻辑变量原指向同一对象时不能恢复成两个独立副本。</li><li>构建目标执行状态，再从对应位置继续。哪些操作已完成、哪些还需执行，由恢复点及相应重执行规则确定，不能把已发生的写入或 I/O 随意重放。</li></ol>
-<p>因此，反优化不是简单“丢掉机器码再从方法第一行解释”。某方法的代码不再允许新调用进入，与它已没有任何活跃帧、可以回收存储，是不同条件；失效、在栈帧转换和代码回收需要协调。</p>
-<p>HotSpot 的 ScopeDesc 等信息描述逻辑作用域、局部值与表达式状态，Deoptimization 负责恢复和物化。ART 有自己的帧与恢复格式。GC 只知道“哪个槽是引用”还不足以完成这一过程；对照<a href="../managed-runtime/index.html#runtime-metadata">几种元数据的职责</a>。</p>
-<p class="note-source">参考：<a href="https://source.android.com/docs/core/runtime/jit-compiler" target="_blank" rel="noreferrer">ART JIT 与 OSR</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/runtime/deoptimization.cpp" target="_blank" rel="noreferrer">JDK 21 Deoptimization</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/scopeDesc.hpp" target="_blank" rel="noreferrer">JDK 21 ScopeDesc</a>。</p>
-<section id="henvironment" aria-labelledby="henvironment-title"><h4 id="henvironment-title">8.1 ART HEnvironment：恢复信息怎样从图走到运行时</h4>
-<p>在 Android 14 ART optimizing 编译器里，<strong>HEnvironment 是编译期间的状态描述</strong>：记录某个 DEX 位置需要的虚拟寄存器值，与对应的 HInstruction 建立关联；发生内联时还可通过 parent 环境描述外层逻辑调用。它使优化器知道哪些值即使不是当前计算的普通输入，也仍可能用于恢复。</p>
-<pre tabindex="0"><code class="language-text">示意：某个恢复点需要 DEX 寄存器 v0、v1、v2
-编译期环境：v0→参数值，v1→常量 7，v2→某引用值
-位置确定后：v0→机器寄存器，v1→常量，v2→栈槽
-代码生成：把相应恢复点、位置及内联信息编码进运行时元数据
-运行时：按当前 native PC 找信息，重建 DEX 执行状态</code></pre>
-<p><code>CodeGenerator::EmitEnvironment</code> 及 <code>EmitVRegInfo</code> 把环境和位置结果写入 stack map、DEX register map、inline info 等信息。运行时使用随机器码保存的编码数据；<strong>不会直接保留编译器里的整个 HGraph / HEnvironment 对象图来执行反优化</strong>。</p>
-<p>DEX 虚拟寄存器是字节码的逻辑槽，HInstruction 表示 SSA 值，物理寄存器是机器位置；三者不能混称“寄存器”。一个常量无需真实寄存器，也可能仍要能恢复；一个对象引用的位置既可能供 GC 定位，又可能是恢复某个逻辑变量所需的信息，两项职责并不相同。</p>
-<p>图优化必须维护环境中的值关系，不能删除仍被恢复状态使用的定义。可恢复点、无效槽的处理、内联帧展开和异常续执行规则仍由实现限定；不能声称任意一条机器指令都能随时无损退回解释器。这里说明 ART 的元数据通路，不把前文 HotSpot 的所有对象物化能力直接套到 ART。</p>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/nodes.h" target="_blank" rel="noreferrer">HEnvironment</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/code_generator.cc" target="_blank" rel="noreferrer">EmitEnvironment / EmitVRegInfo</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/stack_map.h" target="_blank" rel="noreferrer">运行时 CodeInfo、StackMap 与 DEX 寄存器位置</a>。</p>
+<section id="hotspot-tiers" aria-labelledby="hotspot-tiers-title">
+<h2 id="hotspot-tiers-title">HotSpot C1 / C2：为什么分层</h2>
+<p><a href="../jvm-hotspot/index.html#hotspot-tiers">阅读：HotSpot C1 / C2：为什么分层</a></p>
 </section>
+<section id="aot-optimization" aria-labelledby="aot-optimization-title">
+<h2 id="aot-optimization-title">AOT 编译怎样做优化</h2>
+<p><a href="../jvm-hotspot/index.html#aot-optimization">阅读：AOT 编译怎样做优化</a></p>
 </section>
-<section id="compilation-evidence" aria-labelledby="compilation-evidence-title"><h3 id="compilation-evidence-title">9. 用证据区分预热、编译与反优化</h3>
-<p>“第一次慢、后面快”可能来自类初始化、文件页与数据缓存、解释执行或 JIT。先分清一次进程启动与稳态吞吐，再将编译事件和业务耗时放到同一时间线上；不能用一次计时证明某个方法已内联或某对象已被标量替换。</p>
-<div class="note-table-wrap" role="region" aria-label="动态编译排查" tabindex="0"><table><caption>观察、候选原因与补充证据</caption><thead><tr><th scope="col">观察</th><th scope="col">要区分的原因</th><th scope="col">证据</th></tr></thead><tbody>
-<tr><td>多轮运行逐渐变快</td><td>编译、初始化或缓存逐步就绪</td><td>新进程与同进程分组，记录类加载 / 编译时间线及实际工作量</td></tr>
-<tr><td>输入类型变多后变慢</td><td>分派成本变化、优化依赖失效，或输入本身更昂贵</td><td>匹配调用点、类型分布、编译 / 失效事件；不能只看一条 made not entrant</td></tr>
-<tr><td>吞吐高但启动更差</td><td>编译 CPU 与启动关键工作竞争</td><td>编译线程 / 主线程调度、代码缓存、首轮延迟及稳态收益</td></tr>
-</tbody></table></div>
-<p>HotSpot/JDK 21 可在受控测试中使用 <code>-XX:+PrintCompilation</code>观察编译记录，或用 JFR 关联编译、执行、分配等适用事件；日志中的 OSR 标记、编译级别和失效文字需按该版本格式解读。要证明具体优化还应检查适用的编译日志或生成代码，性能结果本身不是优化过程的证据。</p>
-<p>一个类型变化实验可固定每轮输入数量和工作量，先主要调用实现 A，再引入实现 B，对齐记录类型切换和延迟。它是检验假设的设计，不保证特定 JIT 必然去优化；重复新进程试验并区分预热与测量。避免结果未使用导致死代码消除，也不要通过随意加 volatile 改变原问题。</p>
-<p>严肃的 JVM 微基准可用 JMH 的独立进程、预热和结果消费机制；Android 启动场景则见<a href="../art-compilation-startup/index.html#startup-experiment">编译状态对照</a>。两者测试对象和环境不同，不直接比较一个毫秒数。</p>
-<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html" target="_blank" rel="noreferrer">java：编译诊断选项</a> · <a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/diagnostic-tools.html" target="_blank" rel="noreferrer">JFR 诊断</a> · <a href="https://github.com/openjdk/jmh" target="_blank" rel="noreferrer">OpenJDK JMH</a>。</p>
+<section id="hotness" aria-labelledby="hotness-title">
+<h2 id="hotness-title">热点统计与编译调度</h2>
+<p><a href="../jvm-hotspot/index.html#hotness">阅读：热点统计与编译调度</a></p>
 </section>
+<section id="code-cache" aria-labelledby="code-cache-title">
+<h2 id="code-cache-title">Profile 与代码缓存</h2>
+<p><a href="../jvm-hotspot/index.html#code-cache">阅读：Profile 与代码缓存</a></p>
 </section>
-<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
-<ul><li><a href="../program-execution/index.html">程序执行：ABI 与链接</a></li><li><a href="../art-compilation-startup/index.html">ART 编译与 Android 应用启动</a></li></ul>
-<p><a href="../managed-memory-gc/index.html#stw">GC 安全点与引用位置</a> · <a href="../program-execution/index.html#unwind">C++ 异常展开与 IR 的异常边</a></p>
+<section id="inline-cache" aria-labelledby="inline-cache-title">
+<h2 id="inline-cache-title">7. Inline cache、类型反馈与反优化</h2>
+<p><a href="../jvm-hotspot/index.html#inline-cache">阅读：7. Inline cache、类型反馈与反优化</a></p>
 </section>
-<!-- generated:note-body:end -->
-</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>
+<section id="type-feedback" aria-labelledby="type-feedback-title">
+<h2 id="type-feedback-title">类型反馈怎样支持内联和反优化</h2>
+<p><a href="../jvm-hotspot/index.html#type-feedback">阅读：类型反馈怎样支持内联和反优化</a></p>
+</section>
+<section id="osr-deoptimization" aria-labelledby="osr-deoptimization-title">
+<h2 id="osr-deoptimization-title">8. OSR 与反优化：执行到一半怎样切换</h2>
+<p><a href="../jvm-hotspot/index.html#osr-deoptimization">阅读：8. OSR 与反优化：执行到一半怎样切换</a></p>
+</section>
+<section id="osr-entry" aria-labelledby="osr-entry-title">
+<h2 id="osr-entry-title">方法入口与循环入口不是同一个状态</h2>
+<p><a href="../jvm-hotspot/index.html#osr-entry">阅读：方法入口与循环入口不是同一个状态</a></p>
+</section>
+<section id="deopt-state" aria-labelledby="deopt-state-title">
+<h2 id="deopt-state-title">反优化恢复的是语义状态</h2>
+<p><a href="../jvm-hotspot/index.html#deopt-state">阅读：反优化恢复的是语义状态</a></p>
+</section>
+<section id="henvironment" aria-labelledby="henvironment-title">
+<h2 id="henvironment-title">8.1 ART HEnvironment：恢复信息怎样从图走到运行时</h2>
+<p><a href="../art-runtime/index.html#henvironment">阅读：8.1 ART HEnvironment：恢复信息怎样从图走到运行时</a></p>
+</section>
+<section id="compilation-evidence" aria-labelledby="compilation-evidence-title">
+<h2 id="compilation-evidence-title">9. 用证据区分预热、编译与反优化</h2>
+<p><a href="../jvm-hotspot/index.html#compilation-evidence">阅读：9. 用证据区分预热、编译与反优化</a></p>
+</section>
+<section id="related" aria-labelledby="related-title">
+<h2 id="related-title">延伸阅读</h2>
+<p><a href="../llvm-compiler/index.html#related">阅读：延伸阅读</a></p>
+</section></div>
+<p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main>
+<footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -1,0 +1,25 @@
+<section class="note-part" id="llvm-specific" aria-labelledby="llvm-specific-title">
+<h2 id="llvm-specific-title">LLVM 的表示、优化与目标生成</h2>
+<section id="llvm-boundary" aria-labelledby="llvm-boundary-title"><h3 id="llvm-boundary-title">前端、LLVM 与目标代码的职责</h3>
+<p>Clang 等前端处理源语言语法与语义，产生 LLVM IR；LLVM 的优化与目标生成组件处理 IR 并生成目标代码。前端须把语言规则正确表达在 IR 中，后续变换也必须遵守 IR 的语义。ART HGraph 和 HotSpot C1/C2 各有自己的表示与实现，不能因都使用 SSA 就视作 LLVM IR。</p></section>
+<section id="llvm-ir" aria-labelledby="llvm-ir-title"><h3 id="llvm-ir-title">阅读 LLVM IR 时检查什么</h3>
+<p>先看函数签名、类型、基本块和终结指令，再沿定义—使用关系追踪 SSA 值。<code>phi</code> 按实际前驱边选择值；<code>load</code>、<code>store</code> 与调用还涉及内存效果，单靠 SSA 值名不能证明两次访问等价。整数运算的溢出标志、指针与别名约束会影响允许的优化；示例须注明输入前提。</p>
+<p>一个 module 可以含函数、全局对象和目标信息；函数内的基本块以分支、返回等终结指令结束。<code>i32</code> 表示 32 位整数，<code>ptr</code> 表示不在指针类型中编码被指对象类型的指针；访问时仍要根据 <code>load</code>、<code>store</code> 等指令指定操作类型。IR 的文本形式便于阅读，二进制 bitcode 则是另一种序列化形式。</p>
+<p>普通 <code>add i32</code> 按位宽计算；加上 <code>nsw</code> 会把有符号溢出纳入更强的语义约束。优化器不能仅因为“数学上应该不溢出”就自行假定该标志。<code>poison</code> 等值的传播与使用也有规则，不能把所有未定义情况简化为一个任意整数。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/LangRef.html" target="_blank" rel="noreferrer">LLVM 22.1.0 IR 语义</a> · <a href="https://releases.llvm.org/22.1.0/docs/MemorySSA.html" target="_blank" rel="noreferrer">MemorySSA</a>。</p></section>
+<section id="llvm-passes" aria-labelledby="llvm-passes-title"><h3 id="llvm-passes-title">优化 pass 与可观察结果</h3>
+<p>一个 pass 可分析或变换 IR，例如传播常量、删除无用计算、整理控制流或循环。变换结果受目标信息、优化级别、pass 顺序以及程序可证明的语义约束影响。检查优化前后的 IR，并核对函数行为和前提，比背诵某优化级别必然产生哪条指令更可靠。</p>
+<p>Pass 可以按 module、函数、循环等处理单位组织。分析结果如支配树可以供变换使用；改变控制流后，pass 须报告哪些分析仍有效，让管理器重新计算失效结果。LLVM 22.1.0 的中端流水线使用新 pass manager，目标代码生成仍有自己的管理机制；两者不能仅因都叫 pass 就当成相同的执行层。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/NewPassManager.html" target="_blank" rel="noreferrer">LLVM 22.1.0 New Pass Manager</a>。</p></section>
+<section id="llvm-backend" aria-labelledby="llvm-backend-title"><h3 id="llvm-backend-title">从 IR 降到目标指令</h3>
+<p>目标生成需要把 IR 操作映射到目标支持的指令与调用约定，处理合法化、指令选择、寄存器分配及机器级安排。源级变量、IR 值和物理寄存器不存在固定的一对一关系；最终汇编仍需结合目标架构和 ABI 阅读。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/CodeGenerator.html" target="_blank" rel="noreferrer">LLVM 22.1.0 代码生成</a>。</p></section>
+<section id="llvm-experiment" aria-labelledby="llvm-experiment-title"><h3 id="llvm-experiment-title">一个可复查的 IR 对照</h3>
+<p>下载与前文 <a href="#ssa">choose 与 sum_to</a> 一致的 <a href="ir-examples.ll" download>IR 示例文件</a>，安装 LLVM 22.1.0 后在文件所在目录运行：</p>
+<pre tabindex="0"><code class="language-text">llvm-as ir-examples.ll -o ir-examples.bc
+opt -S -passes=instcombine ir-examples.bc -o ir-examples.opt.ll
+llc -mtriple=x86_64-pc-linux-gnu ir-examples.opt.ll -o ir-examples.s</code></pre>
+<p>对照原始 <code>.ll</code>、优化后的 <code>.opt.ll</code> 与目标汇编 <code>.s</code>，观察合并块的 <code>phi</code> 在 IR 优化或目标生成中如何处理。记录工具版本、目标三元组和 pass 设置；输出取决于目标和流水线，本篇不预设某条固定汇编指令。</p>
+<p><code>llvm-as</code> 负责文本 IR 到 bitcode；<code>opt</code> 运行 IR 分析和优化；<code>llc</code> 将 IR 或 bitcode 编译为目标汇编。三者回答的问题不同，目标汇编还需要汇编、链接等步骤才能形成可执行程序。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/llvm-as.html" target="_blank" rel="noreferrer">llvm-as</a> · <a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/opt.html" target="_blank" rel="noreferrer">opt</a> · <a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/llc.html" target="_blank" rel="noreferrer">llc</a>。</p></section>
+</section>

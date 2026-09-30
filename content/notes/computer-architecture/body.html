@@ -23,7 +23,7 @@ add x6, x5, x7      // 紧跟着使用 x5：可能产生 load-use 暂停</code><
 <section id="cache-coherence" aria-labelledby="cache-coherence-title"><h2 id="cache-coherence-title">4. 缓存一致性、内存排序与伪共享</h2>
 <p>以下讨论多核普通共享内存。<strong>缓存一致性</strong>协调同一缓存行在多个核上的副本，使写入与其他核的访问按协议衔接；它不保证不同地址的全部访问都以程序书写顺序被观察到。CPU 与编译器仍可能重排，程序需要语言层的同步规则。</p>
 <h3 id="memory-ordering">4.1 内存排序与语言同步</h3>
-<p>例如线程 A 先填写 <code>data</code>，再发布 <code>ready</code>；线程 B 观察到 ready 后读取 data。C++ 要通过匹配的 release/acquire 等操作建立同步，Java 可用符合 JMM 规则的 volatile 发布；仅把两个变量放进共享缓存，不会自动建立 happens-before。具体语言规则见<a href="../cpp-interview-roadmap/index.html#concurrency">C++ 并发</a>与<a href="../managed-runtime/index.html#java-memory-model">Java 内存模型</a>。</p>
+<p>例如线程 A 先填写 <code>data</code>，再发布 <code>ready</code>；线程 B 观察到 ready 后读取 data。C++ 要通过匹配的 release/acquire 等操作建立同步，Java 可用符合 JMM 规则的 volatile 发布；仅把两个变量放进共享缓存，不会自动建立 happens-before。具体语言规则见<a href="../cpp-interview-roadmap/index.html#concurrency">C++ 并发</a>与<a href="../jvm-hotspot/index.html#java-memory-model">Java 内存模型</a>。</p>
 <p><strong>CPU 内存屏障</strong>约束指定访问之间的顺序，具体保证取决于指令和内存类型；它不等于把所有缓存刷回内存。<a href="../managed-memory-gc/index.html#barriers">GC 读写屏障</a>则维护引用与回收算法的不变量，内部可能使用排序机制，但两者解决的问题不同。</p>
 <h3 id="false-sharing">4.2 伪共享</h3>
 <p><strong>伪共享</strong>是缓存行粒度造成的性能问题：两个线程在不同核上频繁写各自独立的计数器，如果它们恰好处于同一缓存行，仍可能反复争用该行。程序可以没有数据竞争，却受到这种额外开销影响。按线程聚合、减少共享写入或适度隔离热字段可缓解问题；缓存行大小依平台，填充也会增加空间占用，不能把“所有字段补齐 64 字节”作为通用规则。</p>

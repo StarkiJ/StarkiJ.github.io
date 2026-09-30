@@ -76,8 +76,23 @@ try {
         assert.equal(await evaluate(client, "gameState"), "paused");
     }
 
+    await visit("/notes/index.html", "document.querySelector('.note-search')?.hidden === false");
+    for (const [query, slug] of [["ART", "art-runtime"], ["JVM", "jvm-hotspot"], ["LLVM", "llvm-compiler"]]) {
+        await evaluate(client, `
+            document.querySelector('#note-search-input').value = ${JSON.stringify(query)};
+            document.querySelector('#note-search-input').dispatchEvent(new Event('input'));
+        `);
+        await waitFor(client, `document.querySelector('#note-search-results a')?.getAttribute('href') === './${slug}/index.html'`, `${query} search did not lead to its article`);
+        await visit(`/notes/${slug}/index.html`, "document.querySelector('#note-title') !== null");
+        assert.ok((await evaluate(client, "document.querySelector('#note-title').textContent")).startsWith(query));
+        assert.ok((await evaluate(client, "document.querySelectorAll('.note-toc a').length")) > 3);
+        await visit("/notes/index.html", "document.querySelector('.note-search')?.hidden === false");
+    }
+    await visit("/notes/compiler-ir/index.html#hgraph", "document.querySelector('#hgraph a') !== null");
+    assert.equal(await evaluate(client, "document.querySelector('#hgraph a').getAttribute('href')"), "../art-runtime/index.html#hgraph");
+
     assert.deepEqual(runtimeErrors, []);
-    console.log("Site tool and game browser smoke tests passed");
+    console.log("Site browser smoke tests passed");
 } finally {
     await browser.close();
 }

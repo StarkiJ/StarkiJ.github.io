@@ -1,0 +1,31 @@
+<section class="note-part" id="hotspot-gc" aria-labelledby="hotspot-gc-title">
+<h2 id="hotspot-gc-title">HotSpot 垃圾回收实现</h2>
+<p>GC Roots、并发标记、屏障和转发的共同机制见<a href="../managed-memory-gc/index.html">垃圾回收基础</a>。</p>
+<section id="hotspot-g1" aria-labelledby="hotspot-g1-title">
+<h3 id="hotspot-g1-title">HotSpot G1 的区域与回收周期</h3>
+<h4 id="g1-regions">区域角色与回收集合</h4>
+<p>以 <strong>JDK 21 HotSpot G1</strong>为例，堆由等大的 region 组成，分别承担 Eden、Survivor、Old 或空闲空间等角色。一次暂停选定的回收集合称为 collection set；记忆集帮助找到集合外的入边，疏散把集合中的活对象复制到目标区域。区域属于某一代，不要求整代在地址上连续。</p>
+<p>大对象可走 Humongous 区域路径，在老年代取得连续的 region。此时即使总空闲量不少，也可能受连续区域不足与末尾浪费影响。不能把“G1 按 region 管理”理解为任何对象都可以拆开塞进任意空闲小块。</p>
+<h4 id="g1-cycle">把标记、屏障与疏散连成一轮</h4>
+<ol>
+<li><strong>年轻代收集：</strong>Normal Young 暂停回收年轻区域，复制存活对象并按策略晋升，老年代占用逐步变化。</li>
+<li><strong>Concurrent Start：</strong>达到并发周期的启动条件后，在一次年轻代暂停中启动标记工作。</li>
+<li><strong>并发标记：</strong>与应用一起运行，使用前文的 SATB 机制保留起始存活信息；期间仍可能发生普通年轻代暂停。</li>
+<li><strong>Remark / Cleanup：</strong>用暂停完成标记收敛和相关处理，并确定后续区域回收所需状态；二者之间还有并发工作，不能把整段统称为一次暂停。</li>
+<li><strong>混合收集：</strong>进入空间回收阶段后，在多次 Mixed 暂停中回收年轻区域及选定的老年代区域，随后回到以年轻代收集为主的阶段。</li>
+</ol>
+<p>这是常见周期主线，具体执行可因回收收益等条件跳过后续工作。<strong>并发标记判断哪些对象需要保留；Young / Mixed 的对象疏散和引用更新仍在暂停内完成。</strong>SATB 与卡表屏障分别服务标记和区域引用追踪，不能互相替代。</p>
+<p>若疏散目标空间不足，会出现 evacuation failure；若后续分配与回收仍无法维持运行，可能退回 Full GC，仍不足才可能报告 OOM。一次疏散失败不等于立刻 OOM。排查时联合观察老年代增长、Humongous 区域、并发周期是否赶得上分配，以及各暂停阶段耗时。</p>
+<p>G1 的暂停时间是预测目标，不能保证每次都小于某个毫秒数，也不承诺固定吞吐率。固定年轻代比例可能限制它调节暂停工作量的能力；调优应从日志与负载出发。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html" target="_blank" rel="noreferrer">G1 区域与周期</a> · <a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-garbage-collector-tuning.html" target="_blank" rel="noreferrer">G1 暂停、疏散失败与诊断</a>。</p>
+<h4 id="collector-tradeoffs">比较收集器时看哪些差异</h4>
+<div class="note-table-wrap" role="region" aria-label="收集器机制对照" tabindex="0"><table><caption>按工作安排理解收集器</caption><thead><tr><th scope="col">实例</th><th scope="col">主要安排</th><th scope="col">理解重点</th></tr></thead><tbody>
+<tr><td>HotSpot Serial / Parallel</td><td>主要收集工作在暂停中完成，分别采用单线程 / 多线程工作方式</td><td>并行能缩短部分工作耗时，但不等于与应用并发</td></tr>
+<tr><td>HotSpot G1</td><td>并发标记、暂停疏散，分批选择区域回收</td><td>暂停预测、跨区域引用、疏散预留与回收收益</td></tr>
+<tr><td>JDK 21 分代 ZGC</td><td>通过 load / store 屏障支持并发标记与重定位等工作</td><td>降低暂停需要引用访问协议，并付出 CPU、屏障和空间成本</td></tr>
+<tr><td>Android 14 ART CC</td><td>协调线程根切换后，并发复制与扫描</td><td>分配空间、读屏障及根切换协议共同保证访问正确性</td></tr>
+</tbody></table></div>
+<p>历史上的 CMS 用并发标记与清扫减少暂停，但要处理浮动垃圾、预留空间和碎片；它已在 JDK 14 移除，适合作为机制演进案例。收集器名称不能代替版本、模式和负载条件。</p>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/introduction-garbage-collection-tuning.html" target="_blank" rel="noreferrer">GC 调优与性能目标</a> · <a href="https://docs.oracle.com/en/java/javase/21/migrate/removed-tools-and-components.html" target="_blank" rel="noreferrer">CMS 移除说明</a>；分代 ZGC 的屏障见<a href="../managed-memory-gc/index.html#barriers">屏障机制</a>，ART CC 见<a href="../art-runtime/index.html#art-cc">ART 专题</a>。</p>
+</section>
+</section>

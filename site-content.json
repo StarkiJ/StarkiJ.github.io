@@ -34,7 +34,7 @@
     "cpp-stable-handles",
     "operating-systems",
     "network-basics",
-    "compiler-ir"
+    "llvm-compiler"
   ],
   "categories": [
     {
@@ -386,7 +386,7 @@
     {
       "id": "runtime",
       "title": "编译器与运行时",
-      "description": "沿机器执行、托管类型与线程、编译优化、内存管理和平台实践组织知识；共同机制统一讲解，HotSpot、ART 和原生分配器随主题对照。",
+      "description": "沿机器执行、垃圾回收共用机制和三个技术专题组织知识；JVM/HotSpot、ART 与 LLVM 各有清晰入口。",
       "notes": [
         {
           "slug": "program-execution",
@@ -432,86 +432,118 @@
           "updated": "2026-09-19"
         },
         {
-          "slug": "managed-runtime",
-          "title": "托管运行时：字节码、类与线程",
-          "summary": "从 JVM / DEX 表示、类加载与初始化，到方法分派、Java 同步和运行时协作，建立 HotSpot 与 ART 的共同基础。",
-          "kind": "overview",
-          "reading": "字节码与类、方法调用、线程和同步可按知识点跳读；内存分配、GC 与编译优化在关联笔记展开。",
+          "slug": "jvm-hotspot",
+          "title": "JVM 与 HotSpot：执行、编译与内存",
+          "summary": "沿字节码、类和线程理解 JVM 语义，再看 HotSpot 的 JIT、反优化和垃圾回收实现。",
+          "kind": "topic",
+          "reading": "先读字节码与类，再读线程、编译和 G1；GC 共用机制可从关联笔记进入。",
           "prerequisites": [
             {
               "slug": "program-execution",
               "anchor": "call",
-              "label": "函数调用与机器栈帧"
-            },
-            {
-              "slug": "operating-systems",
-              "anchor": "process-thread",
-              "label": "进程与线程"
+              "label": "机器调用与栈帧"
             }
           ],
           "chapters": [
             {
               "anchor": "bytecode",
-              "label": "字节码与执行模型"
+              "label": "字节码与执行"
             },
             {
               "anchor": "class-loading",
-              "label": "类加载与类身份"
-            },
-            {
-              "anchor": "class-initialization",
-              "label": "链接与初始化"
-            },
-            {
-              "anchor": "method-execution",
-              "label": "分派与异常"
+              "label": "类加载与身份"
             },
             {
               "anchor": "java-memory-model",
-              "label": "Java 内存模型与同步"
+              "label": "线程与同步"
             },
             {
-              "anchor": "runtime-cooperation",
-              "label": "执行状态与元数据"
+              "anchor": "dynamic-compilation",
+              "label": "HotSpot 动态编译"
+            },
+            {
+              "anchor": "escape-analysis",
+              "label": "逃逸分析与标量替换"
+            },
+            {
+              "anchor": "hotspot-gc",
+              "label": "HotSpot 垃圾回收"
             }
           ],
-          "published": "2026-09-14",
-          "updated": "2026-09-18"
+          "published": "2026-09-21",
+          "updated": "2026-09-21"
         },
         {
-          "slug": "compiler-ir",
-          "title": "编译器：IR、代码生成与动态优化",
-          "cardTitle": "编译器：IR、代码生成与动态优化",
-          "summary": "从 CFG、SSA 和 ART HGraph，到寄存器分配、AOT、HotSpot C1/C2、JIT、OSR 与反优化。",
+          "slug": "art-runtime",
+          "title": "ART：DEX、编译、启动与 GC",
+          "summary": "沿 DEX、HGraph、Profile、Zygote 和 ART 收集器理解 Android 运行时。",
           "kind": "topic",
-          "reading": "先读 CFG、SSA 与 HGraph，再手推寄存器分配；随后阅读 AOT、HotSpot 分层、JIT、IC、OSR 及恢复元数据。",
+          "reading": "先读 DEX 与 HGraph，再看编译产物、启动路径和 CC/CMC；共用 GC 机制另有专题。",
           "prerequisites": [
             {
               "slug": "program-execution",
               "anchor": "call",
-              "label": "函数调用与栈帧"
+              "label": "机器调用与栈帧"
+            }
+          ],
+          "chapters": [
+            {
+              "anchor": "dex-model",
+              "label": "DEX 与 ART 执行"
+            },
+            {
+              "anchor": "hgraph",
+              "label": "HGraph 与 SSA"
+            },
+            {
+              "anchor": "profiles",
+              "label": "Profile 与编译产物"
+            },
+            {
+              "anchor": "startup",
+              "label": "Zygote 与启动"
+            },
+            {
+              "anchor": "art-gc",
+              "label": "ART 堆空间与 GC"
+            }
+          ],
+          "published": "2026-09-21",
+          "updated": "2026-09-21"
+        },
+        {
+          "slug": "llvm-compiler",
+          "title": "LLVM：IR、优化与代码生成",
+          "summary": "以 LLVM IR 为实例，理解 CFG、SSA、phi、优化 pass 和目标代码生成。",
+          "kind": "topic",
+          "reading": "先读 CFG 与 SSA，再看 LLVM IR 约束、优化与目标降低；平台运行时实例分别阅读 ART 和 HotSpot。",
+          "prerequisites": [
+            {
+              "slug": "program-execution",
+              "anchor": "abi",
+              "label": "目标机器与 ABI"
             }
           ],
           "chapters": [
             {
               "anchor": "compiler-foundations",
-              "label": "IR、优化与代码生成"
+              "label": "CFG、SSA 与编译基础"
             },
             {
-              "anchor": "dynamic-compilation",
-              "label": "动态编译与运行时优化"
+              "anchor": "ssa",
+              "label": "LLVM IR 与 phi"
             },
             {
-              "anchor": "hotspot-tiers",
-              "label": "HotSpot C1 / C2"
+              "anchor": "llvm-specific",
+              "label": "LLVM 的优化与目标生成"
             },
             {
-              "anchor": "aot-optimization",
-              "label": "AOT 优化"
+              "anchor": "llvm-experiment",
+              "label": "IR 对照实验"
             }
           ],
-          "published": "2026-09-13",
-          "updated": "2026-09-19"
+          "published": "2026-09-21",
+          "updated": "2026-09-21"
         },
         {
           "slug": "native-memory-allocation",
@@ -549,10 +581,10 @@
         },
         {
           "slug": "managed-memory-gc",
-          "title": "托管内存与垃圾回收",
-          "summary": "从运行时内存、对象分配与引用出发，理解 GC 与并发移动，对照 HotSpot、ART 的实现和内存排查。",
+          "title": "垃圾回收基础：可达性、并发与对象移动",
+          "summary": "建立托管内存与 GC 的共同模型，再按需进入 HotSpot 和 ART 的实现章节。",
           "kind": "overview",
-          "reading": "对象布局、分配、引用与可达性、GC 与并发移动、G1 和 ART 实例可按题目跳读；共性机制只讲一次，实现差异随知识点对照。",
+          "reading": "先看对象、引用与可达性，再读三色标记、屏障和移动；平台实例在 JVM 与 ART 专篇。",
           "prerequisites": [
             {
               "slug": "operating-systems",
@@ -571,11 +603,11 @@
             },
             {
               "anchor": "gc-implementations",
-              "label": "收集器实现与平台排查"
+              "label": "平台实例入口与内存排查"
             }
           ],
           "published": "2026-09-13",
-          "updated": "2026-09-18"
+          "updated": "2026-09-21"
         },
         {
           "slug": "jni-references",
@@ -591,7 +623,7 @@
               "label": "可达性与 GC Roots"
             },
             {
-              "slug": "managed-runtime",
+              "slug": "jvm-hotspot",
               "anchor": "class-loading",
               "label": "类身份与加载器"
             }
@@ -628,66 +660,16 @@
           ],
           "published": "2026-09-13",
           "updated": "2026-09-18"
-        },
-        {
-          "slug": "art-compilation-startup",
-          "title": "ART 编译与 Android 应用启动",
-          "summary": "连接 D8/R8、DEX、Profile 与 ART 编译产物，结合 Zygote 和可复查实验分析启动成本。",
-          "kind": "topic",
-          "reading": "解释、JIT、AOT 的机制先读编译器笔记；本篇关注 ART 编译流程及其在 Android 启动场景中的作用。",
-          "prerequisites": [
-            {
-              "slug": "compiler-ir",
-              "label": "AOT、JIT 与热点统计",
-              "anchor": "jit"
-            },
-            {
-              "slug": "managed-runtime",
-              "anchor": "class-initialization",
-              "label": "类初始化与首次使用"
-            }
-          ],
-          "chapters": [
-            {
-              "anchor": "execution",
-              "label": "DEX 与执行状态"
-            },
-            {
-              "anchor": "build-artifacts",
-              "label": "构建工具与产物"
-            },
-            {
-              "anchor": "profiles",
-              "label": "Profile 与编译产物"
-            },
-            {
-              "anchor": "profile-kinds",
-              "label": "Profile 的层次与用途"
-            },
-            {
-              "anchor": "startup",
-              "label": "Zygote 与启动"
-            },
-            {
-              "anchor": "tradeoffs",
-              "label": "启动验证"
-            },
-            {
-              "anchor": "startup-experiment",
-              "label": "启动对照实验"
-            }
-          ],
-          "published": "2026-09-13",
-          "updated": "2026-09-18"
         }
       ],
       "groups": [
         {
-          "title": "程序执行与编译",
+          "title": "运行时与编译框架",
           "notes": [
             "program-execution",
-            "managed-runtime",
-            "compiler-ir"
+            "jvm-hotspot",
+            "art-runtime",
+            "llvm-compiler"
           ]
         },
         {
@@ -698,10 +680,9 @@
           ]
         },
         {
-          "title": "互操作与平台实践",
+          "title": "互操作",
           "notes": [
-            "jni-references",
-            "art-compilation-startup"
+            "jni-references"
           ]
         }
       ]
@@ -808,7 +789,8 @@
         {
           "anchor": "art-cc",
           "label": "ART 并发复制的实现阶段",
-          "targetAnchor": "art-cc"
+          "targetAnchor": "art-cc",
+          "target": "art-runtime"
         },
         {
           "anchor": "generations",
@@ -818,7 +800,8 @@
         {
           "anchor": "spaces",
           "label": "堆空间与引用表示",
-          "targetAnchor": "spaces"
+          "targetAnchor": "spaces",
+          "target": "art-runtime"
         },
         {
           "anchor": "oom",
@@ -829,6 +812,456 @@
           "anchor": "related",
           "label": "延伸阅读",
           "targetAnchor": "related"
+        }
+      ]
+    },
+    {
+      "slug": "managed-runtime",
+      "title": "托管运行时：字节码、类与线程",
+      "sections": [
+        {
+          "anchor": "scope",
+          "label": "阅读范围与实现边界",
+          "target": "jvm-hotspot",
+          "targetAnchor": "scope"
+        },
+        {
+          "anchor": "classes-and-execution",
+          "label": "一、程序表示、类型与执行",
+          "target": "jvm-hotspot",
+          "targetAnchor": "classes-and-execution"
+        },
+        {
+          "anchor": "bytecode",
+          "label": "1. 从字节码到运行时状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "bytecode"
+        },
+        {
+          "anchor": "representations",
+          "label": "文件表示、运行时元数据与对象",
+          "target": "jvm-hotspot",
+          "targetAnchor": "representations"
+        },
+        {
+          "anchor": "stack-vs-registers",
+          "label": "同一次加法怎样执行",
+          "target": "jvm-hotspot",
+          "targetAnchor": "stack-vs-registers"
+        },
+        {
+          "anchor": "class-loading",
+          "label": "2. 类加载器与类身份",
+          "target": "jvm-hotspot",
+          "targetAnchor": "class-loading"
+        },
+        {
+          "anchor": "class-identity",
+          "label": "同名为什么不一定是同一个类",
+          "target": "jvm-hotspot",
+          "targetAnchor": "class-identity"
+        },
+        {
+          "anchor": "delegation",
+          "label": "委派是查找策略，边界是类型一致性",
+          "target": "jvm-hotspot",
+          "targetAnchor": "delegation"
+        },
+        {
+          "anchor": "class-initialization",
+          "label": "3. 链接、初始化与失败状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "class-initialization"
+        },
+        {
+          "anchor": "linking-stages",
+          "label": "先区分职责，再讨论发生时机",
+          "target": "jvm-hotspot",
+          "targetAnchor": "linking-stages"
+        },
+        {
+          "anchor": "initialization-triggers",
+          "label": "用可观察顺序理解主动使用",
+          "target": "jvm-hotspot",
+          "targetAnchor": "initialization-triggers"
+        },
+        {
+          "anchor": "loading-failures",
+          "label": "按第一次失败定位",
+          "target": "jvm-hotspot",
+          "targetAnchor": "loading-failures"
+        },
+        {
+          "anchor": "method-execution",
+          "label": "4. 方法解析、分派与异常",
+          "target": "jvm-hotspot",
+          "targetAnchor": "method-execution"
+        },
+        {
+          "anchor": "dispatch",
+          "label": "编译期选签名，运行时选适用目标",
+          "target": "jvm-hotspot",
+          "targetAnchor": "dispatch"
+        },
+        {
+          "anchor": "managed-exceptions",
+          "label": "Java throw 怎样找到处理器",
+          "target": "jvm-hotspot",
+          "targetAnchor": "managed-exceptions"
+        },
+        {
+          "anchor": "threads-and-cooperation",
+          "label": "二、共享状态与运行时协作",
+          "target": "jvm-hotspot",
+          "targetAnchor": "threads-and-cooperation"
+        },
+        {
+          "anchor": "java-memory-model",
+          "label": "5. Java 内存模型、监视器与线程",
+          "target": "jvm-hotspot",
+          "targetAnchor": "java-memory-model"
+        },
+        {
+          "anchor": "happens-before",
+          "label": "内存区域与内存模型回答不同问题",
+          "target": "jvm-hotspot",
+          "targetAnchor": "happens-before"
+        },
+        {
+          "anchor": "safe-publication",
+          "label": "发布对象之前的写入",
+          "target": "jvm-hotspot",
+          "targetAnchor": "safe-publication"
+        },
+        {
+          "anchor": "monitors-and-wait",
+          "label": "互斥、等待与唤醒",
+          "target": "jvm-hotspot",
+          "targetAnchor": "monitors-and-wait"
+        },
+        {
+          "anchor": "thread-states",
+          "label": "语言状态、内核状态与安全点状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "thread-states"
+        },
+        {
+          "anchor": "runtime-cooperation",
+          "label": "6. 解释、编译与 native 怎样协作",
+          "target": "jvm-hotspot",
+          "targetAnchor": "runtime-cooperation"
+        },
+        {
+          "anchor": "execution-entries",
+          "label": "入口适配与执行状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "execution-entries"
+        },
+        {
+          "anchor": "runtime-metadata",
+          "label": "看似都是“栈信息”，用途并不一样",
+          "target": "jvm-hotspot",
+          "targetAnchor": "runtime-metadata"
+        },
+        {
+          "anchor": "related",
+          "label": "延伸阅读",
+          "target": "jvm-hotspot",
+          "targetAnchor": "related"
+        }
+      ]
+    },
+    {
+      "slug": "compiler-ir",
+      "title": "编译器：IR、代码生成与动态优化",
+      "sections": [
+        {
+          "anchor": "compiler-foundations",
+          "label": "一、IR、优化与代码生成",
+          "target": "llvm-compiler",
+          "targetAnchor": "compiler-foundations"
+        },
+        {
+          "anchor": "pipeline",
+          "label": "1. 编译阶段与中间表示",
+          "target": "llvm-compiler",
+          "targetAnchor": "pipeline"
+        },
+        {
+          "anchor": "cfg",
+          "label": "2. 基本块与控制流图",
+          "target": "llvm-compiler",
+          "targetAnchor": "cfg"
+        },
+        {
+          "anchor": "dataflow",
+          "label": "从 CFG 计算支配与活跃性",
+          "target": "llvm-compiler",
+          "targetAnchor": "dataflow"
+        },
+        {
+          "anchor": "ssa",
+          "label": "3. SSA 与 phi",
+          "target": "llvm-compiler",
+          "targetAnchor": "ssa"
+        },
+        {
+          "anchor": "phi-loop",
+          "label": "循环里的 phi：静态一次定义，动态反复执行",
+          "target": "llvm-compiler",
+          "targetAnchor": "phi-loop"
+        },
+        {
+          "anchor": "phi-and-select",
+          "label": "phi、select 与优化收益",
+          "target": "llvm-compiler",
+          "targetAnchor": "phi-and-select"
+        },
+        {
+          "anchor": "hgraph",
+          "label": "3.1 ART HGraph：把 CFG 与 SSA 落到编译器对象",
+          "target": "art-runtime",
+          "targetAnchor": "hgraph"
+        },
+        {
+          "anchor": "lowering",
+          "label": "4. phi 消除与寄存器分配",
+          "target": "llvm-compiler",
+          "targetAnchor": "lowering"
+        },
+        {
+          "anchor": "linear-scan",
+          "label": "线性扫描：按活跃区间起点分配",
+          "target": "llvm-compiler",
+          "targetAnchor": "linear-scan"
+        },
+        {
+          "anchor": "graph-coloring",
+          "label": "图着色：不能共用寄存器的值连边",
+          "target": "llvm-compiler",
+          "targetAnchor": "graph-coloring"
+        },
+        {
+          "anchor": "instruction-selection",
+          "label": "从值运算到目标指令",
+          "target": "llvm-compiler",
+          "targetAnchor": "instruction-selection"
+        },
+        {
+          "anchor": "register-allocation-example",
+          "label": "跨调用活值为什么需要保存",
+          "target": "llvm-compiler",
+          "targetAnchor": "register-allocation-example"
+        },
+        {
+          "anchor": "optimization",
+          "label": "5. 优化的前提与代价",
+          "target": "llvm-compiler",
+          "targetAnchor": "optimization"
+        },
+        {
+          "anchor": "memory-dependencies",
+          "label": "有两个相同 load，为什么不一定能合并",
+          "target": "llvm-compiler",
+          "targetAnchor": "memory-dependencies"
+        },
+        {
+          "anchor": "escape-analysis",
+          "label": "逃逸、标量替换与锁消除",
+          "target": "jvm-hotspot",
+          "targetAnchor": "escape-analysis"
+        },
+        {
+          "anchor": "dynamic-compilation",
+          "label": "二、动态编译与运行时优化",
+          "target": "jvm-hotspot",
+          "targetAnchor": "dynamic-compilation"
+        },
+        {
+          "anchor": "jit",
+          "label": "6. 解释执行、AOT、JIT 与热点统计",
+          "target": "jvm-hotspot",
+          "targetAnchor": "jit"
+        },
+        {
+          "anchor": "hotspot-tiers",
+          "label": "HotSpot C1 / C2：为什么分层",
+          "target": "jvm-hotspot",
+          "targetAnchor": "hotspot-tiers"
+        },
+        {
+          "anchor": "aot-optimization",
+          "label": "AOT 编译怎样做优化",
+          "target": "jvm-hotspot",
+          "targetAnchor": "aot-optimization"
+        },
+        {
+          "anchor": "hotness",
+          "label": "热点统计与编译调度",
+          "target": "jvm-hotspot",
+          "targetAnchor": "hotness"
+        },
+        {
+          "anchor": "code-cache",
+          "label": "Profile 与代码缓存",
+          "target": "jvm-hotspot",
+          "targetAnchor": "code-cache"
+        },
+        {
+          "anchor": "inline-cache",
+          "label": "7. Inline cache、类型反馈与反优化",
+          "target": "jvm-hotspot",
+          "targetAnchor": "inline-cache"
+        },
+        {
+          "anchor": "type-feedback",
+          "label": "类型反馈怎样支持内联和反优化",
+          "target": "jvm-hotspot",
+          "targetAnchor": "type-feedback"
+        },
+        {
+          "anchor": "osr-deoptimization",
+          "label": "8. OSR 与反优化：执行到一半怎样切换",
+          "target": "jvm-hotspot",
+          "targetAnchor": "osr-deoptimization"
+        },
+        {
+          "anchor": "osr-entry",
+          "label": "方法入口与循环入口不是同一个状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "osr-entry"
+        },
+        {
+          "anchor": "deopt-state",
+          "label": "反优化恢复的是语义状态",
+          "target": "jvm-hotspot",
+          "targetAnchor": "deopt-state"
+        },
+        {
+          "anchor": "henvironment",
+          "label": "8.1 ART HEnvironment：恢复信息怎样从图走到运行时",
+          "target": "art-runtime",
+          "targetAnchor": "henvironment"
+        },
+        {
+          "anchor": "compilation-evidence",
+          "label": "9. 用证据区分预热、编译与反优化",
+          "target": "jvm-hotspot",
+          "targetAnchor": "compilation-evidence"
+        },
+        {
+          "anchor": "related",
+          "label": "延伸阅读",
+          "target": "llvm-compiler",
+          "targetAnchor": "related"
+        }
+      ]
+    },
+    {
+      "slug": "art-compilation-startup",
+      "title": "ART 编译与 Android 应用启动",
+      "sections": [
+        {
+          "anchor": "execution",
+          "label": "1. DEX 与方法执行状态",
+          "target": "art-runtime",
+          "targetAnchor": "execution"
+        },
+        {
+          "anchor": "build-artifacts",
+          "label": "1.1 构建工具、DEX 与运行时分别做什么",
+          "target": "art-runtime",
+          "targetAnchor": "build-artifacts"
+        },
+        {
+          "anchor": "profiles",
+          "label": "2. Profile、dex2oat 与编译产物",
+          "target": "art-runtime",
+          "targetAnchor": "profiles"
+        },
+        {
+          "anchor": "profile-pipeline",
+          "label": "2.1 热度采集与编译调度",
+          "target": "art-runtime",
+          "targetAnchor": "profile-pipeline"
+        },
+        {
+          "anchor": "dex2oat-output",
+          "label": "2.2 dex2oat 与编译产物",
+          "target": "art-runtime",
+          "targetAnchor": "dex2oat-output"
+        },
+        {
+          "anchor": "compiled-code-lifetime",
+          "label": "2.3 编译代码与 Profile 生命周期",
+          "target": "art-runtime",
+          "targetAnchor": "compiled-code-lifetime"
+        },
+        {
+          "anchor": "profile-kinds",
+          "label": "2.4 运行时反馈与不同 Profile",
+          "target": "art-runtime",
+          "targetAnchor": "profile-kinds"
+        },
+        {
+          "anchor": "artifact-validity",
+          "label": "2.5 编译产物、过滤器与有效性",
+          "target": "art-runtime",
+          "targetAnchor": "artifact-validity"
+        },
+        {
+          "anchor": "startup",
+          "label": "3. 应用启动中的运行环境与编译状态",
+          "target": "art-runtime",
+          "targetAnchor": "startup"
+        },
+        {
+          "anchor": "startup-execution",
+          "label": "3.1 启动路径与方法执行",
+          "target": "art-runtime",
+          "targetAnchor": "startup-execution"
+        },
+        {
+          "anchor": "zygote-sharing",
+          "label": "3.2 Zygote 预加载与写时复制",
+          "target": "art-runtime",
+          "targetAnchor": "zygote-sharing"
+        },
+        {
+          "anchor": "startup-costs",
+          "label": "3.3 编译状态与启动成本",
+          "target": "art-runtime",
+          "targetAnchor": "startup-costs"
+        },
+        {
+          "anchor": "tradeoffs",
+          "label": "4. 启动优化与验证",
+          "target": "art-runtime",
+          "targetAnchor": "tradeoffs"
+        },
+        {
+          "anchor": "compilation-tradeoffs",
+          "label": "4.1 JIT 阈值与提前编译的取舍",
+          "target": "art-runtime",
+          "targetAnchor": "compilation-tradeoffs"
+        },
+        {
+          "anchor": "startup-measurement",
+          "label": "4.2 启动指标与对照验证",
+          "target": "art-runtime",
+          "targetAnchor": "startup-measurement"
+        },
+        {
+          "anchor": "startup-experiment",
+          "label": "4.3 一次可以复查的启动对照",
+          "target": "art-runtime",
+          "targetAnchor": "startup-experiment"
+        },
+        {
+          "anchor": "related",
+          "label": "延伸阅读",
+          "target": "art-runtime",
+          "targetAnchor": "startup-related"
         }
       ]
     }

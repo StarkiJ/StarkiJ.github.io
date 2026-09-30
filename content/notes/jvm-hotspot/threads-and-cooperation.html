@@ -1,7 +1,7 @@
 <section class="note-part" id="threads-and-cooperation" aria-labelledby="threads-and-cooperation-title">
-<h2 id="threads-and-cooperation-title">二、共享状态与运行时协作</h2>
+<h2 id="threads-and-cooperation-title">共享状态与运行时协作</h2>
 <p class="note-reading-note">本部分解释共享状态规则，以及解释器、编译代码与 native 调用如何协作；先区分语言保证和实现元数据。</p>
-<section id="java-memory-model" aria-labelledby="java-memory-model-title"><h3 id="java-memory-model-title">5. Java 内存模型、监视器与线程</h3>
+<section id="java-memory-model" aria-labelledby="java-memory-model-title"><h3 id="java-memory-model-title">Java 内存模型、监视器与线程</h3>
 <h4 id="happens-before">内存区域与内存模型回答不同问题</h4>
 <p>堆、栈描述数据由谁保存；<strong>Java Memory Model（JMM）</strong>描述多线程读写允许观察到什么结果，以及编译器 / 处理器重排必须遵守的约束。happens-before 是保证可见性与先后关系的规则，不等于测到的墙钟时间。正确同步的程序可据此推理，不能靠“CPU 缓存迟早刷新”保证正确。</p>
 <div class="note-table-wrap" role="region" aria-label="Java 共享状态的同步规则" tabindex="0"><table><caption>常用规则与不能推导的结论</caption><thead><tr><th scope="col">机制</th><th scope="col">建立的关系</th><th scope="col">边界</th></tr></thead><tbody>
@@ -45,15 +45,15 @@
 <p>本篇的例子使用平台线程。JDK 21 的虚拟线程及 Kotlin 协程涉及额外调度关系，不能把它们的数量直接当作内核线程数。通用等待机制见<a href="../operating-systems/index.html#locks">锁与 futex</a>；GC 协调见<a href="../managed-memory-gc/index.html#stw">安全点与根扫描</a>。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html" target="_blank" rel="noreferrer">JLS：线程、锁与内存模型</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#wait()" target="_blank" rel="noreferrer">Object.wait</a> · <a href="https://developer.android.com/reference/java/lang/Thread.State" target="_blank" rel="noreferrer">Android 线程状态</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html" target="_blank" rel="noreferrer">Thread 与 onSpinWait</a>。</p>
 </section>
-<section id="runtime-cooperation" aria-labelledby="runtime-cooperation-title"><h3 id="runtime-cooperation-title">6. 解释、编译与 native 怎样协作</h3>
+<section id="runtime-cooperation" aria-labelledby="runtime-cooperation-title"><h3 id="runtime-cooperation-title">解释、编译与 native 怎样协作</h3>
 <h4 id="execution-entries">入口适配与执行状态</h4>
 <p>调用者与被调用者不一定使用同一种执行方式：解释器可调用编译代码，编译代码也可调用尚未编译的方法或 native 方法。运行时通过入口与适配代码转换参数位置、维护帧及线程状态，并处理必要的解析、检查与异常。更新方法入口主要影响后续进入方式，不能据此断定已经执行到一半的旧帧全部消失。</p>
-<p>长循环可通过 <a href="../compiler-ir/index.html#osr-deoptimization">OSR</a>在受支持的位置转入编译执行；优化假设失效时可通过反优化恢复可继续执行的状态。它们需要执行位置和活值映射，不只是改一个函数指针。</p>
+<p>长循环可通过 <a href="#osr-deoptimization">OSR</a>在受支持的位置转入编译执行；优化假设失效时可通过反优化恢复可继续执行的状态。它们需要执行位置和活值映射，不只是改一个函数指针。</p>
 <h4 id="runtime-metadata">看似都是“栈信息”，用途并不一样</h4>
 <div class="note-table-wrap" role="region" aria-label="运行时元数据职责" tabindex="0"><table><caption>以一次内联调用中的对象引用为例</caption><thead><tr><th scope="col">信息</th><th scope="col">回答的问题</th><th scope="col">主要讲解位置</th></tr></thead><tbody>
 <tr><td>JVM StackMapTable</td><td>字节码验证时，给定位置允许哪些局部值和操作数栈类型</td><td>class 格式与验证；不是 GC 地址表</td></tr>
 <tr><td>GC 引用位置图，如 HotSpot OopMap</td><td>某个受控机器码位置哪些寄存器 / 槽是活引用</td><td><a href="../managed-memory-gc/index.html#stw">GC 根扫描</a></td></tr>
-<tr><td>反优化恢复信息</td><td>内联了几个逻辑调用；执行位置、局部值和待恢复对象是什么</td><td><a href="../compiler-ir/index.html#deopt-state">编译器状态恢复</a></td></tr>
+<tr><td>反优化恢复信息</td><td>内联了几个逻辑调用；执行位置、局部值和待恢复对象是什么</td><td><a href="#deopt-state">编译器状态恢复</a></td></tr>
 <tr><td>CFI / 异常处理信息</td><td>如何恢复上一机器帧，以及语言处理器 / 清理代码在哪里</td><td><a href="../program-execution/index.html#unwind">回溯与异常展开</a></td></tr>
 <tr><td>调试映射</td><td>机器地址对应哪个函数、源码行和内联位置</td><td><a href="../program-execution/index.html#backtrace">符号化与调试</a></td></tr>
 </tbody></table></div>

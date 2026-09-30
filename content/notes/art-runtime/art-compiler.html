@@ -1,0 +1,38 @@
+<section class="note-part" id="art-compiler" aria-labelledby="art-compiler-title">
+<h2 id="art-compiler-title">ART optimizing 编译器与恢复元数据</h2>
+<p>CFG、SSA 和 phi 的共同原理见<a href="../llvm-compiler/index.html#ssa">LLVM IR 示例</a>；这里说明 ART 自己的图和运行时元数据。</p>
+<section id="hgraph" aria-labelledby="hgraph-title"><h3 id="hgraph-title">ART HGraph：把 CFG 与 SSA 落到编译器对象</h3>
+<p><strong>HGraph 是 ART optimizing 编译器的图表示</strong>，不是 DEX 文件格式，也不是 LLVM IR 的别名。以 AOSP android-14.0.0_r1 为例，它组织一个编译单元的基本块、控制流与分析信息；<code>HBasicBlock</code> 保存前驱、后继以及指令，<code>HInstruction</code> 表达运算及其输入和使用关系，<code>HPhi</code> 表达合流值。图在构建、SSA 转换、优化和目标降低过程中逐步变化。</p>
+<pre tabindex="0"><code class="language-text">源方法：int choose(boolean c, int x) {
+          int y;
+          if (c) y = x + 1; else y = x - 1;
+          return y;
+        }
+
+示意 HGraph（省略入口、退出及具体节点编号）：
+B0：参数 c、x；HIf(c)       → B1 / B2
+B1：a = HAdd(x, 1)        → B3
+B2：b = HSub(x, 1)        → B3
+B3：y = HPhi(a, b)；HReturn(y)
+
+控制流边：B0→B1、B0→B2、B1→B3、B2→B3
+数据依赖：HAdd/HSub 使用 x；HPhi 使用各前驱提供的值</code></pre>
+<p>这是关系图示，不是某次编译的逐字 dump；实际图还受空检查、异常边、常量节点和优化结果影响。阅读 dump 时先看块间路径，再看每个值的定义和使用，最后检查变换是否保持支配、phi 输入与异常语义；只按节点的显示顺序阅读会漏掉图关系。</p>
+<p>可以顺着 <code>HGraphBuilder → SSA 与优化 pass → 位置约束 / 寄存器分配 → CodeGenerator</code> 追踪。需要异常或反优化状态的指令还可带 <code>HEnvironment</code>，它与普通输入边的职责不同，见<a href="#henvironment">编译期环境与运行时恢复</a>。AOT / JIT 何时触发这条编译流程，放在<a href="#execution">ART 编译与启动</a>中讨论。</p>
+<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/nodes.h" target="_blank" rel="noreferrer">ART HGraph、HBasicBlock、HInstruction、HPhi</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/optimizing_compiler.cc" target="_blank" rel="noreferrer">optimizing 编译流程</a>。</p>
+<p>Android 14 ART 的分配器工厂具有 linear-scan 与 graph-color 策略；实际选择须追踪编译选项，不能背成“JIT 必用前者、AOT 必用后者”。两种方法的原理和手算见<a href="../llvm-compiler/index.html#lowering">寄存器分配</a>。</p>
+<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/register_allocator.cc" target="_blank" rel="noreferrer">ART 寄存器分配策略</a>。</p>
+</section>
+<section id="henvironment" aria-labelledby="henvironment-title"><h3 id="henvironment-title">ART HEnvironment：恢复信息怎样从图走到运行时</h3>
+<p>在 Android 14 ART optimizing 编译器里，<strong>HEnvironment 是编译期间的状态描述</strong>：记录某个 DEX 位置需要的虚拟寄存器值，与对应的 HInstruction 建立关联；发生内联时还可通过 parent 环境描述外层逻辑调用。它使优化器知道哪些值即使不是当前计算的普通输入，也仍可能用于恢复。</p>
+<pre tabindex="0"><code class="language-text">示意：某个恢复点需要 DEX 寄存器 v0、v1、v2
+编译期环境：v0→参数值，v1→常量 7，v2→某引用值
+位置确定后：v0→机器寄存器，v1→常量，v2→栈槽
+代码生成：把相应恢复点、位置及内联信息编码进运行时元数据
+运行时：按当前 native PC 找信息，重建 DEX 执行状态</code></pre>
+<p><code>CodeGenerator::EmitEnvironment</code> 及 <code>EmitVRegInfo</code> 把环境和位置结果写入 stack map、DEX register map、inline info 等信息。运行时使用随机器码保存的编码数据；<strong>不会直接保留编译器里的整个 HGraph / HEnvironment 对象图来执行反优化</strong>。</p>
+<p>DEX 虚拟寄存器是字节码的逻辑槽，HInstruction 表示 SSA 值，物理寄存器是机器位置；三者不能混称“寄存器”。一个常量无需真实寄存器，也可能仍要能恢复；一个对象引用的位置既可能供 GC 定位，又可能是恢复某个逻辑变量所需的信息，两项职责并不相同。</p>
+<p>图优化必须维护环境中的值关系，不能删除仍被恢复状态使用的定义。可恢复点、无效槽的处理、内联帧展开和异常续执行规则仍由实现限定；不能声称任意一条机器指令都能随时无损退回解释器。这里说明 ART 的元数据通路，不把前文 HotSpot 的所有对象物化能力直接套到 ART。</p>
+<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/nodes.h" target="_blank" rel="noreferrer">HEnvironment</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/code_generator.cc" target="_blank" rel="noreferrer">EmitEnvironment / EmitVRegInfo</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/stack_map.h" target="_blank" rel="noreferrer">运行时 CodeInfo、StackMap 与 DEX 寄存器位置</a>。</p>
+</section>
+</section>

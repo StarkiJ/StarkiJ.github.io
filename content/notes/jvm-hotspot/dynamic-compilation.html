@@ -1,8 +1,8 @@
 <section class="note-part" id="dynamic-compilation" aria-labelledby="dynamic-compilation-title">
-<h2 id="dynamic-compilation-title">二、动态编译与运行时优化</h2>
-<p class="note-reading-note">本部分涉及托管方法的分派与执行状态；相关语义见<a href="../managed-runtime/index.html#method-execution">方法解析与分派</a>，机器状态基础见<a href="../program-execution/index.html#call">调用与栈帧</a>。</p>
+<h2 id="dynamic-compilation-title">动态编译与运行时优化</h2>
+<p class="note-reading-note">本部分涉及托管方法的分派与执行状态；相关语义见<a href="#method-execution">方法解析与分派</a>，机器状态基础见<a href="../program-execution/index.html#call">调用与栈帧</a>。</p>
 <p>运行期间的热点与类型信息可以指导编译决策。沿采集信息、生成优化代码、处理假设失效的顺序，连接前面的 IR 变换与可继续执行的运行时状态。</p>
-<section id="jit" aria-labelledby="jit-title"><h3 id="jit-title">6. 解释执行、AOT、JIT 与热点统计</h3>
+<section id="jit" aria-labelledby="jit-title"><h3 id="jit-title">解释执行、AOT、JIT 与热点统计</h3>
 <p><strong>AOT</strong>在目标程序本次执行前生成机器码；<strong>JIT</strong>在运行过程中按需编译，可使用运行时类型和热点信息。解释执行、低成本编译、优化编译可组成不同层级，平衡启动、峰值性能与编译资源。C1/C2 是 HotSpot 的特定分层术语，不是所有 JIT 的统一级别。</p>
 
 <div class="note-table-wrap" role="region" aria-label="执行方式" tabindex="0"><table><caption>执行方式</caption><thead><tr><th scope="col">方式</th><th scope="col">收益</th><th scope="col">成本</th></tr></thead><tbody><tr><td>解释</td><td>无需先为所有方法生成本机代码</td><td>反复解释热点指令有成本</td></tr><tr><td>JIT</td><td>按运行热点生成代码并利用运行信息</td><td>占用应用运行期间的 CPU、代码缓存与元数据</td></tr><tr><td>AOT</td><td>提前生成可复用机器码</td><td>编译耗时、磁盘体积；可能编译并不热的方法</td></tr></tbody></table></div>
@@ -14,7 +14,7 @@
 <details class="note-review-question"><summary>面试追问：为什么不把所有方法一开始就交给 C2？</summary><p>很多方法并不热，提前做重优化会花编译 CPU、延迟与代码缓存；初次执行也缺少有价值的类型和分支反馈。解释与 C1 先提供低成本执行和采样，运行时再把值得投入的方法交给 C2。是否收益更好仍取决于负载和配置。</p></details>
 <p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/compiler/compilerDefinitions.hpp" target="_blank" rel="noreferrer">JDK 21 HotSpot CompLevel 定义</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">JDK 21：分层编译与代码缓存</a>。</p>
 <h4 id="aot-optimization">AOT 编译怎样做优化</h4>
-<p><strong>AOT 说明生成机器码的时机，不指定一套独有的优化算法。</strong>编译器仍可在 IR 上做常量传播、死代码删除、内联、循环优化和寄存器分配；每项变换的语义前提见<a href="#optimization">优化的前提与代价</a>。运行前已知的类型、调用关系和目标 ISA 可用于静态分析，但运行时才出现的接收者类型或分支频率不能凭空假定。</p>
+<p><strong>AOT 说明生成机器码的时机，不指定一套独有的优化算法。</strong>编译器仍可在 IR 上做常量传播、死代码删除、内联、循环优化和寄存器分配；每项变换的语义前提见<a href="../llvm-compiler/index.html#optimization">优化的前提与代价</a>。运行前已知的类型、调用关系和目标 ISA 可用于静态分析，但运行时才出现的接收者类型或分支频率不能凭空假定。</p>
 <p>例如某虚调用有多个可能目标：若 AOT 编译时能证明目标唯一，可以直接调用或内联；若只有历史 Profile 显示某类型常见，可在支持相应协议的运行时生成“类型检查 → 热门目标快速路径 → 其他目标慢路径”，并保留假设失效后的正确执行方式。没有证明或反馈时应保留通用分派。由此可见，<strong>Profile-guided AOT</strong>仍是 AOT，利用过去运行的数据不等于在本次运行中 JIT 编译。</p>
 <p>以 ART 为例，<code>dex2oat</code> 的 <code>speed</code> 倾向编译所有方法，<code>speed-profile</code> 依据 Profile 选择方法并优化相关类加载；已有类型反馈也可支持某些 AOT 调用点优化。要同时权衡编译耗时、磁盘中的机器码大小、启动时间、峰值执行速度和 Profile 的代表性。选择编译哪些方法与怎样优化单个方法是两个不同问题；具体 pass 和过滤器行为须限定 ART 版本。</p>
 <details class="note-review-question"><summary>面试追问：AOT 没有运行时信息，所以不能做内联吗？</summary><p>不能这样说。目标在编译时可证明时可以静态内联；也可以用已有 Profile 做受检查的猜测性优化，前提是运行时提供相应的慢路径或状态恢复。没有可靠证据时不能把可能变化的目标无条件固定。</p></details>
@@ -35,10 +35,10 @@
 <p><strong>代码缓存回收</strong>处理可回收的 JIT 机器码及随代码保存的辅助信息；Java 堆 GC 处理对象可达性。代码、运行时类型反馈和持久化 profile 的存储与寿命必须分别看。以 JDK 21 HotSpot 为例，MethodData 中的方法反馈分配在 Metaspace；Code Cache 中的 profiled code heap 保存的是带 profiling 的编译代码，不能理解成存放全部 profile 数据的堆。</p>
 <p>ART 有自己的 JIT 代码及 profiling 管理方式。回收一段机器码不等于删除全部类型反馈或磁盘 profile，也不等于清空 Java 堆；代码失效、类卸载和各类存储回收通过运行时协议协调。</p>
 <p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/oops/methodData.cpp" target="_blank" rel="noreferrer">JDK 21 MethodData::allocate：反馈的元空间分配</a>。</p>
-<p>ART 的实际编译与 profile 流程见 <a href="../art-compilation-startup/index.html">ART 编译与 Android 应用启动</a>。</p>
+<p>ART 的实际编译与 profile 流程见 <a href="../art-runtime/index.html">ART 编译与 Android 应用启动</a>。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/vm/java-hotspot-virtual-machine-performance-enhancements.html" target="_blank" rel="noreferrer">HotSpot：分层编译与代码缓存</a>。</p>
 </section>
-<section id="inline-cache" aria-labelledby="inline-cache-title"><h3 id="inline-cache-title">7. Inline cache、类型反馈与反优化</h3>
+<section id="inline-cache" aria-labelledby="inline-cache-title"><h3 id="inline-cache-title">Inline cache、类型反馈与反优化</h3>
 <p><strong>Inline cache（内联缓存，IC）是在调用点缓存接收者类型与调用目标的关系。</strong>同一个虚调用点往往反复遇到同一类对象；缓存命中时可缩短动态分派路径。这里的 inline 描述缓存贴近调用点，并不等于把被调用函数体展开。</p><pre tabindex="0"><code class="language-text">调用点：receiver.work()
 首次执行：尚无缓存 → 运行时解析 receiver 的类型与目标
 单态路径（概念）：
@@ -46,7 +46,7 @@
     if receiver.klass == cached_klass:
         call cached_target(receiver)
     else:
-        进入 IC miss / 运行时分派路径</code></pre><p>方法解析、普通分派与类身份见<a href="../managed-runtime/index.html#dispatch">托管调用基础</a>。缓存键必须足以识别运行时类型，例如可靠的 Klass 身份；同名类可能由不同类加载器定义，不能只比较类名字符串。虚表按类描述方法槽位，IC 则利用<strong>某一个调用点</strong>的类型规律，两者可以配合。</p>
+        进入 IC miss / 运行时分派路径</code></pre><p>方法解析、普通分派与类身份见<a href="#dispatch">托管调用基础</a>。缓存键必须足以识别运行时类型，例如可靠的 Klass 身份；同名类可能由不同类加载器定义，不能只比较类名字符串。虚表按类描述方法槽位，IC 则利用<strong>某一个调用点</strong>的类型规律，两者可以配合。</p>
 <ul><li><strong>未链接 / 未初始化：</strong>第一次调用尚需解析。</li><li><strong>单态（monomorphic）：</strong>调用点反复看到一种接收者类型，可使用类型检查加直接目标。</li><li><strong>多态内联缓存（PIC）：</strong>一般设计中可缓存少量“类型→目标”对，按 guard 逐一检查。</li><li><strong>超多态（megamorphic）：</strong>类型过多时，维护长检查链得不偿失，可退回通用虚表 / 接口表等分派。</li></ul>
 <p>上面是通用设计词汇，<strong>不是每个 HotSpot 调用点都必经四级状态</strong>。JDK 21 的 CompiledIC 主要表达 clean、monomorphic、megamorphic 等状态；JIT 根据 profile 生成多个类型 guard 的优化代码，与 CompiledIC 自身是否维护 PIC 数组是不同问题。</p>
 <h4 id="type-feedback">类型反馈怎样支持内联和反优化</h4>
@@ -54,7 +54,7 @@
 <p>当接收者出现新类型时，普通 IC miss 可以进入运行时解析并更新状态，不必每次都反优化。如果机器码依赖了更强假设，例如类层次分析认定某方法只有一个实现，则新类加载可能使依赖失效，触发失效处理或反优化。反优化需要用元数据恢复解释执行所需的局部变量、操作数栈和内联帧状态。</p>
 <p>修改目标与缓存类型还必须满足并发发布协议，避免其他线程看到“新类型配旧目标”；代码修补也需遵守目标架构的指令可见性要求。这是运行时实现细节，不能直接用两次普通赋值替代。</p><details class="note-review-question"><summary>面试追问：IC miss、缓存状态变化、反优化是同一件事吗？</summary><p>不是。miss 表示当前接收者不满足该缓存快速路径；运行时可能解析后更新缓存，或者走通用分派。反优化则是退出不再适用的优化机器码、重建可继续执行的状态。guard 失败可以设计为慢调用，也可以设计为 uncommon trap，取决于编译决策。</p></details><details class="note-review-question"><summary>面试追问：如何把 inline cache 与 SSA 连起来回答？</summary><p>IC / profile 提供类型证据，JIT 生成 guard 把快速与慢速路径分开；两条路径返回的值在合并块可由 phi 汇合。进一步内联后，SSA 的定义—使用关系帮助传播常量与删除冗余计算。</p></details><p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/compiledIC.hpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态与调用点约定</a>。</p><p class="note-source">参考：<a href="https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/hotspot/share/code/compiledIC.cpp" target="_blank" rel="noreferrer">JDK 21 CompiledIC：状态转换与目标更新</a>。</p>
 </section>
-<section id="osr-deoptimization" aria-labelledby="osr-deoptimization-title"><h3 id="osr-deoptimization-title">8. OSR 与反优化：执行到一半怎样切换</h3>
+<section id="osr-deoptimization" aria-labelledby="osr-deoptimization-title"><h3 id="osr-deoptimization-title">OSR 与反优化：执行到一半怎样切换</h3>
 <h4 id="osr-entry">方法入口与循环入口不是同一个状态</h4>
 <p>一个方法只调用一次，却在里面循环很久，仅统计方法调用次数可能漏掉热点。回边热度可触发<strong>OSR（On-Stack Replacement）编译</strong>：在运行时支持的位置，把正在执行的帧状态转为相应编译入口需要的状态，继续剩余工作，不重新执行方法开头。</p>
 <pre tabindex="0"><code class="language-text">long sum = 0;
@@ -70,22 +70,11 @@ for (int i = 0; i &lt; n; i++) sum += i;
 <p>假设 outer 调用 inner，JIT 把 inner 内联，并消除了其中的 Pair 分配。机器上可能只剩 outer 的一帧和若干寄存器值。若某个优化依赖失效，需要恢复的却可能是 outer、inner 两层逻辑帧，以及仍会被后续代码使用的对象。</p>
 <ol><li>在规定位置确定失效原因与恢复点，避免把普通 IC miss 都当成反优化。</li><li>依据恢复元数据取得各逻辑帧的执行位置、局部值、表达式中间状态和必要的同步状态；来源可为寄存器、栈槽或常量。</li><li>对被消除但后续需要的对象重新物化，恢复字段与别名关系；两个逻辑变量原指向同一对象时不能恢复成两个独立副本。</li><li>构建目标执行状态，再从对应位置继续。哪些操作已完成、哪些还需执行，由恢复点及相应重执行规则确定，不能把已发生的写入或 I/O 随意重放。</li></ol>
 <p>因此，反优化不是简单“丢掉机器码再从方法第一行解释”。某方法的代码不再允许新调用进入，与它已没有任何活跃帧、可以回收存储，是不同条件；失效、在栈帧转换和代码回收需要协调。</p>
-<p>HotSpot 的 ScopeDesc 等信息描述逻辑作用域、局部值与表达式状态，Deoptimization 负责恢复和物化。ART 有自己的帧与恢复格式。GC 只知道“哪个槽是引用”还不足以完成这一过程；对照<a href="../managed-runtime/index.html#runtime-metadata">几种元数据的职责</a>。</p>
+<p>HotSpot 的 ScopeDesc 等信息描述逻辑作用域、局部值与表达式状态，Deoptimization 负责恢复和物化。ART 有自己的帧与恢复格式。GC 只知道“哪个槽是引用”还不足以完成这一过程；对照<a href="#runtime-metadata">几种元数据的职责</a>。</p>
 <p class="note-source">参考：<a href="https://source.android.com/docs/core/runtime/jit-compiler" target="_blank" rel="noreferrer">ART JIT 与 OSR</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/runtime/deoptimization.cpp" target="_blank" rel="noreferrer">JDK 21 Deoptimization</a> · <a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/share/code/scopeDesc.hpp" target="_blank" rel="noreferrer">JDK 21 ScopeDesc</a>。</p>
-<section id="henvironment" aria-labelledby="henvironment-title"><h4 id="henvironment-title">8.1 ART HEnvironment：恢复信息怎样从图走到运行时</h4>
-<p>在 Android 14 ART optimizing 编译器里，<strong>HEnvironment 是编译期间的状态描述</strong>：记录某个 DEX 位置需要的虚拟寄存器值，与对应的 HInstruction 建立关联；发生内联时还可通过 parent 环境描述外层逻辑调用。它使优化器知道哪些值即使不是当前计算的普通输入，也仍可能用于恢复。</p>
-<pre tabindex="0"><code class="language-text">示意：某个恢复点需要 DEX 寄存器 v0、v1、v2
-编译期环境：v0→参数值，v1→常量 7，v2→某引用值
-位置确定后：v0→机器寄存器，v1→常量，v2→栈槽
-代码生成：把相应恢复点、位置及内联信息编码进运行时元数据
-运行时：按当前 native PC 找信息，重建 DEX 执行状态</code></pre>
-<p><code>CodeGenerator::EmitEnvironment</code> 及 <code>EmitVRegInfo</code> 把环境和位置结果写入 stack map、DEX register map、inline info 等信息。运行时使用随机器码保存的编码数据；<strong>不会直接保留编译器里的整个 HGraph / HEnvironment 对象图来执行反优化</strong>。</p>
-<p>DEX 虚拟寄存器是字节码的逻辑槽，HInstruction 表示 SSA 值，物理寄存器是机器位置；三者不能混称“寄存器”。一个常量无需真实寄存器，也可能仍要能恢复；一个对象引用的位置既可能供 GC 定位，又可能是恢复某个逻辑变量所需的信息，两项职责并不相同。</p>
-<p>图优化必须维护环境中的值关系，不能删除仍被恢复状态使用的定义。可恢复点、无效槽的处理、内联帧展开和异常续执行规则仍由实现限定；不能声称任意一条机器指令都能随时无损退回解释器。这里说明 ART 的元数据通路，不把前文 HotSpot 的所有对象物化能力直接套到 ART。</p>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/nodes.h" target="_blank" rel="noreferrer">HEnvironment</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/compiler/optimizing/code_generator.cc" target="_blank" rel="noreferrer">EmitEnvironment / EmitVRegInfo</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/stack_map.h" target="_blank" rel="noreferrer">运行时 CodeInfo、StackMap 与 DEX 寄存器位置</a>。</p>
+<p>ART 的恢复元数据见<a href="../art-runtime/index.html#henvironment">HEnvironment</a>。</p>
 </section>
-</section>
-<section id="compilation-evidence" aria-labelledby="compilation-evidence-title"><h3 id="compilation-evidence-title">9. 用证据区分预热、编译与反优化</h3>
+<section id="compilation-evidence" aria-labelledby="compilation-evidence-title"><h3 id="compilation-evidence-title">用证据区分预热、编译与反优化</h3>
 <p>“第一次慢、后面快”可能来自类初始化、文件页与数据缓存、解释执行或 JIT。先分清一次进程启动与稳态吞吐，再将编译事件和业务耗时放到同一时间线上；不能用一次计时证明某个方法已内联或某对象已被标量替换。</p>
 <div class="note-table-wrap" role="region" aria-label="动态编译排查" tabindex="0"><table><caption>观察、候选原因与补充证据</caption><thead><tr><th scope="col">观察</th><th scope="col">要区分的原因</th><th scope="col">证据</th></tr></thead><tbody>
 <tr><td>多轮运行逐渐变快</td><td>编译、初始化或缓存逐步就绪</td><td>新进程与同进程分组，记录类加载 / 编译时间线及实际工作量</td></tr>
@@ -94,7 +83,7 @@ for (int i = 0; i &lt; n; i++) sum += i;
 </tbody></table></div>
 <p>HotSpot/JDK 21 可在受控测试中使用 <code>-XX:+PrintCompilation</code>观察编译记录，或用 JFR 关联编译、执行、分配等适用事件；日志中的 OSR 标记、编译级别和失效文字需按该版本格式解读。要证明具体优化还应检查适用的编译日志或生成代码，性能结果本身不是优化过程的证据。</p>
 <p>一个类型变化实验可固定每轮输入数量和工作量，先主要调用实现 A，再引入实现 B，对齐记录类型切换和延迟。它是检验假设的设计，不保证特定 JIT 必然去优化；重复新进程试验并区分预热与测量。避免结果未使用导致死代码消除，也不要通过随意加 volatile 改变原问题。</p>
-<p>严肃的 JVM 微基准可用 JMH 的独立进程、预热和结果消费机制；Android 启动场景则见<a href="../art-compilation-startup/index.html#startup-experiment">编译状态对照</a>。两者测试对象和环境不同，不直接比较一个毫秒数。</p>
+<p>严肃的 JVM 微基准可用 JMH 的独立进程、预热和结果消费机制；Android 启动场景则见<a href="../art-runtime/index.html#startup-experiment">编译状态对照</a>。两者测试对象和环境不同，不直接比较一个毫秒数。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html" target="_blank" rel="noreferrer">java：编译诊断选项</a> · <a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/diagnostic-tools.html" target="_blank" rel="noreferrer">JFR 诊断</a> · <a href="https://github.com/openjdk/jmh" target="_blank" rel="noreferrer">OpenJDK JMH</a>。</p>
 </section>
 </section>

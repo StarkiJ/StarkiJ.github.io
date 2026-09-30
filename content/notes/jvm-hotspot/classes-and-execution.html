@@ -1,7 +1,7 @@
 <section class="note-part" id="classes-and-execution" aria-labelledby="classes-and-execution-title">
-<h2 id="classes-and-execution-title">一、程序表示、类型与执行</h2>
+<h2 id="classes-and-execution-title">程序表示、类型与执行</h2>
 <p class="note-reading-note">本部分解释程序表示、类型身份和调用语义；对象分配与回收机制另见 GC 篇。</p>
-<section id="bytecode" aria-labelledby="bytecode-title"><h3 id="bytecode-title">1. 从字节码到运行时状态</h3>
+<section id="bytecode" aria-labelledby="bytecode-title"><h3 id="bytecode-title">从字节码到运行时状态</h3>
 <h4 id="representations">文件表示、运行时元数据与对象</h4>
 <p>源码中的类型、方法和字段先编码在文件里；加载后，运行时建立可访问的类型信息和解析状态；调用时再建立当前执行所需的帧。<strong>文件中的类描述、运行时的类信息、Class 对象和某个实例是不同层次。</strong>一个 class 文件通常表示一个类或接口，DEX 可汇集多个类定义及共享的索引表。</p>
 <div class="note-table-wrap" role="region" aria-label="JVM 与 DEX 表示对照" tabindex="0"><table><caption>共同职责与两种表示</caption><thead><tr><th scope="col">职责</th><th scope="col">JVM class / 字节码</th><th scope="col">DEX / ART</th></tr></thead><tbody>
@@ -26,7 +26,7 @@ return v0</code></pre>
 <p>DEX 的 v0、v1 是字节码层的位置，不是 CPU 的 x0、x1。编译器可以折叠计算、内联调用并重新分配物理寄存器。两种模型都有调用帧，不能由“基于寄存器”推导 ART 没有栈。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html" target="_blank" rel="noreferrer">JVMS：class、描述符与 Code</a> · <a href="https://source.android.com/docs/core/runtime/dex-format" target="_blank" rel="noreferrer">DEX 格式</a> · <a href="https://source.android.com/docs/core/runtime/dalvik-bytecode" target="_blank" rel="noreferrer">DEX 指令与帧</a>。</p>
 </section>
-<section id="class-loading" aria-labelledby="class-loading-title"><h3 id="class-loading-title">2. 类加载器与类身份</h3>
+<section id="class-loading" aria-labelledby="class-loading-title"><h3 id="class-loading-title">类加载器与类身份</h3>
 <h4 id="class-identity">同名为什么不一定是同一个类</h4>
 <p>对普通命名的类和接口，运行时类身份由<strong>二进制名称与定义它的类加载器</strong>共同决定。两个加载器分别定义 demo.Widget，得到的 Class 可以不同；即使字节完全相同，其实例也不能仅因名字相同就互相强转。数组类另按组件类型等规则创建，不能把每个数组都当成由加载器读取的独立文件。</p>
 <p><strong>定义加载器</strong>实际定义这个类型；<strong>发起加载器</strong>发起请求，可以委派其他加载器返回已有类型。共享接口若由父加载器定义，子加载器定义的实现可以实现该接口；若子加载器连接口也重复定义，就可能破坏原本期待的类型兼容。</p>
@@ -41,7 +41,7 @@ return v0</code></pre>
 <details class="note-review-question"><summary>复习问题：两个插件同名类强转失败，先查什么？</summary><p>同时记录对象实际 Class、目标 Class 及各自加载器；检查共享接口是否重复打包 / 定义。比较类名或重新 new 一个加载器都不能证明类型一致。类缓存的持有链与卸载见<a href="../managed-memory-gc/index.html#class-lifetime">元数据生命周期</a>。</p></details>
 <p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3" target="_blank" rel="noreferrer">JVMS：类身份与加载约束</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html" target="_blank" rel="noreferrer">ClassLoader 的默认委派</a> · <a href="https://developer.android.com/reference/dalvik/system/PathClassLoader" target="_blank" rel="noreferrer">Android PathClassLoader</a>。</p>
 </section>
-<section id="class-initialization" aria-labelledby="class-initialization-title"><h3 id="class-initialization-title">3. 链接、初始化与失败状态</h3>
+<section id="class-initialization" aria-labelledby="class-initialization-title"><h3 id="class-initialization-title">链接、初始化与失败状态</h3>
 <h4 id="linking-stages">先区分职责，再讨论发生时机</h4>
 <div class="note-table-wrap" role="region" aria-label="类生命周期阶段" tabindex="0"><table><caption>加载与链接不是执行静态代码块</caption><thead><tr><th scope="col">职责</th><th scope="col">主要工作</th></tr></thead><tbody>
 <tr><td>加载</td><td>取得表示并建立类型</td></tr><tr><td>验证</td><td>检查格式、类型和指令使用约束，确保满足相应运行时规则</td></tr>
@@ -83,7 +83,7 @@ instance</code></pre></figure>
 <p>初始化本身也可能因复杂的跨线程 / 跨类等待造成死锁或启动停顿。把耗时 I/O、回调和持锁等待放进静态初始化，影响的是首次使用的整条路径。ART 启动应单独观察这部分成本。</p>
 <p class="note-source">参考：<a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html#jls-12.4" target="_blank" rel="noreferrer">JLS：初始化触发与顺序</a> · <a href="https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.5" target="_blank" rel="noreferrer">JVMS：初始化与错误状态</a>。</p>
 </section>
-<section id="method-execution" aria-labelledby="method-execution-title"><h3 id="method-execution-title">4. 方法解析、分派与异常</h3>
+<section id="method-execution" aria-labelledby="method-execution-title"><h3 id="method-execution-title">方法解析、分派与异常</h3>
 <h4 id="dispatch">编译期选签名，运行时选适用目标</h4>
 <p><strong>重载</strong>通常在源码编译阶段按表达式类型等规则选择签名；虚方法的<strong>重写分派</strong>则根据实际接收者选择实现。把符号引用解析为方法，与为某次调用选择目标不是同一步。类的虚表、接口分派表及入口缓存属于实现手段。</p>
 <pre tabindex="0"><code class="language-java">class Base { int work() { return 1; } }
@@ -91,7 +91,7 @@ class Derived extends Base { @Override int work() { return 2; } }
 Base receiver = new Derived();
 int result = receiver.work(); // 结果为 2；不因变量写作 Base 就调用 Base.work</code></pre>
 <p>在 JVM 字节码中，invokestatic 用于静态调用；invokevirtual / invokeinterface 支持相应动态分派；invokespecial 用于构造器及某些需特殊处理的调用。invokedynamic 通过引导方法链接调用点，不等于普通虚调用或“每次做反射”。DEX 有自己的 invoke 指令族；不能把 JVM 指令名直接当成 ART 本机入口。</p>
-<p>反射按运行时的类型 / 成员对象发起访问，MethodHandle 表达可调用目标及类型化适配。它们仍受平台访问控制约束，开销受查找、适配、缓存和编译优化影响，不能说反射永远不能优化。普通分派的调用点缓存与去虚拟化见<a href="../compiler-ir/index.html#inline-cache">IC 与类型反馈</a>。</p>
+<p>反射按运行时的类型 / 成员对象发起访问，MethodHandle 表达可调用目标及类型化适配。它们仍受平台访问控制约束，开销受查找、适配、缓存和编译优化影响，不能说反射永远不能优化。普通分派的调用点缓存与去虚拟化见<a href="#inline-cache">IC 与类型反馈</a>。</p>
 <h4 id="managed-exceptions">Java throw 怎样找到处理器</h4>
 <ol><li>在当前方法中，根据抛出位置和异常类型寻找适用处理器；JVM 的 Code 异常表描述受保护范围与处理目标。</li><li>找到时转到处理器所需状态；JVM 的处理器入口操作数栈中放异常对象引用，DEX 使用自己的处理器与 move-exception 约定。</li><li>当前帧无匹配处理器时向调用者传播；解释器和编译代码必须维持一致的语言行为。finally、资源关闭及同步释放由相应控制流与运行时协议实现。</li></ol>
 <p>机器帧可因内联少于逻辑调用层数，编译元数据仍须支持定位处理器。Java 异常不直接等于 C++ 的 __cxa_throw；JNI 待处理异常也不是自动在每次 native 指令后展开 C++ 栈。平台边界见<a href="../jni-references/index.html#pending-exceptions">JNI 异常清理</a>。</p>

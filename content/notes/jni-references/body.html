@@ -32,7 +32,7 @@ JNI_OnLoad(JavaVM* vm, void*) {
 }</code></pre>
 <p>本例的 <code>JNI_OnLoad</code> 按约定符号名发现，C++ 中的 <code>extern "C"</code> 明示 C 语言链接，<code>JNIEXPORT</code> 则处理相应平台的导出可见性，两者职责不同。<code>answer</code> 由 RegisterNatives 通过函数地址绑定，无需为了名称查找加 extern "C" 或导出，但签名和调用约定仍须匹配；普通 extern 与语言链接的规则见<a href="../cpp-interview-roadmap/index.html#language-linkage">C++ 核心知识</a>。</p>
 <p>Android 的 JNI_OnLoad 有加载该库的类加载器上下文；自行 attach 的 native 工作线程若没有应用 Java 调用栈，FindClass 可能走不含应用类的系统查找路径。症状是 Java 调用路径查类成功、工作线程查应用类失败。先记录调用上下文和待处理异常，不要靠反复 attach 解决。</p>
-<p>常见设计是在适当的初始化上下文取得类并保存 global reference，或显式传入需要的 Class / 加载器；使用已保存的类时仍要用当前线程 JNIEnv。类身份与委派见<a href="../managed-runtime/index.html#class-loading">共同基础</a>。</p>
+<p>常见设计是在适当的初始化上下文取得类并保存 global reference，或显式传入需要的 Class / 加载器；使用已保存的类时仍要用当前线程 JNIEnv。类身份与委派见<a href="../jvm-hotspot/index.html#class-loading">共同基础</a>。</p>
 </section>
 <section id="references" aria-labelledby="references-title"><h2 id="references-title">2. Local、Global 与 Weak Global</h2>
 <h3 id="reference-kinds">2.1 引用种类与释放责任</h3>

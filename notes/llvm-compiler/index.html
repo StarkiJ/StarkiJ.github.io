@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="以 LLVM IR 为实例，理解 CFG、SSA、phi、优化 pass 和目标代码生成。">
+    <meta name="theme-color" content="#f7faf8">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="LLVM：IR、优化与代码生成 · Starki 笔记">
+    <meta property="og:description" content="以 LLVM IR 为实例，理解 CFG、SSA、phi、优化 pass 和目标代码生成。">
+    <meta property="og:url" content="https://starkij.github.io/notes/llvm-compiler/index.html">
+    <title>LLVM：IR、优化与代码生成 · Starki 笔记</title>
+    <link rel="canonical" href="https://starkij.github.io/notes/llvm-compiler/index.html">
+    <link rel="icon" href="../../images/head.jpg">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../notes.css">
+<script defer src="../note-navigation.js"></script>
+</head>
+<body class="note-page">
+    <a class="note-skip" href="#note-content">跳到正文</a>
+    <header class="site-header site-header--sticky">
+        <div class="site-header-inner">
+            <a class="brand" href="../../index.html" aria-label="Starki 主页">
+                <img src="../../images/head.jpg" alt="Starki 的头像" width="42" height="42">
+                <span>Starki</span>
+            </a>
+            <nav class="site-nav" aria-label="站点导航">
+                <a href="../../index.html#about">关于</a>
+                <a href="../../index.html#tools">工具</a>
+                <a href="../../index.html#games">游戏</a>
+                <a class="is-active" href="../index.html" aria-current="location">笔记</a>
+                <a href="https://github.com/StarkiJ" target="_blank" rel="me noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="note-shell">
+        <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><a href="../index.html#runtime">编译器与运行时</a><span aria-hidden="true">/</span><span aria-current="page">LLVM：IR、优化与代码生成</span></nav>
+        <article aria-labelledby="note-title">
+            <header class="note-header">
+                <p class="eyebrow">编译器与运行时 / 专题</p>
+                <h1 id="note-title">LLVM：IR、优化与代码生成</h1>
+                <p class="note-deck">以 LLVM IR 为实例，理解 CFG、SSA、phi、优化 pass 和目标代码生成。</p>
+                <div class="note-meta">
+                    <span>Starki</span>
+                    <!-- generated:note-dates:start -->
+<span class="note-dates"><span>发布 <time datetime="2026-09-21">2026.09.21</time></span><span>更新 <time datetime="2026-09-21">2026.09.21</time></span></span>
+<!-- generated:note-dates:end -->
+                    <span>概念 · 机制 · 经典问题</span>
+                </div>
+            </header>
+<!-- generated:reading-guide:start -->
+<aside class="note-reading-guide" aria-label="复习提示"><p><strong>复习提示</strong> 先读 CFG 与 SSA，再看 LLVM IR 约束、优化与目标降低；平台运行时实例分别阅读 ART 和 HotSpot。</p><p>相关基础：<a href="../program-execution/index.html#abi">目标机器与 ABI</a></p><nav class="note-parts" aria-label="分部直达"><a href="#compiler-foundations">IR、优化与代码生成</a><a href="#llvm-specific">LLVM 的表示、优化与目标生成</a></nav></aside>
+<!-- generated:reading-guide:end -->
+<div class="note-layout">
+<!-- generated:note-toc:start -->
+<nav class="note-toc" aria-label="文章目录"><details class="note-toc-panel" open><summary>文章目录</summary>
+<div class="note-toc-controls" hidden><button type="button" data-toc-expand>展开全部</button><button type="button" data-toc-collapse>收起小节</button></div>
+<ol>
+    <li><a href="#scope">范围与实现边界</a></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：IR、优化与代码生成"><a href="#compiler-foundations">IR、优化与代码生成</a></summary>
+        <ol>
+            <li><a href="#pipeline">编译阶段与中间表示</a></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：基本块与控制流图"><a href="#cfg">基本块与控制流图</a></summary>
+                <ol>
+                    <li><a href="#dataflow">从 CFG 计算支配与活跃性</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：SSA 与 phi"><a href="#ssa">SSA 与 phi</a></summary>
+                <ol>
+                    <li><a href="#phi-loop">循环里的 phi：静态一次定义，动态反复执行</a></li>
+                    <li><a href="#phi-and-select">phi、select 与优化收益</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：phi 消除与寄存器分配"><a href="#lowering">phi 消除与寄存器分配</a></summary>
+                <ol>
+                    <li><a href="#linear-scan">线性扫描：按活跃区间起点分配</a></li>
+                    <li><a href="#graph-coloring">图着色：不能共用寄存器的值连边</a></li>
+                    <li><a href="#instruction-selection">从值运算到目标指令</a></li>
+                    <li><a href="#register-allocation-example">跨调用活值为什么需要保存</a></li>
+                </ol>
+            </details></li>
+            <li><details class="note-toc-branch"><summary aria-label="展开或收起：优化的前提与代价"><a href="#optimization">优化的前提与代价</a></summary>
+                <ol>
+                    <li><a href="#memory-dependencies">有两个相同 load，为什么不一定能合并</a></li>
+                </ol>
+            </details></li>
+        </ol>
+    </details></li>
+    <li><details class="note-toc-branch" open><summary aria-label="展开或收起：LLVM 的表示、优化与目标生成"><a href="#llvm-specific">LLVM 的表示、优化与目标生成</a></summary>
+        <ol>
+            <li><a href="#llvm-boundary">前端、LLVM 与目标代码的职责</a></li>
+            <li><a href="#llvm-ir">阅读 LLVM IR 时检查什么</a></li>
+            <li><a href="#llvm-passes">优化 pass 与可观察结果</a></li>
+            <li><a href="#llvm-backend">从 IR 降到目标指令</a></li>
+            <li><a href="#llvm-experiment">一个可复查的 IR 对照</a></li>
+        </ol>
+    </details></li>
+    <li><a href="#related">延伸阅读</a></li>
+</ol>
+</details></nav>
+<!-- generated:note-toc:end -->
+<div class="note-body" id="note-content" tabindex="-1">
+<!-- generated:note-body:start -->
+<section id="scope" aria-labelledby="scope-title"><h2 id="scope-title">范围与实现边界</h2>
+<p>本篇用 LLVM IR 说明控制流、SSA、优化和代码生成。LLVM 专属规则以 <strong>LLVM 22.1.0</strong> 文档为参照；ART 和 HotSpot 的运行时编译分别见<a href="../art-runtime/index.html">ART</a>与<a href="../jvm-hotspot/index.html">JVM 与 HotSpot</a>。</p></section>
+<section class="note-part" id="compiler-foundations" aria-labelledby="compiler-foundations-title">
+<h2 id="compiler-foundations-title">IR、优化与代码生成</h2>
+<p class="note-reading-note">本部分主要用到<a href="../program-execution/index.html#abi">机器调用与寄存器约束</a>；CFG 与 SSA 在本部分定义，托管类加载不是通用编译原理的统一前置。</p>
+<p>先把程序表达成便于分析的控制流与数据流，再讨论变换的正确性和目标机器约束。词法、语法与语义分析在这里作为流程概览，重点是 IR、SSA 和代码生成。</p>
+<section id="pipeline" aria-labelledby="pipeline-title"><h3 id="pipeline-title">编译阶段与中间表示</h3>
+<div class="note-table-wrap" role="region" aria-label="从源码到机器码" tabindex="0"><table><caption>从源码到机器码</caption><thead><tr><th scope="col">阶段</th><th scope="col">输入 → 输出</th><th scope="col">主要任务</th></tr></thead><tbody><tr><td>词法分析</td><td>字符 → token</td><td>识别标识符、关键字、字面量等</td></tr><tr><td>语法分析</td><td>token → AST</td><td>按文法建立结构，报告语法错误</td></tr><tr><td>语义分析</td><td>AST → 带类型/绑定信息的表示</td><td>名字查找、类型检查、作用域与转换</td></tr><tr><td>IR 生成与优化</td><td>高层结构 → 中间表示</td><td>显式表达控制流、数据依赖与内存操作</td></tr><tr><td>代码生成</td><td>IR → 目标指令</td><td>指令选择、寄存器分配、调度与目标约束</td></tr><tr><td>汇编与链接</td><td>汇编/目标文件 → 可执行程序或库</td><td>编码指令、解析符号与重定位</td></tr></tbody></table></div>
+<p><strong>AST</strong>保留源程序语法结构；<strong>IR</strong>为分析和变换提供规则更统一的表示。同一编译器可以有多层 IR，从接近语言语义逐步降低到机器指令。汇编器主要完成目标指令编码；解释器直接执行某种表示的语义，不必先生成本机代码。</p>
+<p>record/结构体需要字段类型、偏移、大小与对齐规则；类继承还涉及基类子对象、访问与动态分派。先确定语言语义，再按 ABI 降低到布局和地址操作，不能仅把每个字段按字节相加。</p>
+</section>
+<section id="cfg" aria-labelledby="cfg-title"><h3 id="cfg-title">基本块与控制流图</h3>
+<p><strong>基本块</strong>是一段从入口顺序执行到结尾转移的指令序列；中间没有控制流跳入。<strong>CFG</strong>以基本块为节点，以可能的控制流转移为边。</p>
+<ol><li>在线性三地址码中，把第一条指令、跳转目标和转移指令后的新指令标为块首。</li><li>相邻块首之间构成基本块；以跳转、条件分支、返回等确定终结。</li><li>按各终结指令建立后继边，构造前驱列表；异常控制流也要按 IR 模型纳入。</li></ol>
+<p>条件分支通常有两个后继，返回没有普通后继。不能仅按花括号切块：短路逻辑、循环与异常处理都可能产生额外边。</p>
+<h4 id="dataflow">从 CFG 计算支配与活跃性</h4>
+<p>对可达块，入口只被自己支配；其他块的支配集合可初始化为全部可达块，再反复计算 <code>Dom(B) = {B} ∪ ∩ Dom(P)</code>，P 为 B 的前驱，直到不再变化。菱形 CFG 的两条分支互不支配，合并块的共同支配者可以只有入口与自己。</p>
+<pre tabindex="0"><code class="language-text">entry → left  → merge
+      → right → merge
+
+Dom(left)  = {entry, left}
+Dom(right) = {entry, right}
+Dom(merge) = {entry, merge}
+
+源变量 v 分别在 left / right 定义，merge 使用：
+  需要把各路径值汇合，后面的 SSA 例子用 phi 表达。</code></pre>
+<p><strong>活跃性</strong>问的是“这个值以后是否还会在被覆盖前使用”。在非 SSA 的块级模型中，可迭代计算 <code>OUT[B] = ∪ IN[S]</code>、<code>IN[B] = USE[B] ∪ (OUT[B] − DEF[B])</code>；USE 指块内先使用后定义的值，S 为后继。SSA 的 phi 输入使用发生在前驱边上，不能把所有输入都当作合并块同时需要的普通使用。</p>
+<p>支配帮助判断某定义是否覆盖所有到达路径；活跃性帮助决定哪些值必须保留、哪些值能共用寄存器。两种分析都不直接证明内存没有别名。</p>
+</section>
+<section id="ssa" aria-labelledby="ssa-title"><h3 id="ssa-title">SSA 与 phi</h3>
+<p><strong>SSA（静态单赋值）</strong>要求每个 SSA 值只有一个定义。源变量反复赋值时使用不同版本；控制流合并处用 phi 根据实际前驱选择对应版本。它不是同时执行所有分支，也不是求平均。</p>
+<pre tabindex="0"><code class="language-llvm">define i32 @choose(i1 %cond, i32 %x) {
+entry:
+  br i1 %cond, label %yes, label %no
+yes:
+  %a = add i32 %x, 1
+  br label %merge
+no:
+  %b = sub i32 %x, 1
+  br label %merge
+merge:
+  %result = phi i32 [ %a, %yes ], [ %b, %no ]
+  ret i32 %result
+}</code></pre>
+<p><strong>支配：</strong>从入口到 B 的每条路径都经过 A，则 A 支配 B。支配边界描述某定义可能与其他路径定义相遇的合并位置。经典 SSA 构建先计算支配关系，在迭代支配边界放置 phi，再沿支配树用版本栈重命名定义与使用；可结合活跃性省掉无用 phi。</p>
+<details class="note-review-question"><summary>经典问题：SSA 是否表示内存永远只写一次？</summary>
+<p>不是。SSA 约束 IR 值名的定义；store 仍可反复修改内存。对内存的依赖分析需别名分析或 MemorySSA 等额外表示，不能把不同 load 的结果直接视为恒等。</p>
+</details>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/LangRef.html#phi-instruction" target="_blank" rel="noreferrer">LLVM phi 语义</a> · <a href="https://releases.llvm.org/22.1.0/docs/MemorySSA.html" target="_blank" rel="noreferrer">LLVM MemorySSA</a>。</p>
+<h4 id="phi-loop">循环里的 phi：静态一次定义，动态反复执行</h4>
+<p>循环头有入口边和回边，phi 合并初始值与上一轮结果。以下函数累加 <code>0..n-1</code>，演示 phi 的控制流语义；示例输入前提为 n 非负且数学结果能放入有符号 i32。这是便于演算的数值范围，不是 ABI 调用约定；代码中的普通 add 未附加 nsw / nuw，溢出时按位宽回绕。</p><pre tabindex="0"><code class="language-llvm">define i32 @sum_to(i32 %n) {
+entry:
+  br label %loop
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %body ]
+  %sum = phi i32 [ 0, %entry ], [ %updated, %body ]
+  %more = icmp slt i32 %i, %n
+  br i1 %more, label %body, label %exit
+body:
+  %updated = add i32 %sum, %i
+  %next = add i32 %i, 1
+  br label %loop
+exit:
+  ret i32 %sum
+}</code></pre><p>n=3 时，进入循环头的 <code>(i, sum)</code> 依次为 <code>(0,0) → (1,0) → (2,1) → (3,3)</code>，最后返回 3。<code>%i</code> 只有一处静态定义，但该定义可以动态执行多次；“循环变量会变化，所以不能是 SSA”混淆了静态程序与动态执行。</p>
+<p>在 LLVM IR 中，phi 必须集中在基本块开头，输入成对标明值与前驱；输入值的使用发生在对应边上。因此 <code>%updated</code> 只需在 body→loop 的边上可用，不需要在 entry→loop 的边上也有定义。同一块的多个 phi 同时选择对应边的输入。</p>
+<h4 id="phi-and-select">phi、select 与优化收益</h4>
+<p>phi 按<strong>实际进入的前驱</strong>选值；select 按<strong>显式布尔条件</strong>从已可用的操作数中选值。把分支改成 select 时，不能随便把原本只在一个分支执行的可能抛异常、越界或有副作用的计算提升到公共路径。phi 通常在后端转成边上的复制或经寄存器合并消失，不要求 CPU 有名为 phi 的指令。</p>
+<p>SSA 使定义—使用关系明确：沿值的唯一来源做常量传播，按使用关系删除死值，检查支配与别名后复用计算。它不会自动解决别名、内存依赖或正确性问题；“SSA 就等于更少寄存器”也不成立，寄存器压力还要看活跃区间。</p><details class="note-review-question"><summary>面试追问：面试要求手工构建 SSA，按什么顺序？</summary><p>先画 CFG 并标入口、回边与合并块；算支配关系，在需要汇合多个定义的迭代支配边界放 phi；沿支配树重命名定义与使用，给每条前驱边填入对应版本；最后去掉无用或输入相同的 phi。循环头的回边输入不要漏填。</p></details>
+<p>ART 的图表示见<a href="../art-runtime/index.html#hgraph">HGraph 实例</a>。</p>
+</section>
+<section id="lowering" aria-labelledby="lowering-title"><h3 id="lowering-title">phi 消除与寄存器分配</h3>
+<p>降低 SSA 时，可把 <code>v = phi(a from A, b from B)</code> 变成在边 A→合并块上执行 v←a、边 B→合并块上执行 v←b。若前驱有多个后继而目标有多个前驱，直接把复制放任一块可能在错误路径执行，应按需要拆分临界边。</p>
+<p>同一条边上的多项复制具有并行语义。交换 a、b 不能依次执行 a←b、b←a，否则第二步读到已覆盖值；可用临时 t：t←a、a←b、b←t。寄存器合并可以消掉一部分复制。</p>
+<p><strong>虚拟寄存器</strong>是编译器表示中的值位置，不受硬件寄存器数量直接限制。分配器按活跃区间与干涉关系映射到物理寄存器；位置不足时 spill 到栈并插入 load/store。调用约定、寄存器类别和保存成本也属于约束。</p>
+<h4 id="linear-scan">线性扫描：按活跃区间起点分配</h4>
+<p>经典 linear scan 把程序位置线性编号，按区间起点遍历，维护按结束位置排列的 active 集合。处理新区间前释放已结束区间的寄存器；有空位就分配，没有空位则选择 spill。下面采用“比较结束位置，优先移出结束最晚的区间”的教学策略；真实实现可按使用位置拆分区间、处理空洞并估算溢出成本。</p>
+<pre tabindex="0"><code class="language-text">两个同类寄存器 R1、R2；半开区间 [start, end)：
+a = [0, 8)    b = [1, 3)    c = [2, 6)    d = [6, 9)
+位置 2 同时活跃 a、b、c，两个寄存器无法容纳三个值。
+位置 6 的 c 已结束，因此 c 与 d 不干涉。</code></pre>
+<div class="note-table-wrap" role="region" aria-label="线性扫描手工分配" tabindex="0"><table><caption>按起点扫描与选择溢出</caption><thead><tr><th scope="col">到达位置</th><th scope="col">处理</th><th scope="col">分配后状态</th></tr></thead><tbody>
+<tr><td>0：a 开始</td><td>取空闲 R1</td><td>a→R1</td></tr>
+<tr><td>1：b 开始</td><td>取空闲 R2</td><td>a→R1，b→R2</td></tr>
+<tr><td>2：c 开始</td><td>a 在 8 结束，比 c 的 6 更晚；选择 a 溢出</td><td>c→R1，b→R2；a 的值须保存到栈</td></tr>
+<tr><td>6：d 开始</td><td>b、c 已结束，释放其寄存器</td><td>d 可取 R1；a 后续使用需 reload</td></tr>
+</tbody></table></div>
+<p>这个表是在手算<strong>区间的分配决定</strong>。实际生成代码时要在覆盖寄存器前保存仍需使用的值，并在使用前重载；重载产生的短临时区间也要满足指令约束。分裂区间的实现可保留 a 的前段寄存器位置，整段溢出的简化实现则重写其定义与使用；不能只把分配表中的 a 改成“栈”就认为机器码已经正确。</p>
+<p class="note-source">参考：<a href="https://www.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf" target="_blank" rel="noreferrer">Poletto、Sarkar：Linear Scan Register Allocation</a>。</p>
+<h4 id="graph-coloring">图着色：不能共用寄存器的值连边</h4>
+<p>干涉图的节点代表待分配的值，边表示两值不能占用同一个寄存器。用 K 个颜色代表 K 个可用同类寄存器：相邻节点必须不同色。对上面的区间，边为 <code>a—b、a—c、a—d、b—c</code>；其中 a、b、c 构成三角形，所以 K=2 时不可能全部留在寄存器中。</p>
+<ol><li><strong>Simplify：</strong>反复删除度数小于 K 的节点并压栈。先删 d，它只有邻居 a。</li><li><strong>选择候选：</strong>剩余三角形没有度数小于 2 的节点。为与前例对照，这里选 a 为潜在 spill 候选，暂时移除；真实选择还应看使用频率、循环和代价。</li><li><strong>继续简化：</strong>剩下 b—c，可依次压栈 b、c。</li><li><strong>Select：</strong>逆序恢复：给 c 分 R1，b 分 R2；恢复 a 时两个颜色都被邻居占用，确实需要 spill。d 恢复后可分 R1。</li><li><strong>重写与重试：</strong>为 a 加入必要的栈存取，重新分析新增短区间与干涉，再完成分配。</li></ol>
+<p>“度数大于等于 K”本身不证明必须 spill：某些图仍可着色，乐观着色允许候选在恢复时找到颜色。本例必须溢出的证据是三角形需要三个颜色。复制合并还能减少 move，但若合并引入过多干涉，也可能增加溢出；实际算法要处理预着色寄存器、寄存器类别及目标指令限制。</p>
+<p>线性扫描通常较容易控制编译开销，图着色显式处理全局干涉；不能把名称直接等同于“一个总快、另一个生成代码总好”。具体后端如何选择分配器，须看目标与配置。</p>
+<p class="note-source">参考：<a href="https://www.cs.princeton.edu/~appel/modern/text/color1.html" target="_blank" rel="noreferrer">Appel：带预着色节点的分配示例</a>。</p>
+<details class="note-review-question"><summary>经典问题：把所有 phi 换成合并块开头的普通 move 可以吗？</summary>
+<p>不可以。合并块必须知道来自哪个前驱才能选择输入；无条件顺序执行所有 move 会取错值。复制必须放到对应路径，并处理并行复制冲突。</p>
+</details>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/CodeGenerator.html" target="_blank" rel="noreferrer">LLVM 代码生成</a>。</p>
+<h4 id="instruction-selection">从值运算到目标指令</h4>
+<p>目标 lowering 还要处理硬件支持的类型、指令寻址和调用约束，之后才能分配寄存器、安排指令顺序。调度可重排独立工作以隐藏延迟，但必须保留数据依赖、内存顺序与必要的异常语义。</p>
+<pre tabindex="0"><code class="language-text">Java：static int tripleSum(int a, int b) { return (a + b) * 3; }
+
+等价的 i32 值运算（不附加“不会溢出”的标记）：
+  t = add a, b
+  r = mul t, 3
+  return r
+
+一种按基础 AAPCS64 传参的 AArch64 运算示例：
+  add w0, w0, w1
+  add w0, w0, w0, lsl #1
+  ret</code></pre>
+<p>第二条指令把 t 与 2t 相加；这里都保留低 32 位，符合该 Java int 运算的回绕语义。本示例另约定按基础 AAPCS64 在 w0/w1 接收 a/b，并从 w0 返回结果；它展示运算如何降低到机器指令，不代表 HotSpot 或 ART 实际编译该 Java 方法时使用这套入口。VM 的托管调用约定与 native ABI 需要通过适配代码衔接。</p>
+<p>a 最后一次使用后 w0 可承载 t，再承载返回值。指令选择消除了显式乘法，不代表所有处理器上它一定更快；这里只验证运算语义与所指定的位置安排。</p>
+<p class="note-source">参考：<a href="https://raw.githubusercontent.com/openjdk/jdk/jdk-21%2B35/src/hotspot/cpu/aarch64/sharedRuntime_aarch64.cpp" target="_blank" rel="noreferrer">JDK 21 AArch64：Java 与 C 调用约定及适配</a>。</p>
+<h4 id="register-allocation-example">跨调用活值为什么需要保存</h4>
+<pre tabindex="0"><code class="language-text">概念 IR：
+  t = a + b
+  r = call opaque()
+  return t + r
+
+一种 AAPCS64 保存方案（省略展开指令等汇编元数据）：
+  stp x19, x30, [sp, #-16]!
+  add w19, w0, w1
+  bl opaque
+  add w0, w19, w0
+  ldp x19, x30, [sp], #16
+  ret</code></pre>
+<p>t 跨调用仍活跃，不能只留在允许 opaque 覆盖的 w9。这里让 w19 保存 t，同时保留调用者原来的 x19 与返回位置，栈仍满足对齐。也可选择 spill 槽，在调用后 reload；寄存器不足时要综合活跃区间、寄存器类别、调用频率和保存成本。spill 是值的位置变化，不是创建新的语言层对象。</p>
+</section>
+<section id="optimization" aria-labelledby="optimization-title"><h3 id="optimization-title">优化的前提与代价</h3>
+<div class="note-table-wrap" role="region" aria-label="常见优化" tabindex="0"><table><caption>常见优化</caption><thead><tr><th scope="col">优化</th><th scope="col">变换</th><th scope="col">必须确认的前提</th></tr></thead><tbody><tr><td>常量传播 / 折叠</td><td>用已知值替代计算</td><td>值确实确定，遵守目标语义与溢出规则</td></tr><tr><td>死代码删除</td><td>删除不影响可观察行为的计算</td><td>无需要保留的副作用、异常或 volatile 访问</td></tr><tr><td>公共子表达式消除</td><td>复用已有计算结果</td><td>操作数相同，相关内存未被可能的别名写入改变</td></tr><tr><td>循环不变量外提</td><td>把不随迭代变化的计算移到循环外</td><td>依赖、异常与执行条件允许移动</td></tr><tr><td>内联 / 去虚拟化</td><td>展开调用或确定调用目标</td><td>目标可确定，收益超过代码膨胀与编译成本</td></tr><tr><td>向量化</td><td>一次处理多个数据元素</td><td>依赖、别名、对齐与浮点语义允许</td></tr></tbody></table></div>
+<p>优化后的快慢需结合真实输入与热点衡量。浮点结合律通常不能像实数一样任意重排；C++ UB 也会影响编译器可以采用的推理，不能用“硬件会回绕”代替语言规则。</p>
+<h4 id="memory-dependencies">有两个相同 load，为什么不一定能合并</h4>
+<pre tabindex="0"><code class="language-text">前提：p / q 有效，访问普通非 volatile 内存
+a = load p
+store q, 9
+b = load p
+return a + b</code></pre>
+<p>若 p 与 q 指向同一位置，第二次读取应看见 9；把 b 无条件替换成 a 会改变结果。只有证明写入不影响 p、没有其他相关干扰等条件，才可能复用。MemorySSA 用 MemoryDef、MemoryUse、MemoryPhi 表达内存依赖候选关系；结合别名分析查可能覆盖的写入，不是把每个内存字节变成永不修改的 SSA 变量。</p>
+<p>类似地，循环不变量外提不仅看操作数不变。循环可能执行零次时，把原本位于循环里的可能故障的 load 或有副作用的调用移到入口，可能凭空增加一次访问。需要证明可安全提前执行，或保留必要的执行条件。</p>
+
+</section>
+</section>
+<section class="note-part" id="llvm-specific" aria-labelledby="llvm-specific-title">
+<h2 id="llvm-specific-title">LLVM 的表示、优化与目标生成</h2>
+<section id="llvm-boundary" aria-labelledby="llvm-boundary-title"><h3 id="llvm-boundary-title">前端、LLVM 与目标代码的职责</h3>
+<p>Clang 等前端处理源语言语法与语义，产生 LLVM IR；LLVM 的优化与目标生成组件处理 IR 并生成目标代码。前端须把语言规则正确表达在 IR 中，后续变换也必须遵守 IR 的语义。ART HGraph 和 HotSpot C1/C2 各有自己的表示与实现，不能因都使用 SSA 就视作 LLVM IR。</p></section>
+<section id="llvm-ir" aria-labelledby="llvm-ir-title"><h3 id="llvm-ir-title">阅读 LLVM IR 时检查什么</h3>
+<p>先看函数签名、类型、基本块和终结指令，再沿定义—使用关系追踪 SSA 值。<code>phi</code> 按实际前驱边选择值；<code>load</code>、<code>store</code> 与调用还涉及内存效果，单靠 SSA 值名不能证明两次访问等价。整数运算的溢出标志、指针与别名约束会影响允许的优化；示例须注明输入前提。</p>
+<p>一个 module 可以含函数、全局对象和目标信息；函数内的基本块以分支、返回等终结指令结束。<code>i32</code> 表示 32 位整数，<code>ptr</code> 表示不在指针类型中编码被指对象类型的指针；访问时仍要根据 <code>load</code>、<code>store</code> 等指令指定操作类型。IR 的文本形式便于阅读，二进制 bitcode 则是另一种序列化形式。</p>
+<p>普通 <code>add i32</code> 按位宽计算；加上 <code>nsw</code> 会把有符号溢出纳入更强的语义约束。优化器不能仅因为“数学上应该不溢出”就自行假定该标志。<code>poison</code> 等值的传播与使用也有规则，不能把所有未定义情况简化为一个任意整数。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/LangRef.html" target="_blank" rel="noreferrer">LLVM 22.1.0 IR 语义</a> · <a href="https://releases.llvm.org/22.1.0/docs/MemorySSA.html" target="_blank" rel="noreferrer">MemorySSA</a>。</p></section>
+<section id="llvm-passes" aria-labelledby="llvm-passes-title"><h3 id="llvm-passes-title">优化 pass 与可观察结果</h3>
+<p>一个 pass 可分析或变换 IR，例如传播常量、删除无用计算、整理控制流或循环。变换结果受目标信息、优化级别、pass 顺序以及程序可证明的语义约束影响。检查优化前后的 IR，并核对函数行为和前提，比背诵某优化级别必然产生哪条指令更可靠。</p>
+<p>Pass 可以按 module、函数、循环等处理单位组织。分析结果如支配树可以供变换使用；改变控制流后，pass 须报告哪些分析仍有效，让管理器重新计算失效结果。LLVM 22.1.0 的中端流水线使用新 pass manager，目标代码生成仍有自己的管理机制；两者不能仅因都叫 pass 就当成相同的执行层。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/NewPassManager.html" target="_blank" rel="noreferrer">LLVM 22.1.0 New Pass Manager</a>。</p></section>
+<section id="llvm-backend" aria-labelledby="llvm-backend-title"><h3 id="llvm-backend-title">从 IR 降到目标指令</h3>
+<p>目标生成需要把 IR 操作映射到目标支持的指令与调用约定，处理合法化、指令选择、寄存器分配及机器级安排。源级变量、IR 值和物理寄存器不存在固定的一对一关系；最终汇编仍需结合目标架构和 ABI 阅读。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/CodeGenerator.html" target="_blank" rel="noreferrer">LLVM 22.1.0 代码生成</a>。</p></section>
+<section id="llvm-experiment" aria-labelledby="llvm-experiment-title"><h3 id="llvm-experiment-title">一个可复查的 IR 对照</h3>
+<p>下载与前文 <a href="#ssa">choose 与 sum_to</a> 一致的 <a href="ir-examples.ll" download>IR 示例文件</a>，安装 LLVM 22.1.0 后在文件所在目录运行：</p>
+<pre tabindex="0"><code class="language-text">llvm-as ir-examples.ll -o ir-examples.bc
+opt -S -passes=instcombine ir-examples.bc -o ir-examples.opt.ll
+llc -mtriple=x86_64-pc-linux-gnu ir-examples.opt.ll -o ir-examples.s</code></pre>
+<p>对照原始 <code>.ll</code>、优化后的 <code>.opt.ll</code> 与目标汇编 <code>.s</code>，观察合并块的 <code>phi</code> 在 IR 优化或目标生成中如何处理。记录工具版本、目标三元组和 pass 设置；输出取决于目标和流水线，本篇不预设某条固定汇编指令。</p>
+<p><code>llvm-as</code> 负责文本 IR 到 bitcode；<code>opt</code> 运行 IR 分析和优化；<code>llc</code> 将 IR 或 bitcode 编译为目标汇编。三者回答的问题不同，目标汇编还需要汇编、链接等步骤才能形成可执行程序。</p>
+<p class="note-source">参考：<a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/llvm-as.html" target="_blank" rel="noreferrer">llvm-as</a> · <a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/opt.html" target="_blank" rel="noreferrer">opt</a> · <a href="https://releases.llvm.org/22.1.0/docs/CommandGuide/llc.html" target="_blank" rel="noreferrer">llc</a>。</p></section>
+</section>
+<section id="related" aria-labelledby="related-title"><h2 id="related-title">延伸阅读</h2>
+<p><a href="../program-execution/index.html#abi">机器调用与 ABI</a> · <a href="../art-runtime/index.html#hgraph">ART HGraph</a> · <a href="../jvm-hotspot/index.html#hotspot-tiers">HotSpot C1/C2</a></p></section>
+<!-- generated:note-body:end -->
+</div></div></article><p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main><footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

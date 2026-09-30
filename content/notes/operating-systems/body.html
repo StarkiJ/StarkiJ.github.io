@@ -110,7 +110,7 @@ munmap(p, 2 * page_size)  → 解除映射，所有旧地址别名停止使用</
 <details class="note-review-question"><summary>经典问题：两个线程分别先锁 A/B，再锁 B/A，为什么会卡住？</summary>
 <p>它们可能各持有一把锁并等待对方形成环。统一先 A 后 B，或使用适用的多锁协调接口破坏循环等待；不要在持锁时等待必须由另一持锁线程推进的任务。</p>
 </details>
-<p>本节解释等待与唤醒机制；C++ 中如何使用锁、条件变量及内存序，见<a href="../cpp-interview-roadmap/index.html#concurrency">并发与同步</a>；Java 的共享状态规则见<a href="../managed-runtime/index.html#java-memory-model">JMM 与 monitor</a>。</p>
+<p>本节解释等待与唤醒机制；C++ 中如何使用锁、条件变量及内存序，见<a href="../cpp-interview-roadmap/index.html#concurrency">并发与同步</a>；Java 的共享状态规则见<a href="../jvm-hotspot/index.html#java-memory-model">JMM 与 monitor</a>。</p>
 <p class="note-source">参考：<a href="https://man7.org/linux/man-pages/man2/futex.2.html" target="_blank" rel="noreferrer">futex 机制</a>。</p>
 </section>
 <section id="signals" aria-labelledby="signals-title"><h2 id="signals-title">6. 异常、信号与故障</h2>

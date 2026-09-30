@@ -1,0 +1,6 @@
+<section class="note-part" id="dex-model" aria-labelledby="dex-model-title">
+<h2 id="dex-model-title">DEX 与 ART 的运行时模型</h2>
+<p>JVM class 文件的方法使用局部变量槽和操作数栈；DEX 方法使用虚拟寄存器，并以类型、字段、方法等索引组织程序信息。虚拟寄存器是字节码层的位置，编译后仍须映射到机器寄存器或栈槽。两种表示都需要运行时类型信息、方法帧和异常处理状态。对照示例见<a href="../jvm-hotspot/index.html#stack-vs-registers">同一次加法的两种表示</a>。</p>
+<p>ART 加载与解析 DEX 中的类型，类身份仍与定义它的加载器有关。Android 常见 BootClassLoader、PathClassLoader、DexClassLoader；JNI 的 FindClass 还受调用上下文影响。Java 的类初始化与同步语义见<a href="../jvm-hotspot/index.html#class-initialization">JVM 章节</a>，ART 的类加载器上下文对编译产物的影响见<a href="#artifact-validity">产物有效性</a>。</p>
+<p class="note-source">参考：<a href="https://source.android.com/docs/core/runtime/dex-format" target="_blank" rel="noreferrer">DEX 格式</a> · <a href="https://source.android.com/docs/core/runtime/dalvik-bytecode" target="_blank" rel="noreferrer">DEX 指令</a> · <a href="https://developer.android.com/reference/dalvik/system/PathClassLoader" target="_blank" rel="noreferrer">PathClassLoader</a>。</p>
+</section>

@@ -14,13 +14,16 @@ const relocations = content.noteRelocations || [];
 const relocationBySlug = new Map(relocations.map(item => [item.slug, item]));
 if (relocationBySlug.size !== relocations.length) throw new Error("Duplicate relocated note slug");
 for (const item of relocations) {
-    if (!/^[a-z0-9-]+$/.test(item.slug) || noteBySlug.has(item.slug) || !noteBySlug.has(item.target) || !item.title || !item.sections?.length) {
+    if (!/^[a-z0-9-]+$/.test(item.slug) || noteBySlug.has(item.slug) ||
+        (item.target && !noteBySlug.has(item.target)) || !item.title || !item.sections?.length) {
         throw new Error(`Invalid note relocation: ${item.slug}`);
     }
     if (!files.includes(path.join(workspace, "notes", item.slug, "index.html"))) throw new Error(`Missing relocation page: ${item.slug}`);
     const anchors = new Set();
     for (const section of item.sections) {
-        if (!section.label || !/^[a-z0-9-]+$/.test(section.anchor) || !/^[a-z0-9-]+$/.test(section.targetAnchor) || anchors.has(section.anchor)) {
+        if (!section.label || !/^[a-z0-9-]+$/.test(section.anchor) ||
+            !/^[a-z0-9-]+$/.test(section.targetAnchor) ||
+            !noteBySlug.has(section.target || item.target) || anchors.has(section.anchor)) {
             throw new Error(`Invalid relocation section in ${item.slug}`);
         }
         anchors.add(section.anchor);
@@ -167,18 +170,20 @@ function readingGuide(file, note) {
 }
 
 function relocationPage(file, item) {
-    const destination = noteBySlug.get(item.target);
-    const canonical = `${content.origin}/notes/${item.target}/index.html`;
-    const title = `${item.title} · 内容已整合`;
+    const destinations = new Set(item.sections.map(section => section.target || item.target));
+    const singleTarget = destinations.size === 1 ? [...destinations][0] : null;
+    const destination = singleTarget && noteBySlug.get(singleTarget);
+    const canonical = singleTarget ? `<link rel="canonical" href="${attr(`${content.origin}/notes/${singleTarget}/index.html`)}">` : "";
+    const title = `${item.title} · 内容已迁移`;
     const sections = item.sections.map(section => `<section id="${attr(section.anchor)}" aria-labelledby="${attr(section.anchor)}-title">
 <h2 id="${attr(section.anchor)}-title">${text(section.label)}</h2>
-<p>${noteLink(file, { slug: item.target, anchor: section.targetAnchor, label: `阅读：${section.label}` })}</p>
+<p>${noteLink(file, { slug: section.target || item.target, anchor: section.targetAnchor, label: `阅读：${section.label}` })}</p>
 </section>`).join("\n");
     return `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex,follow"><meta name="description" content="${attr(item.title)}已整合至${attr(destination.title)}，可按原章节继续阅读。">
+<meta name="robots" content="noindex,follow"><meta name="description" content="${attr(item.title)}已迁移，可按原章节继续阅读。">
 <meta name="theme-color" content="#f7faf8"><title>${text(title)}</title>
-<link rel="canonical" href="${attr(canonical)}"><link rel="icon" href="../../images/head.jpg">
+${canonical}<link rel="icon" href="../../images/head.jpg">
 <link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../notes.css"></head>
 <body class="note-page"><a class="note-skip" href="#note-content">跳到正文</a>
 <header class="site-header site-header--sticky"><div class="site-header-inner">
@@ -187,7 +192,7 @@ ${navigation(file, "")}</div></header>
 <main class="note-shell" id="note-content" tabindex="-1">
 <nav class="note-breadcrumb" aria-label="面包屑导航"><a href="../../index.html">主页</a><span aria-hidden="true">/</span><a href="../index.html">笔记</a><span aria-hidden="true">/</span><span aria-current="page">内容已整合</span></nav>
 <header class="note-header"><p class="eyebrow">章节迁移</p><h1 id="note-title">${text(item.title)}</h1>
-<p class="note-deck">本篇已整合至${noteLink(file, { slug: item.target, label: destination.title })}。公共基础统一讲解，HotSpot 与 ART 的实现放在对应章节。</p></header>
+<p class="note-deck">${destination ? `本篇已迁移至${noteLink(file, { slug: singleTarget, label: destination.title })}。` : "本篇内容已按主题迁移至新笔记。"}可按原章节继续阅读。</p></header>
 <div class="note-body">${sections}</div>
 <p class="note-end"><a class="back-link" href="../index.html">← 返回笔记</a></p></main>
 <footer class="site-footer"><p>Made by Starki.</p></footer></body></html>

@@ -1,100 +1,11 @@
 <section class="note-part" id="gc-implementations" aria-labelledby="gc-implementations-title">
-<h2 id="gc-implementations-title">三、实现实例与内存排查</h2>
-<p class="note-reading-note">本部分对照固定版本的收集器实现；类与执行状态的语义见<a href="../managed-runtime/index.html#runtime-cooperation">托管运行时协作</a>，地址映射复用操作系统篇。</p>
-
-<section id="hotspot-g1" aria-labelledby="hotspot-g1-title">
-<h3 id="hotspot-g1-title">11. HotSpot G1 的区域与回收周期</h3>
-<h4 id="g1-regions">区域角色与回收集合</h4>
-<p>以 <strong>JDK 21 HotSpot G1</strong>为例，堆由等大的 region 组成，分别承担 Eden、Survivor、Old 或空闲空间等角色。一次暂停选定的回收集合称为 collection set；记忆集帮助找到集合外的入边，疏散把集合中的活对象复制到目标区域。区域属于某一代，不要求整代在地址上连续。</p>
-<p>大对象可走 Humongous 区域路径，在老年代取得连续的 region。此时即使总空闲量不少，也可能受连续区域不足与末尾浪费影响。不能把“G1 按 region 管理”理解为任何对象都可以拆开塞进任意空闲小块。</p>
-<h4 id="g1-cycle">把标记、屏障与疏散连成一轮</h4>
-<ol>
-<li><strong>年轻代收集：</strong>Normal Young 暂停回收年轻区域，复制存活对象并按策略晋升，老年代占用逐步变化。</li>
-<li><strong>Concurrent Start：</strong>达到并发周期的启动条件后，在一次年轻代暂停中启动标记工作。</li>
-<li><strong>并发标记：</strong>与应用一起运行，使用前文的 SATB 机制保留起始存活信息；期间仍可能发生普通年轻代暂停。</li>
-<li><strong>Remark / Cleanup：</strong>用暂停完成标记收敛和相关处理，并确定后续区域回收所需状态；二者之间还有并发工作，不能把整段统称为一次暂停。</li>
-<li><strong>混合收集：</strong>进入空间回收阶段后，在多次 Mixed 暂停中回收年轻区域及选定的老年代区域，随后回到以年轻代收集为主的阶段。</li>
-</ol>
-<p>这是常见周期主线，具体执行可因回收收益等条件跳过后续工作。<strong>并发标记判断哪些对象需要保留；Young / Mixed 的对象疏散和引用更新仍在暂停内完成。</strong>SATB 与卡表屏障分别服务标记和区域引用追踪，不能互相替代。</p>
-<p>若疏散目标空间不足，会出现 evacuation failure；若后续分配与回收仍无法维持运行，可能退回 Full GC，仍不足才可能报告 OOM。一次疏散失败不等于立刻 OOM。排查时联合观察老年代增长、Humongous 区域、并发周期是否赶得上分配，以及各暂停阶段耗时。</p>
-<p>G1 的暂停时间是预测目标，不能保证每次都小于某个毫秒数，也不承诺固定吞吐率。固定年轻代比例可能限制它调节暂停工作量的能力；调优应从日志与负载出发。</p>
-<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html" target="_blank" rel="noreferrer">G1 区域与周期</a> · <a href="https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-garbage-collector-tuning.html" target="_blank" rel="noreferrer">G1 暂停、疏散失败与诊断</a>。</p>
-<h4 id="collector-tradeoffs">比较收集器时看哪些差异</h4>
-<div class="note-table-wrap" role="region" aria-label="收集器机制对照" tabindex="0"><table><caption>按工作安排理解收集器</caption><thead><tr><th scope="col">实例</th><th scope="col">主要安排</th><th scope="col">理解重点</th></tr></thead><tbody>
-<tr><td>HotSpot Serial / Parallel</td><td>主要收集工作在暂停中完成，分别采用单线程 / 多线程工作方式</td><td>并行能缩短部分工作耗时，但不等于与应用并发</td></tr>
-<tr><td>HotSpot G1</td><td>并发标记、暂停疏散，分批选择区域回收</td><td>暂停预测、跨区域引用、疏散预留与回收收益</td></tr>
-<tr><td>JDK 21 分代 ZGC</td><td>通过 load / store 屏障支持并发标记与重定位等工作</td><td>降低暂停需要引用访问协议，并付出 CPU、屏障和空间成本</td></tr>
-<tr><td>Android 14 ART CC</td><td>协调线程根切换后，并发复制与扫描</td><td>分配空间、读屏障及根切换协议共同保证访问正确性</td></tr>
-</tbody></table></div>
-<p>历史上的 CMS 用并发标记与清扫减少暂停，但要处理浮动垃圾、预留空间和碎片；它已在 JDK 14 移除，适合作为机制演进案例。收集器名称不能代替版本、模式和负载条件。</p>
-<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/gctuning/introduction-garbage-collection-tuning.html" target="_blank" rel="noreferrer">GC 调优与性能目标</a> · <a href="https://docs.oracle.com/en/java/javase/21/migrate/removed-tools-and-components.html" target="_blank" rel="noreferrer">CMS 移除说明</a>；分代 ZGC 的屏障见<a href="#barriers">前文实现来源</a>，ART CC 见下文。</p>
-</section>
-
-<section id="spaces" aria-labelledby="spaces-title"><h3 id="spaces-title">12. ART 的堆空间、分配与引用表示</h3>
-<p>以下空间名和引用编码来自 <strong>AOSP android-14.0.0_r1</strong>，用于具体说明托管堆如何组织分配与回收；它们不是所有 GC 的统一空间划分。</p>
-<div class="note-table-wrap" role="region" aria-label="Android 14 ART 的空间角色" tabindex="0"><table><caption>Android 14 ART 的空间角色</caption><thead><tr><th scope="col">空间</th><th scope="col">用途与机制</th></tr></thead><tbody><tr><td>RegionSpace</td><td>按区域管理对象，支持 TLAB 分配与选定区域的迁移；区域还可表达大对象及其尾部区域</td></tr><tr><td>LargeObjectSpace</td><td>专门管理符合条件的大对象；通常避免搬动大块对象，分配和回收策略不同</td></tr><tr><td>NonMovingSpace</td><td>承担要求或选择不移动的分配；不移动不等于不做可达性判断和回收</td></tr><tr><td>Image / Zygote 等空间</td><td>启动映像、预加载与共享相关，收集中的处理方式依空间属性</td></tr></tbody></table></div>
-<p>在 AOSP android-14.0.0_r1 中，<code>ShouldAllocLargeObject</code> 同时检查大小阈值，以及对象是否为原始类型数组或 String。因此“任意超过 4 KB 的对象都进入 LOS”不成立；阈值也不是所有设备固定常量。降低阈值可能减少其他空间压力，却增加独立大块分配、碎片和映射管理成本。</p>
-<p><strong>复制预留空间</strong>用于容纳迁移中的活对象。逻辑堆上限、RegionSpace 映射容量、疏散预留和实际物理占用不能互相替代；经典半空间模型的二倍存储直觉不能直接当作所有 ART 配置的固定比例。</p>
-<h4 id="space-design">为什么区分 RegionSpace 与 LargeObjectSpace</h4>
-<p>RegionSpace 让分配与回收以区域组织：线程可从区域取得 TLAB，用指针推进完成常见小对象分配；收集器按区域状态和存活情况选择迁移与复用。空闲区域易于整批回收，代价是区域管理、尾部浪费以及复制期间的目标空间需求。这里的 region 是 GC 管理单位，不是操作系统的一页。</p>
-<p>对大型数组，复制存活载荷的带宽成本可能很高；LOS 用不同的分配与回收策略，减少反复搬动大块数据的必要。它并非没有成本：仍需追踪存活和释放，可能需要映射管理或连续空闲块，也未必能靠压缩消除碎片。</p>
-<p>该版本把原始类型数组和 String 纳入候选，与其主要载荷无需按普通对象引用数组逐项扫描、以及 LOS 的卡表覆盖边界有关。不能由此推导“LOS 对象完全没有对象头引用”，也不能把对象引用数组一律送入 LOS。RegionSpace 本身仍支持大对象区域及尾部区域；<strong>对象大、RegionSpace 的大对象表示、进入独立 LOS</strong>是三个不同判断。</p>
-<p>该版本 HeapReference 内部保存 <code>Atomic&lt;uint32_t&gt;</code>，PtrCompression 负责与实际对象指针转换，并可处理引用 poisoning。它不是普通 native 指针大小，也不是 JNI jobject；扩大可寻址对象范围可能涉及引用编码、空间布局和访问路径，不能只改一个容量数字。</p>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/heap-inl.h" target="_blank" rel="noreferrer">Android 14 分配判断</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/mirror/object_reference.h" target="_blank" rel="noreferrer">HeapReference 与转换</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/space/region_space.cc" target="_blank" rel="noreferrer">RegionSpace</a>。</p>
-</section>
-<section id="art-cc" aria-labelledby="art-cc-title"><h3 id="art-cc-title">13. ART ConcurrentCopying 的阶段安排</h3>
-<p>以 <strong>AOSP android-14.0.0_r1 的 ConcurrentCopying</strong> 为具体例子，RunPhases 的主线如下。不同配置会选择不同分支，不能把 CC 概括成“全程暂停复制”。</p>
-<ol><li>InitializePhase 准备本轮状态；特定分代全堆场景先执行 MarkingPhase，计算存活情况。</li><li>启用相应读屏障入口、处理需要的卡信息，再通过 FlipThreadRoots 协调线程根与空间状态切换。</li><li>CopyingPhase 与应用并发推进：复制需迁移的活对象，扫描引用、处理标记工作；读屏障帮助访问获得正确对象。</li><li>ReclaimPhase 回收可释放区域，FinishPhase 收尾并更新统计。验证选项可能额外引入暂停。</li></ol>
-<p>这里的读屏障承担前文所述的引用访问协作职责；算法定义和 CPU 内存屏障的区别见<a href="#barriers">屏障机制</a>。具体检查、复制和标记条件须对照该版本源码。</p>
-<h4 id="cc-read-barrier">Baker 读屏障：从持有者状态取得可用引用</h4>
-<p>以此版本的 Baker 字段读路径为例，读取 <code>A.child</code> 时检查的是<strong>持有字段的 A 的读屏障状态</strong>。普通路径直接得到引用；若 A 为灰色，则进入 Mark 慢路径，必要时复制目标、查询转发结果或参与标记，返回当前可用的对象引用。根读取有自己的状态检查，不能把字段读伪代码套到所有根。</p>
-<pre tabindex="0"><code class="language-text">字段读的概念流程（省略内存序与并发发布细节）：
-  检查 holder 的读屏障状态
-  ref = holder.field
-  若 holder 为灰色：ref = Mark(ref)
-  返回 ref
-
-Mark 内部按空间、标记和转发状态处理，
-不是每次读取都复制一次，也不是每次都查全局哈希表。</code></pre>
-<p>真实实现用状态读取与引用读取间的排序协议保证正确性，部分路径还会有条件地修复原引用槽。对象搬迁前后的别名要收敛到同一权威副本；复制竞争中的发布与失败副本处理见 <code>ConcurrentCopying::Copy</code>。选用 table-lookup 读屏障时快速检查不同，不能与 Baker 条件混写。</p>
-<h4 id="cc-write-barrier">读屏障与卡表写屏障分别负责什么</h4>
-<p>CC 的读屏障参与保证当前读到的引用符合移动与标记协议；卡表写屏障记录引用图发生修改的源对象范围，供区域或代际扫描使用。例如老对象新增指向年轻对象的字段，仅让读取者取得新地址，并不能替代下一轮局部收集需要的入边记录。两者配合根切换、工作队列与终止协议，才构成完整收集器。</p>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/read_barrier-inl.h" target="_blank" rel="noreferrer">Baker、table-lookup 与根读屏障</a>。</p>
-<details class="note-review-question"><summary>经典问题：并发复制时为什么仍可能暂停？</summary>
-<p>切换线程根、同步关键状态等步骤需要与应用线程协调。大量复制可并发执行，但这不意味着无暂停；区分 GC 总耗时、暂停时长和应用受到的 CPU/屏障开销。</p>
-</details>
-<p class="note-source">参考：<a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/collector/concurrent_copying.cc" target="_blank" rel="noreferrer">Android 14 CC 源码</a> · <a href="https://source.android.com/docs/core/runtime/gc-debug" target="_blank" rel="noreferrer">ART GC 调试文档</a>。</p>
-
-</section>
-<section id="art-cmc" aria-labelledby="art-cmc-title"><h3 id="art-cmc-title">14. ART CMC：以页面访问协调并发压缩</h3>
-<p>这里的 <strong>CMC（Concurrent Mark Compact）</strong>指 <strong>AOSP android-14.0.0_r1 的 MarkCompact</strong> 实现。先标记活对象并规划压缩后的位置，再在应用运行期间逐页准备可访问的内容。移动空间来自 BumpPointerSpace；不能把 CC 的 RegionSpace 疏散过程直接改名为 CMC，也不能仅凭版本号推断某台设备实际选用它。</p>
-<h4 id="cmc-phases">从标记到压缩：哪些阶段需要协调</h4>
-<ol><li><strong>初始化与并发标记：</strong>建立本轮状态，从根追踪对象；通过卡信息等处理并发修改，并预清理待重扫范围。</li><li><strong>标记暂停：</strong>补充根与标记工作，撤销线程本地分配缓冲，建立后续新分配对象的处理边界。暂停后应用仍可继续分配，必须把这批 black allocation 纳入协议。</li><li><strong>回收与压缩准备：</strong>处理可回收的非移动空间等工作，按存活信息计算移动对象的新位置和页面处理所需元数据。</li><li><strong>压缩切换与线程根协调：</strong>更新根，安排旧内容保留和目标地址范围的映射，建立页面访问的拦截与处理条件；这一转换不能任由应用观察半完成状态。</li><li><strong>并发压缩与收尾：</strong>后台推进页面整理，按访问需要完成尚未准备的页面，更新其中的对象引用；待工作及故障处理收敛后，撤销临时状态并释放可回收资源。</li></ol>
-<p>这是源码阶段的职责概括，实际顺序以 <code>RunPhases</code>、<code>MarkingPause</code>、<code>CompactionPause</code> 和 <code>CompactionPhase</code> 为准。功能不可用时存在 fallback 分支，部分压缩工作转入暂停；“并发压缩”不承诺任何配置下都无暂停。</p>
-<h4 id="cmc-userfaultfd">userfaultfd 在 CMC 中解决什么问题</h4>
-<p><code>userfaultfd</code> 让用户态为注册的地址范围接收和处理特定类型的页故障。在常见事件处理模型中，访问线程等待；处理线程通过文件描述符取得故障地址，准备好内容后用 ioctl 让该页可访问，访问线程再继续。它不是每次内存访问都调用的系统调用，也不是简单地“所有写入都触发写保护”。</p>
-<pre tabindex="0"><code class="language-text">简化的 CMC 页面场景：
-旧内容仍可供收集器读取，根已按压缩计划调整
-  应用访问目标页 P，P 尚未准备完成
-    → 触发受管理的页故障
-    → 收集器从旧内容构造 P，调整 P 中需要更新的引用
-    → 按当前模式安装 / 放行完整的 P
-    → 应用继续访问
-  后台线程也可提前完成其他页面，避免等到访问时才处理</code></pre>
-<p>missing 模式可用 <code>UFFDIO_COPY</code> 提供内容，minor 模式可在处理已有页面后用 <code>UFFDIO_CONTINUE</code> 放行；具体支持范围取决于内核和映射类型。该 ART 分支还区分工作线程处理、SIGBUS 协作等路径，不能把上面的教学流程当成唯一实现。页故障基础复用<a href="../operating-systems/index.html#memory-access-flow">操作系统中的访存流程</a>，这里关注它如何服务对象压缩。</p>
-<p class="note-source">参考：<a href="https://docs.kernel.org/admin-guide/mm/userfaultfd.html" target="_blank" rel="noreferrer">Linux：userfaultfd 的注册、通知与页面完成</a> · <a href="https://android.googlesource.com/platform/art/+/android-14.0.0_r1/runtime/gc/collector/mark_compact.cc" target="_blank" rel="noreferrer">Android 14 MarkCompact：阶段、映射准备与并发压缩</a>。</p>
-<h4 id="cc-cmc-comparison">CC 与 CMC 的差异放在哪一层比较</h4>
-<div class="note-table-wrap" role="region" aria-label="Android 14 CC 与 CMC 比较" tabindex="0"><table><caption>相同版本中的两种移动访问协议</caption><thead><tr><th scope="col">维度</th><th scope="col">CC</th><th scope="col">CMC</th></tr></thead><tbody>
-<tr><td>组织移动</td><td>按所选区域复制存活对象，使用转发状态</td><td>先标记、计算压缩布局，再逐页构造目标内容</td></tr>
-<tr><td>应用访问的主要协作点</td><td>引用读屏障协助取得可用对象</td><td>受管理的页面访问在页面未就绪时等待或参与处理</td></tr>
-<tr><td>并发修改</td><td>仍需卡表写屏障、根切换和工作收敛</td><td>仍需卡表等标记协作、根更新与页面状态协议</td></tr>
-<tr><td>主要成本</td><td>读屏障、复制带宽、目标区域与元数据</td><td>页故障和映射操作、页面整理、旧内容与辅助映射 / 元数据</td></tr>
-<tr><td>评估条件</td><td>存活率、引用访问密度、分代与区域策略</td><td>存活分布、页面访问时序、内核能力与配置</td></tr>
-</tbody></table></div>
-<div class="note-table-wrap" role="region" aria-label="CC 与 CMC 的阶段机制" tabindex="0"><table><caption>阶段与正确性机制</caption><thead><tr><th scope="col">工作</th><th scope="col">CC 中的协作</th><th scope="col">CMC 中的协作</th></tr></thead><tbody><tr><td>发现活对象与跟踪引用变化</td><td>读屏障标记路径、卡信息和标记队列，随分代模式安排</td><td>并发追踪、卡信息与重扫、标记暂停收敛</td></tr><tr><td>切换根和移动状态</td><td>线程根 flip 与空间角色协调</td><td>根更新、压缩布局与映射准备的协调窗口</td></tr><tr><td>应用与移动并发执行</td><td>读屏障和转发发布协议</td><td>页故障协作、页面状态和完整内容发布</td></tr><tr><td>结束与复用存储</td><td>完成引用与工作队列协议，再回收旧区域</td><td>等待页面工作及故障处理收敛，再解除临时映射状态</td></tr></tbody></table></div>
-<p>CMC 中已经准备好的页面按当前映射直接访问，不会因为每一次引用读取都重新触发同一页的整理。它避免的是应用常规引用访问中的 CC 式读屏障成本，不能概括为“没有任何屏障或引用修复”；实现内部也有特殊访问辅助路径。两者都要测暂停、GC CPU、应用尾延迟和空间峰值，仅凭“页级处理”无法断定 CMC 对所有负载更快或内存恰好减半。</p>
-</section>
-<section id="oom" aria-labelledby="oom-title"><h3 id="oom-title">15. OOM、内存观察与排查</h3>
+<h2 id="gc-implementations-title">三、平台实例与内存排查</h2>
+<p>两种运行时的具体收集器流程分别见 JVM 与 ART 专题；本部分保留旧章节入口和共用的排查方法。</p>
+<section id="hotspot-g1" aria-labelledby="hotspot-g1-title"><h3 id="hotspot-g1-title">HotSpot G1 与 ZGC</h3><span id="g1-regions"></span><span id="g1-cycle"></span><span id="collector-tradeoffs"></span><p>实现细节已移至<a href="../jvm-hotspot/index.html#hotspot-g1">HotSpot G1 与 ZGC</a>。</p></section>
+<section id="spaces" aria-labelledby="spaces-title"><h3 id="spaces-title">ART 堆空间</h3><span id="space-design"></span><p>实现细节已移至<a href="../art-runtime/index.html#spaces">ART 堆空间</a>。</p></section>
+<section id="art-cc" aria-labelledby="art-cc-title"><h3 id="art-cc-title">ART ConcurrentCopying</h3><span id="cc-read-barrier"></span><span id="cc-write-barrier"></span><p>实现细节已移至<a href="../art-runtime/index.html#art-cc">ART ConcurrentCopying</a>。</p></section>
+<section id="art-cmc" aria-labelledby="art-cmc-title"><h3 id="art-cmc-title">ART Concurrent Mark Compact</h3><span id="cmc-phases"></span><span id="cmc-userfaultfd"></span><span id="cc-cmc-comparison"></span><p>实现细节已移至<a href="../art-runtime/index.html#art-cmc">ART Concurrent Mark Compact</a>。</p></section>
+<section id="oom" aria-labelledby="oom-title"><h3 id="oom-title">OOM、内存观察与排查</h3>
 <p><strong>Java OutOfMemoryError</strong>是运行时无法满足相应分配请求的错误；Linux/Android 因全局或进程内存压力终止进程，是另一条路径。抛 OOM 不等于在该指令处必定立刻被系统杀死，但捕获异常也不自动恢复可用内存或业务状态。</p>
 <h4 id="memory-failure-kinds">先判断失败发生在哪一层</h4>
 <div class="note-table-wrap" role="region" aria-label="内存相关故障分类" tabindex="0"><table><caption>故障现象、所需证据与排查方向</caption><thead><tr><th scope="col">现象</th><th scope="col">先收集的证据</th><th scope="col">排查方向</th></tr></thead><tbody>
@@ -111,36 +22,17 @@ Mark 内部按空间、标记和转发状态处理，
 <ol><li>先确认是 Java 堆分配失败、native 分配失败、地址空间/碎片问题，还是系统杀进程；保留日志和构建信息。</li><li>记录失败申请大小、存活量、堆目标/上限、GC 前后变化及进程内存分类。</li><li>对比多轮相同业务的 heap dump，沿 GC Roots 引用链查不必要的持有；native 增长另查分配调用栈。</li><li>应用侧减少峰值同时存活数据、按需加载、缩小图片/缓存、及时取消任务；修复引用链后用同负载复测。</li></ol>
 <p>若相同业务往返后，回收后的存活量持续上升，优先查长期持有；若只有并发峰值时分配失败、峰值后能恢复，优先查同时存活的数据规模；若稳定负载始终超过容量，再评估资源预算。单次占用高不能独自证明泄漏，回收前后采样也要保证口径可比。</p>
 <p>HPROF 是堆转储格式之一，可用于分析托管对象和引用。dump 本身有开销，且不覆盖所有 native、映射或图形资源；“Java 堆不涨”不能排除进程内存问题。</p>
-<h4 id="diagnostic-tools">共用取证思路，分别选择平台工具</h4>
-<div class="note-table-wrap" role="region" aria-label="HotSpot 与 Android 内存取证工具" tabindex="0"><table><caption>先确定问题，再选择证据</caption><thead><tr><th scope="col">要回答的问题</th><th scope="col">HotSpot / JDK 21</th><th scope="col">Android / ART</th></tr></thead><tbody>
-<tr><td>哪一阶段暂停、回收了多少</td><td>统一 GC / safepoint 日志，JFR 时间线</td><td>ART GC 日志与 Perfetto 等系统跟踪</td></tr>
-<tr><td>谁持续持有对象</td><td>jcmd 堆转储，分析对象到 GC Roots 的路径</td><td>Android Studio heap dump，分析对象与引用链</td></tr>
-<tr><td>什么调用在大量分配</td><td>JFR 分配相关事件，注意采样和事件配置</td><td>Java / Kotlin 分配记录；native 分配另用 heapprofd 等工具</td></tr>
-<tr><td>堆外或整个进程为什么增长</td><td>NMT 分类趋势，结合操作系统进程内存和 native 工具</td><td>dumpsys meminfo 的内存分类，结合 native 分配和映射证据</td></tr>
-<tr><td>进程为何退出</td><td>异常 / 崩溃日志与操作系统、容器事件</td><td>ApplicationExitInfo、logcat 与可用的系统退出记录</td></tr>
+<h4 id="diagnostic-tools">按问题选证据</h4>
+<p>工具用于验证暂停、持有关系和进程内存变化；先确定要回答的问题，再记录运行时版本、负载和采集条件。</p>
+<div class="note-table-wrap" role="region" aria-label="HotSpot 与 Android 取证入口" tabindex="0"><table><caption>现象、证据与工具</caption><thead><tr><th scope="col">问题</th><th scope="col">所需证据</th><th scope="col">可用工具</th></tr></thead><tbody>
+<tr><td>GC 是否造成暂停</td><td>GC 阶段与业务延迟的时间对应</td><td>HotSpot GC / safepoint 日志或 JFR；ART GC 日志或 Perfetto</td></tr>
+<tr><td>谁让对象存活</td><td>多次同负载的对象数量及 GC Roots 引用链</td><td>HotSpot 或 Android 的 heap dump 分析</td></tr>
+<tr><td>堆外内存为何增长</td><td>进程内存分类和 native 分配趋势</td><td>HotSpot NMT 与系统记录；Android dumpsys meminfo、heapprofd 等</td></tr>
+<tr><td>进程为何退出</td><td>异常、崩溃或系统退出原因</td><td>平台日志；Android ApplicationExitInfo 与 logcat</td></tr>
 </tbody></table></div>
-<p>下面是 <strong>JDK 21 HotSpot 的取证命令模板</strong>，将 &lt;pid&gt; 换成目标进程号，并使用有权限访问它的同机工具。先用 help 核对该运行时支持的命令；这些命令不是 ART 的接口。</p>
-<pre tabindex="0"><code class="language-text">jcmd &lt;pid&gt; help
-jcmd &lt;pid&gt; VM.flags
-jcmd &lt;pid&gt; GC.heap_info
-
-已在启动时开启 -XX:NativeMemoryTracking=summary 后：
-jcmd &lt;pid&gt; VM.native_memory baseline
-完成一轮可重复的业务操作后：
-jcmd &lt;pid&gt; VM.native_memory summary.diff
-
-需要对象引用链证据时，另行安排堆转储：
-jcmd &lt;pid&gt; GC.heap_dump heap.hprof</code></pre>
-<p>HotSpot 可在启动时用 <code>-Xlog:gc*,safepoint</code>记录 GC 与安全点信息。NMT 必须提前开启，统计的是 HotSpot 跟踪到的内存，不能覆盖所有第三方 native 分配，也不能把 reserved / committed 直接当作 RSS。heap dump 可能触发 GC、暂停和大量磁盘写入；采集条件也属于解释数据的一部分。</p>
-<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/troubleshooting-memory-leaks.html" target="_blank" rel="noreferrer">HotSpot 内存错误与泄漏排查</a> · <a href="https://docs.oracle.com/en/java/javase/21/docs/specs/man/jcmd.html" target="_blank" rel="noreferrer">jcmd 命令</a> · <a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/diagnostic-tools.html" target="_blank" rel="noreferrer">JFR 与诊断工具</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/native-memory-tracking.html" target="_blank" rel="noreferrer">NMT 范围与启用条件</a> · <a href="https://developer.android.com/tools/dumpsys#meminfo" target="_blank" rel="noreferrer">Android 内存分类</a> · <a href="https://perfetto.dev/docs/data-sources/native-heap-profiler" target="_blank" rel="noreferrer">heapprofd</a> · <a href="https://developer.android.com/reference/android/app/ApplicationExitInfo" target="_blank" rel="noreferrer">Android 退出原因</a>。</p>
-<details class="note-review-question" id="heap-limits"><summary>经典问题：扩堆是否一定减少 OOM，而且没有副作用？</summary>
-<p>它可能延后容量上限，但不能消除泄漏或全系统压力。更大堆可能增加活对象量、扫描/复制工作和驻留内存；虚拟预留、分配器上限、GC 目标和物理资源必须分别分析。</p>
-</details>
-<details class="note-review-question"><summary>经典问题：具体扩堆上限和 ART 统计函数能否背一个通用答案？</summary>
-<p>不能。要核对目标分支、指针/引用表示、配置、空间约束和实际改动。平台项目可沿 JNI 注册、native 实现到 Heap/collector 统计接口追踪；应用公开 API 与内部函数不是同一接口合同。</p>
-</details>
-<p class="note-source">参考：<a href="https://developer.android.com/topic/performance/memory-overview" target="_blank" rel="noreferrer">Android 内存概览</a> · <a href="https://developer.android.com/studio/profile/capture-heap-dump" target="_blank" rel="noreferrer">捕获 heap dump</a>。</p>
-<p>native 分配器保留量与 RSS 的关系见<a href="../native-memory-allocation/index.html#free">释放与页面归还</a>。托管堆转储与 native 分配调用栈分别回答引用持有和存储分配的问题。</p>
+<p>Heap dump 有暂停和磁盘成本，也不覆盖全部 native、映射和图形资源。NMT 须提前开启，且统计范围有限。具体命令及可用事件以目标版本文档为准，GC 参数不能替代对引用链和负载的分析。</p>
+<details class="note-review-question" id="heap-limits"><summary>扩堆是否一定减少 OOM？</summary><p>扩大堆可能延后容量上限，仍需检查泄漏、同时存活数据和系统内存压力；更大的活对象集合也可能增加扫描与复制工作。</p></details>
+<p class="note-source">参考：<a href="https://docs.oracle.com/en/java/javase/21/troubleshoot/diagnostic-tools.html" target="_blank" rel="noreferrer">JDK 21 诊断工具</a> · <a href="https://docs.oracle.com/en/java/javase/21/vm/native-memory-tracking.html" target="_blank" rel="noreferrer">NMT</a> · <a href="https://developer.android.com/tools/dumpsys#meminfo" target="_blank" rel="noreferrer">Android meminfo</a> · <a href="https://perfetto.dev/docs/data-sources/native-heap-profiler" target="_blank" rel="noreferrer">heapprofd</a> · <a href="https://developer.android.com/reference/android/app/ApplicationExitInfo" target="_blank" rel="noreferrer">退出原因</a>。</p>
 <h4 id="retained-size">从大小排名走到支配关系</h4>
 <p><strong>Shallow size</strong>是对象自身占用；<strong>retained size</strong>是在相应引用处理规则下，该对象不可达时可随之变得不可达的对象集合大小。一个很小的容器可能保留大量数组，而一个大数组未必能因删除某一条引用就回收。</p>
 <p>若从根到 Y 的所有保留路径都经过 X，则 X 支配 Y。堆分析的 dominator tree 用于汇总保留关系，但树边不一定是原始对象的直接字段引用；它也不是编译器 CFG 的支配树，虽然用到了相似的图论定义。</p>
@@ -172,7 +64,7 @@ exit() ：停止显示页面，却没有注销同一个 listener</code></pre>
 <p>若托管堆稳定而 RSS 增长，转看 native 分配、映射、图形资源或分配器保留，不应强行套入上面两个 Java 堆案例。</p>
 <p class="note-source">参考：<a href="https://help.eclipse.org/latest/topic/org.eclipse.mat.ui.help/concepts/shallowretainedheap.html" target="_blank" rel="noreferrer">MAT：Shallow / Retained Heap</a> · <a href="https://help.eclipse.org/latest/topic/org.eclipse.mat.ui.help/concepts/dominatortree.html" target="_blank" rel="noreferrer">MAT：Dominator Tree</a>。</p>
 </section>
-<section id="review" aria-labelledby="review-title"><h3 id="review-title">16. GC 与编译器、ABI 的协作</h3>
+<section id="review" aria-labelledby="review-title"><h3 id="review-title">GC 与编译器、ABI 的协作</h3>
 <p><strong>要点回顾：</strong>三色标记用白、灰、黑表达发现和扫描状态，颜色不等于对象当前是否可达。应用修改引用，既可能让尚需保留的对象逃过扫描，也可能让本轮已保留的对象变成浮动垃圾；前者必须由正确的标记协议防止，后者可留待后续收集。STW 阻止应用在协调窗口内修改对象图，并发阶段则依靠相应屏障与根处理协议。移动对象后，G1 在疏散暂停中更新引用，ZGC / ART CC 则使用各自的读屏障等机制协调并发访问；不能把读屏障视为所有移动 GC 的共同步骤。</p><details class="note-review-question"><summary>复习问题：GC 为什么需要编译器和 ABI 配合？</summary><p>GC 需要知道机器状态里哪些值是引用；编译器生成安全点信息并插入所选收集器需要的屏障，调用约定又规定值如何跨调用保存。异常展开需要恢复上一帧，但 DWARF CFI 描述恢复规则，OopMap 描述对象引用位置，二者不是同一份信息。</p></details><details class="note-review-question"><summary>复习问题：malloc 的指针为什么通常不能这样搬？</summary><p>普通 native 调用者可以复制、隐藏裸指针，分配器没有完整根集合和编译器屏障协作，不能擅自移动已交付的活块。realloc 可以返回新地址，但必须由调用者更新使用方式；详见<a href="../native-memory-allocation/index.html">malloc 专题</a>。</p></details><p>复习时画出漏标交错、浮动垃圾的时间顺序与旧新地址映射；比较收集器时，分别看暂停阶段、并发工作、屏障开销和迁移所需空间。</p>
 </section>
 </section>

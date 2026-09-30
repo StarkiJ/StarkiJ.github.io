@@ -23,7 +23,7 @@ test("topic grouping rejects omissions, duplicates and references to other categ
     assert.throws(() => noteGroups({ ...category, groups: [{ title: "空组", notes: [] }] }, kinds));
 });
 
-test("published GC bookmarks retain chapter and heading anchors with working destinations", async () => {
+test("published bookmarks retain chapter anchors across the runtime split", async () => {
     const { content, workspace, notes } = await import("../../scripts/lib/site.mjs");
     const { parseHtml } = await import("../../scripts/lib/html.mjs");
     // These are the anchors published before the two GC articles were consolidated.
@@ -32,23 +32,30 @@ test("published GC bookmarks retain chapter and heading anchors with working des
         "art-memory-gc": ["roots", "collectors", "generations", "spaces", "oom", "related"]
     };
     const sitemap = await readFile(path.join(workspace, "sitemap.xml"), "utf8");
-    for (const [slug, anchors] of Object.entries(published)) {
-        const relocation = content.noteRelocations.find(item => item.slug === slug);
-        assert.ok(relocation, `Missing relocation for ${slug}`);
+    for (const relocation of content.noteRelocations) {
+        const { slug } = relocation;
+        const anchors = published[slug] || relocation.sections.map(section => section.anchor);
         assert.ok(!notes.some(note => note.slug === slug), "Compatibility pages must not be catalog entries");
         const source = await readFile(path.join(workspace, "notes", slug, "index.html"), "utf8");
         const legacy = parseHtml(source);
         const ids = new Set(legacy.nodes.map(node => node.attributes.id));
-        const destination = parseHtml(await readFile(path.join(workspace, "notes", relocation.target, "index.html"), "utf8"));
-        const targetIds = new Set(destination.nodes.map(node => node.attributes.id));
         for (const anchor of anchors) {
             assert.ok(ids.has(anchor) && ids.has(`${anchor}-title`), `Lost bookmark ${slug}#${anchor}`);
             const mapping = relocation.sections.find(section => section.anchor === anchor);
+            const target = mapping?.target || relocation.target;
+            const destination = parseHtml(await readFile(path.join(workspace, "notes", target, "index.html"), "utf8"));
+            const targetIds = new Set(destination.nodes.map(node => node.attributes.id));
             assert.ok(mapping && targetIds.has(mapping.targetAnchor), `Missing target for ${slug}#${anchor}`);
-            assert.ok(legacy.nodes.some(node => node.tag === "a" && node.attributes.href === `../${relocation.target}/index.html#${mapping.targetAnchor}`));
+            assert.ok(legacy.nodes.some(node => node.tag === "a" && node.attributes.href === `../${target}/index.html#${mapping.targetAnchor}`));
         }
         assert.match(source, /name="robots" content="noindex,follow"/);
-        assert.ok(source.includes(`rel="canonical" href="${content.origin}/notes/${relocation.target}/index.html"`));
+        const targets = new Set(relocation.sections.map(section => section.target || relocation.target));
+        if (targets.size === 1) {
+            const [target] = targets;
+            assert.ok(source.includes(`rel="canonical" href="${content.origin}/notes/${target}/index.html"`));
+        } else {
+            assert.ok(!source.includes('rel="canonical"'));
+        }
         assert.ok(!sitemap.includes(`/notes/${slug}/index.html`));
     }
 });

@@ -44,5 +44,8 @@ test("generated search results target published chapters and omit deleted notes"
     for (const query of ["OopMap", "反优化", "悬垂引用", "DNS", "false sharing"]) {
         assert.ok(searchNotes(entries, query).length > 0, `No result for ${query}`);
     }
+    for (const [query, slug] of [["ART", "art-runtime"], ["JVM", "jvm-hotspot"], ["LLVM", "llvm-compiler"]]) {
+        assert.equal(searchNotes(entries, query)[0].url, `./${slug}/index.html`);
+    }
     assert.ok(!html.includes("readingPaths") && !html.includes("note-paths"));
 });

@@ -27,6 +27,8 @@ export function searchNotes(entries, query) {
             if (!field.includes(term)) return 0;
             return [12, 6, 3, 1][index] + (field === term ? 8 : 0);
         }))));
-        return { entry, order, score: scores.every(Boolean) ? scores.reduce((sum, score) => sum + score, 0) : 0 };
+        const score = scores.every(Boolean) ? scores.reduce((sum, value) => sum + value, 0) : 0;
+        const articleMatch = entry.label === "全文" && fields[1].startsWith(normalized);
+        return { entry, order, score: score + (articleMatch ? 20 : 0) };
     }).filter(result => result.score > 0).sort((a, b) => b.score - a.score || a.order - b.order).map(result => result.entry);
 }
